@@ -6,4 +6,4 @@ scanner.ml: scanner.mll
 
 .PHONY: clean
 clean:
-	scanner.ml
+	rm -rf scanner.ml
