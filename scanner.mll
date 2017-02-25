@@ -1,9 +1,12 @@
 {
   open Parser
+  let lineno = ref 1
   let depth = ref 0
+  let filename = ref "" (* what do with this *)
 }
 
-let whitespace = [' ' '\t' '\r' '\n']
+let whitespace = [' ' '\t' '\r']
+let newline = '\n'
 
 let alpha = ['a'-'z' 'A'-'Z']
 let digit = ['0'-'9']
@@ -13,7 +16,8 @@ let ascii = ([' '-'!' '#'-'[' ']'-'~'])
 
 
 rule token = parse
-  whitespace { token lexbuf }
+  whitespace  { token lexbuf }
+| newline     { incr lineno; token lexbuf }
 | "/*"    { incr depth; comment lexbuf }
 
 (* parens *)
@@ -106,6 +110,7 @@ rule token = parse
 
 (* ye good olde *)
 | eof { EOF }
+| _ as e    { raise (Exceptions.IllegalCharacter(!filename, illegal, !lineno)) }
 
 (* comments *)
 (* does not support nested comments yet *)
