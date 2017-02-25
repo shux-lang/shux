@@ -91,4 +91,12 @@ rule token = parse
 | "bool"    { BOOL }
 | "vector"  { VECTOR }
 
+
+(* ye good olde *)
 | eof { EOF }
+
+(* comments *)
+(* does not support nested comments yet *)
+and comment = parse
+  "*/"      { token lexbuf }
+| _         { comment lexbuf }
