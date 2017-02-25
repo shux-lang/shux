@@ -124,6 +124,7 @@ rule token = parse
 | float as f  { FLOAT_LITERAL(float_of_string f) }
 | string      { STRING_LITERAL(unescape s)}
 | id as n     { ID(n) }
+| "true" | "false" as tf { BOOL_LIT (bool_of_string tf) } 
 
 (* ye good olde *)
 | eof { EOF }
