@@ -2,9 +2,11 @@
   open Parser
   let depth = ref 0
 }
+let whitespace = [' ' '\t' '\r' '\n']
+
 
 rule token = parse
-  [' ' '\t' '\r' '\n'] { token lexbuf }
+  whitespace { token lexbuf }
 | "/*"    { incr depth; comment lexbuf }
 
 (* parens *)
