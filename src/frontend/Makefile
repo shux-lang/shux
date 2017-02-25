@@ -1,6 +1,5 @@
 
 
-
 scanner.ml: scanner.mll
 	ocamllex scanner.mll
 
