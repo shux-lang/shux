@@ -1,8 +1,11 @@
-{ open Parser }
+{
+  open Parser
+  let depth = ref 0
+}
 
 rule token = parse
   [' ' '\t' '\r' '\n'] { token lexbuf }
-| "/*"    { comment lexbuf }
+| "/*"    { incr depth; comment lexbuf }
 
 (* parens *)
 | '('     { LPAREN } 
@@ -98,6 +101,6 @@ rule token = parse
 (* comments *)
 (* does not support nested comments yet *)
 and comment = parse
-  "*/"      { token lexbuf }
+  "/*"      { incr depth; comment lexbuf }
+| "*/"      { decr depth; if depth > 0 then token lexbuf else token lexbuf }
 | _         { comment lexbuf }
-
