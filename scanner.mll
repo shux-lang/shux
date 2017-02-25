@@ -3,17 +3,29 @@
   let lineno = ref 1
   let depth = ref 0
   let filename = ref "" (* what do with this *)
+
+  let unescape s =
+    Scanf.sscanf ("\"" ^ s ^ "\"") "%S%!" (fun x -> x)
 }
 
+(* char class regexes *)
 let whitespace = [' ' '\t' '\r']
 let newline = '\n'
-
 let alpha = ['a'-'z' 'A'-'Z']
 let digit = ['0'-'9']
 let escape = '\\' ['\\' ''' '"' 'n' 'r' 't']
 let escape_char = ''' (escape) '''
 let ascii = ([' '-'!' '#'-'[' ']'-'~'])
 
+(* type regexes *)
+let string = '"' ( (ascii | escape)* as s) '"'
+(* we don't support chars
+let char = ''' ( ascii | digit ) '''
+*)
+let float = (digit+) ['.'] digit+
+let int = digit+
+
+let id = alpha (alpha | digit | '_')*
 
 rule token = parse
   whitespace  { token lexbuf }
@@ -107,6 +119,11 @@ rule token = parse
 | "bool"    { BOOL }
 | "vector"  { VECTOR }
 
+(* literals *)
+| int as i    { INT_LITERAL(int_of_string i) }
+| float as f  { FLOAT_LITERAL(float_of_string f) }
+| string      { STRING_LITERAL(unescape s)}
+| id as n     { ID(n) }
 
 (* ye good olde *)
 | eof { EOF }
