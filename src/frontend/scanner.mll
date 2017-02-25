@@ -113,18 +113,18 @@ rule token = parse
 | "var"     { VAR }
 
 (* types *)
-| "int"               { INT }
-| "scalar" | "float"  { FLOAT }
-| "string"            { STRING }
-| "bool"              { BOOL }
-| "vector"            { VECTOR }
+| "int"               { INT_T }
+| "scalar" | "float"  { FLOAT_T }
+| "string"            { STRING_T }
+| "bool"              { BOOL_T }
+| "vector"            { VECTOR_T }
 
 (* literals *)
-| int as i                { INT_LITERAL(int_of_string i) }
-| float as f              { FLOAT_LITERAL(float_of_string f) }
-| string                  { STRING_LITERAL(unescape s)}
-| id as n                 { ID(n) }
 | "true" | "false" as tf  { BOOL_LIT(bool_of_string tf) } 
+| int as i                { INT_LIT(int_of_string i) }
+| float as f              { FLOAT_LIT(float_of_string f) }
+| string                  { STRING_LIT(unescape s)}
+| id as n                 { ID(n) }
 
 (* ye good olde *)
 | eof       { EOF }
