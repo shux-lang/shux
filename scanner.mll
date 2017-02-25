@@ -2,7 +2,14 @@
   open Parser
   let depth = ref 0
 }
+
 let whitespace = [' ' '\t' '\r' '\n']
+
+let alpha = ['a'-'z' 'A'-'Z']
+let digit = ['0'-'9']
+let escape = '\\' ['\\' ''' '"' 'n' 'r' 't']
+let escape_char = ''' (escape) '''
+let ascii = ([' '-'!' '#'-'[' ']'-'~'])
 
 
 rule token = parse
