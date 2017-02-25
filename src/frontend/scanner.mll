@@ -127,13 +127,16 @@ rule token = parse
 | "true" | "false" as tf { BOOL_LIT(bool_of_string tf) } 
 
 (* ye good olde *)
-| eof { EOF }
-| _ as e    { raise (Exceptions.IllegalCharacter(!filename, illegal, !lineno)) }
+| eof       { EOF }
+
+
+(* The Reign of Error *)
+| '"'       { raise (Exceptions.UnmatchedQuotation(!lineno)) }
+| _ as e    { raise (Exceptions.IllegalCharacter(!filename, e, !lineno)) }
+
 
 (* comments *)
-(* does not support nested comments yet *)
 and comment = parse
   "/*"      { incr depth; comment lexbuf }
 | "*/"      { decr depth; if depth > 0 then token lexbuf else token lexbuf }
 | newline   { incr lineno; comment lexbuf }
-| _         { comment lexbuf }
