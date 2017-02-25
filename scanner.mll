@@ -100,3 +100,4 @@ rule token = parse
 and comment = parse
   "*/"      { token lexbuf }
 | _         { comment lexbuf }
+
