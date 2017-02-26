@@ -56,6 +56,7 @@ rule token = parse
 | '*'     { TIMES }
 | '/'     { DIVIDE }
 | '%'     { MOD }
+| '^'     { EXPONENT }
 
 (* assignment operators *)
 | '='     { ASSIGN }
@@ -69,16 +70,6 @@ rule token = parse
 | "&&"    { LOG_AND }
 | "||"    { LOG_OR }
 | "!"     { LOG_NOT }
-
-(* do we want to do this? 
-(* bitwise operators *)
-| '&'     { BIT_AND }
-| '|'     { BIT_OR }
-| '^'     { BIT_XOR }
-| '~'     { BIT_NOT }
-| "<<"    { LSHIFT }
-| ">>"    { RSHIFT }
-*)
 
 (* comparison operators *)
 | '<'     { LT }
