@@ -1,4 +1,4 @@
-CAMLC=ocamlc
+CAMLC=ocaml find ocamlc -linkpkg -thread -package core
 BACKEND=../backend
 #OBJS=scanner.cmo parser.cmo
 OBJS=scanner.cmo
@@ -22,9 +22,9 @@ scanner.ml: scanner.mll
 #	ocamlyacc -v parser.mly
 
 %.cmo: %.ml
-	ocamlc $(OCAML_FLAGS) -c $<
+	$(CAMLC) $(OCAML_FLAGS) -c $<
 %.cmi: %.mli
-	ocamlc $(OCAML_FLAGS) -c $<
+	$(CAMLC) $(OCAML_FLAGS) -c $<
 .PHONY: clean test
 
 clean:

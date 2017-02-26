@@ -123,5 +123,4 @@ echo \
 #require "core.syntax";;'
 echo ''
 
-echo 'Done! For editor-specific setup, please see this guide:'
-echo 'https://github.com/realworldocaml/book/wiki/Installation-Instructions'
+echo 'Done!'

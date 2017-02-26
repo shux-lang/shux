@@ -1,4 +1,4 @@
-OCAML=ocamlc
+OCAML=ocaml find ocamlc -linkpkg -thread -package core
 OCAML_FLAGS=
 TARGETS=
 
