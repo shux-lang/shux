@@ -4,7 +4,6 @@ open Core.Std
 
 type type_name = string
 type t =
-  | Unit
   | Int
   | Float
   | String
@@ -12,17 +11,19 @@ type t =
   | Type of type_name
   | Array of t
 
+type ternary_operator =
+  | Ques
+
 type binary_operator =
-  | Add | Sub | Mul | Div | Mod
-  | Eq | Neq | Lt | Lte
-  | And | Or | Zip
-  | Concat | Chord | Octave
+  | Add | Sub | Mul | Div | Mod | Exp
+  | Asn | AddAsn | SubAsn | MulAsn | DivAsn | ModAsn | ExpAsn
+  | Lt | Gt | Neq | Leq | Geq
+  | And | Or
+  | Filter | Map | Func
 
 type unary_operator =
   | Not
   | Neg
-  | Sharp
-  | Flat
 
 type var_reference = string list
 

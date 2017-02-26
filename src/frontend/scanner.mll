@@ -1,5 +1,8 @@
 {
+  open Core.Std
+
   open Parser
+  
   let lineno = ref 1
   let depth = ref 0
   let filename = ref "" (* what do with this *)
@@ -65,6 +68,7 @@ rule token = parse
 | "*="    { MUL_ASN }
 | "/="    { DIV_ASN }
 | "%="    { MOD_ASN }
+| "^="    { EXP_ASN }
 
 (* logical operators *)
 | "&&"    { LOG_AND }
