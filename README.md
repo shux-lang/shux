@@ -3,7 +3,7 @@ A programming language for particle-based physics simulation
 
 # Introduction
 
-Smoothed Particle Hydrodynamics henceforth be the bane of our existence.
+Smoothed Particle Hydrodynamics will henceforth be the bane of our existence.
 
 # Authors
 - [Lucas Schuermann](http://lvs.io/)
