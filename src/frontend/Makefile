@@ -1,16 +1,17 @@
-CAMLC=ocamlfind ocamlc -linkpkg -thread -package core
+OCAML=ocamlfind ocamlc -linkpkg -thread -package core
 BACKEND=../backend
 #OBJS=scanner.cmo parser.cmo
-OBJS=scanner.cmo
+OBJS=
 #EXT_OBJS=$(BACKEND)/semantics.cmo
 EXT_OBJS=
 INCLUDE=-I ../include -I $(BACKEND)
 OCAML_FLAGS=$(INCLUDE) $(EXT_OBJS)
 
-all : $(OBJS) $(TARGETS) $(TESTS)
+#all: $(OBJS)
+all: scanner.ml
 
-%: %.ml $(OBJS)
-	$(CAMLC) $(OCAML_FLAGS) -o $@ $(LIBS) $(OBJS) $<
+#%: %.ml $(OBJS)
+#	$(OCAML) $(OCAML_FLAGS) -o $@ $(LIBS) $(OBJS) $<
 
 scanner.ml: scanner.mll
 	ocamllex scanner.mll
@@ -22,9 +23,9 @@ scanner.ml: scanner.mll
 #	ocamlyacc -v parser.mly
 
 %.cmo: %.ml
-	$(CAMLC) $(OCAML_FLAGS) -c $<
+	$(OCAML) $(OCAML_FLAGS) -c $<
 %.cmi: %.mli
-	$(CAMLC) $(OCAML_FLAGS) -c $<
+	$(OCAML) $(OCAML_FLAGS) -c $<
 .PHONY: clean test
 
 clean:
