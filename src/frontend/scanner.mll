@@ -1,5 +1,8 @@
 {
+  open Core.Std
+
   open Parser
+  
   let lineno = ref 1
   let depth = ref 0
   let filename = ref "" (* what do with this *)
@@ -56,6 +59,7 @@ rule token = parse
 | '*'     { TIMES }
 | '/'     { DIVIDE }
 | '%'     { MOD }
+| '^'     { EXPONENT }
 
 (* assignment operators *)
 | '='     { ASSIGN }
@@ -64,21 +68,12 @@ rule token = parse
 | "*="    { MUL_ASN }
 | "/="    { DIV_ASN }
 | "%="    { MOD_ASN }
+| "^="    { EXP_ASN }
 
 (* logical operators *)
 | "&&"    { LOG_AND }
 | "||"    { LOG_OR }
 | "!"     { LOG_NOT }
-
-(* do we want to do this? 
-(* bitwise operators *)
-| '&'     { BIT_AND }
-| '|'     { BIT_OR }
-| '^'     { BIT_XOR }
-| '~'     { BIT_NOT }
-| "<<"    { LSHIFT }
-| ">>"    { RSHIFT }
-*)
 
 (* comparison operators *)
 | '<'     { LT }
