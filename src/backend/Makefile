@@ -1,4 +1,4 @@
-OCAML=ocaml find ocamlc -linkpkg -thread -package core
+OCAML=ocamlfind ocamlc -linkpkg -thread -package core
 INCLUDE=-I ../include
 OCAML_FLAGS=$(INCLUDE)
 HEADERS=

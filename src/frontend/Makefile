@@ -1,4 +1,4 @@
-CAMLC=ocaml find ocamlc -linkpkg -thread -package core
+CAMLC=ocamlfind ocamlc -linkpkg -thread -package core
 BACKEND=../backend
 #OBJS=scanner.cmo parser.cmo
 OBJS=scanner.cmo
