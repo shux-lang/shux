@@ -18,12 +18,6 @@ type binary_operator =
   | And | Or | Zip
   | Concat | Chord | Octave
 
-type unary_operator =
-  | Not
-  | Neg
-  | Sharp
-  | Flat
-
 type var_reference = string list
 
 type mutability = Mutable | Immutable
