@@ -1,5 +1,6 @@
 CAMLC=ocamlc
 BACKEND=../backend
+#OBJS=scanner.cmo parser.cmo
 OBJS=scanner.cmo
 #EXT_OBJS=$(BACKEND)/semantics.cmo
 EXT_OBJS=
