@@ -1,5 +1,3 @@
-(* LVS Copied from Note-Hashtag *)
-
 open Core.Std
 
 type type_name = string
@@ -25,6 +23,8 @@ type unary_operator =
   | Not
   | Neg
 
+
+(* LVS NOT TOUCHED BELOW *)
 type var_reference = string list
 
 type mutability = Mutable | Immutable
