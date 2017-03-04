@@ -41,10 +41,87 @@ fn_decls:
 ns_decl:
 | NS ID ASSIGN LBRACE program RBRACE    { }
 
+(* need to consider structs *)
 let_decl:
-| LET type ID ASSIGN EXPRESSION SEMICOLON { }
+| LET type ID ASSIGN expr SEMICOLON { }
+
+fn_decl:
+| fn_type ID LPAREN formals RPAREN ret_type RBRACE block LBRACE
+
+block:
+| statements ret_expr
+
+
+statements:
+| statements statement SEMICOLON
+| statement SEMICOLON
+(* do we need these? 
+| conditional_statement
+| interation_statement
+*)
+
+statement:
+| decl
+| expr
+
+ret_expr:
+| expr
+| (* good old bucket of nothing *)
+
+expr:
+| asn_expr
+
+asn_expr:
+| unary_expr asn_op asn_expr
+| conditional_expr
+
+conditional_expr:
+| fn_expr COLON conditional_expr
+| bool_expr QUES fn_expr COLON conditional_expr
+| IF bool_expr THEN fn_expr ELSE conditional_expr
+
+fn_expr:
+| iter_expr fn_op kns
+| iter_expr
+
+kns:
+| kn kns
+| kn
+
+kn:
+| ID
+| LPAREN formals RPAREN FUNC LBRACE block RBRACE
+(*| formals FUNC LBRACE block RBRACE *)
+(* do we want lambdas to look like
+ * param1, param2 -> { // etc. }
+ * or
+ * (param1, param2) -> {// etc. }?
+ * since this isn't python, the latter looks better imo
+ * - J-Hui
+ *)
+
+gn:
+| ID LPAREN actuals RPAREN
+| LPAREN RPAREN (* nop gn *)
+
+iter_expr:
+| iter_type unit_expr gn
+| unit_expr
 
 
 
 
+
+
+fn_op:
+| MAP
+| FILTER
+
+fn_type:
+| GN
+| FN
+
+iter_type:
+| FOR
+| DO
 
