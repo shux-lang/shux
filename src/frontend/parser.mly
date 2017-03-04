@@ -56,7 +56,7 @@ statements:
 | statement SEMICOLON
 (* do we need these? 
 | conditional_statement
-| interation_statement
+| iteration_statement
 * - j-hui
 *)
 
@@ -180,6 +180,7 @@ actual_list:
 
 decl:
 | decl_mod val_decl
+| decl_mod val_decl ASSIGN expr
 
 decl_mod:
 | VAR
