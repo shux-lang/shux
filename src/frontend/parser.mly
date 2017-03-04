@@ -51,13 +51,13 @@ fn_decl:
 block:
 | statements ret_expr
 
-
 statements:
-| statements statement SEMICOLON
+| statement SEMICOLON statements
 | statement SEMICOLON
 (* do we need these? 
 | conditional_statement
 | interation_statement
+* - j-hui
 *)
 
 statement:
@@ -67,6 +67,7 @@ statement:
 ret_expr:
 | expr
 | (* good old bucket of nothing *)
+(* warn: this may produce S/R conflicts *)
 
 expr:
 | asn_expr
@@ -163,8 +164,74 @@ primary_expr:
 | lit
 | LPAREN expr RPAREN
 
+formals:
+| formal_list
+|
+formal_list:
+| val_decl COMMA formal_list
+| val_decl
 
+actuals:
+| actual_list
+|
+actual_list:
+| expr COMMA actual
+| expr
 
+decl:
+| decl_mod val_decl
+
+decl_mod:
+| VAR
+| (* nothing, val *)
+
+val_decl:
+| typ ID
+
+typ:
+| primitive_t array_t
+| ID array_t (* for user-defined structs *)
+
+primitive_t:
+| INT_T
+| FLOAT_T
+| STRING_T
+| BOOL_T
+| vector_t
+vector_t:
+| VEC LT INT_LIT GT
+array_t:
+| LBRACK RBRACK array_t
+| (* optional *)
+
+lit:
+| struct_lit
+| array_lit
+| vector_lit
+| STRING_LIT
+| BOOL_LIT
+| FLOAT_LIT
+
+struct_lit:
+| LBRACE struct_lit_fields RBRACE
+| LBRACE RBRACE
+struct_lit_fields:
+| struct_lit_field struct_lit_fields
+| struct_list_field
+struct_lit_field:
+| DOT ID ASSIGN expr
+
+array_lit:
+| LBRACK list_lit_elements RBRACK
+| LBRACK RBRACK
+
+vector_lit:
+| LT list_lit_elements GT
+| LT GT
+
+list_lit_elements
+| expr COMMA list_lit_elements
+| expr
 
 eq_op:
 | EQ
