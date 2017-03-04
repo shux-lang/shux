@@ -83,11 +83,9 @@ conditional_expr:
 fn_expr:
 | iter_expr fn_op kns
 | iter_expr
-
 kns:
 | kn kns
 | kn
-
 kn:
 | ID
 | LPAREN formals RPAREN FUNC LBRACE block RBRACE
@@ -100,18 +98,99 @@ kn:
  * - J-Hui
  *)
 
+iter_expr:
+| iter_type unit_expr gn
+| unit_expr
 gn:
 | ID LPAREN actuals RPAREN
 | LPAREN RPAREN (* nop gn *)
 
-iter_expr:
-| iter_type unit_expr gn
-| unit_expr
+(* all the stuff below is pretty much taken and adapted from K&R *)
+unit_expr:
+| bool_expr
+
+bool_expr:
+| bool_or_expr
+bool_or_expr:
+| bool_or_expr LOG_OR bool_and_expr
+| bool_and_expr
+bool_and_expr:
+| bool_and_expr LOG_AND bit_expr
+| bit_expr
+
+(* not implemented *)
+bit_expr:
+| cmp_expr
+
+cmp_expr:
+| eq_expr
+eq_expr:
+| eq_expr eq_op relat_expr
+| relat_expr
+(* no recursion because we don't want x < y < z *)
+relat_expr:
+| shift_expr relat_op shift_expr
+| shift_expr
+
+shift_expr:
+| arithmetic_expr
+
+arithmetic_expr:
+| add_expr
+add_expr:
+| add_expr add_op mult_expr
+| mult_expr
+mult_expr:
+| mutl_expr mult_op unary_expr
+| unary_expr
+
+unary_expr:
+| unary_op postfix_expr
+| postfix_expr
+
+postfix_expr:
+| postfix_expr postfix
+| primary_expr
+postfix:
+| LBRACK expr RBRACK
+| LPAREN actuals RPAREN
+| DOT INT_LIT
+| DOTDOT INT_LIT
+| LT actuals GT
+
+primary_expr:
+| ID
+| lit
+| LPAREN expr RPAREN
 
 
 
 
+eq_op:
+| EQ
+| NEQ
 
+relat_op:
+| LT
+| GT
+| LEQ
+| GEQ
+
+add_op:
+| PLUS
+| MINUS
+
+mult_op:
+| TIMES
+| DIVIDE
+
+unary_op:
+| PLUS
+| MINUS
+| LOG_NOT
+(* not implemented
+| TILDE
+*)
 
 fn_op:
 | MAP
