@@ -276,6 +276,7 @@ add_op:
 mult_op:
   TIMES									{ [] }
 | DIVIDE								{ [] }
+| MOD 									{ [] }
 
 unary_op:
   PLUS									{ [] }
