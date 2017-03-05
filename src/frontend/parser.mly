@@ -189,7 +189,16 @@ actual_list:
 
 decl:
   decl_mod val_decl						{ [] }
-| decl_mod val_decl ASSIGN expr			{ [] }
+| decl_mod val_decl asn_op expr			{ [] }
+
+asn_op:
+  ASSIGN								{ Asn } 
+| ADD_ASN 								{ []  }
+| SUB_ASN 								{ []  }
+| MUL_ASN 								{ []  }
+| DIV_ASN 								{ []  }
+| MOD_ASN 								{ []  }
+| EXP_ASN								{ []  }
 
 decl_mod:
   VAR									{ [] }
