@@ -16,6 +16,15 @@
 %token <string> ID
 %token EOF
 
+%nonassoc ELSE
+%nonassoc LT GT
+%right ASSIGN
+%left OR
+%left AND
+%left EQ NEQ LEQ GEQ
+%left PLUS MINUS
+%left TIMES DIVIDE MOD
+
 %start program
 
 %type <Ast.program> program
@@ -27,7 +36,7 @@ program:
 | ns_decls let_decls fn_decls EOF       { $1, $2, $3 }
 
 /* all { [] } statements need to have proper
- * literals implemented */ 
+ * return literals implemented */ 
 ns_decls:
   ns_decls ns_decl						{ [] }
 | ns_decl								{ [] }
@@ -41,21 +50,24 @@ fn_decls:
 | fn_decl								{ [] } 
 
 ns_decl:
-  NS ID ASSIGN LBRACE program RBRACE    { }
+  NS ID ASSIGN LBRACE program RBRACE    { [] }
 
 /* need to consider structs */
 let_decl:
-  LET ID ASSIGN expr SEMI { }
+  LET typ ID ASSIGN expr SEMI			 { []  }
+| LET STRUCT ID ASSIGN LBRACE struct_def RBRACE { [] }
+
+struct_def:
+  struct_def val_decl SEMI				{ [] }
+| val_decl SEMI							{ [] }
 
 fn_decl:
-  fn_type ID LPAREN formals RPAREN ret_type RBRACE block LBRACE { [] } 
-
-block:
-  statements ret_expr					{ [] }
+  fn_type ID LPAREN formals RPAREN ret_type LBRACE statements ret_expr RBRACE { [] } 
 
 statements:								 
-  statement SEMI statements				{ [] }
+  statements statement SEMI				{ [] }
 | statement SEMI						{ [] } 
+
 /* needs to define these
 | conditional_statement					{ [] } 
 | iteration_statement					{ [] }
@@ -91,7 +103,7 @@ kns:
 
 kn:
   ID									{ Id($1) } 
-| LPAREN formals RPAREN FUNC LBRACE block RBRACE { [] } 
+| LPAREN formals RPAREN FUNC LBRACE statements ret_expr RBRACE { [] } 
 
 iter_expr:
   iter_type unit_expr gn				{ [] }
@@ -112,11 +124,8 @@ bool_or_expr:
 | bool_and_expr							{ [] } 
 
 bool_and_expr:
-  bool_and_expr LOG_AND bit_expr		{ [] }
-| bit_expr								{ $1 }
-
-bit_expr:
-  cmp_expr								{ $1 } 
+  bool_and_expr LOG_AND cmp_expr		{ [] }
+| cmp_expr								{ $1 }
 
 cmp_expr:
   eq_expr								{ $1 } 
@@ -156,7 +165,6 @@ postfix:
 | LPAREN actuals RPAREN					{ [] }
 | DOT INT_LIT							{ [] } 
 | DOTDOT INT_LIT						{ [] }
-| LT actuals GT							{ [] }
 
 primary_expr:
   ID									{ Id($1) }
@@ -194,7 +202,7 @@ ret_type:
 	typ									{ [] }
 typ:
   primitive_t array_t					{ [] } 
-| ID array_t							{ [] }
+| STRUCT ID array_t						{ [] }
 /* user defined structs */ 
 
 primitive_t:
