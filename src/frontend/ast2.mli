@@ -18,7 +18,7 @@ type fn_typ =
   | Kn
   | Gn
 
-type binary_operator =
+type bin_op =
   | Add | Sub | Mul | Div | Mod | Exp
   | Asn | AddAsn | SubAsn | MulAsn | DivAsn | ModAsn | ExpAsn
   | Lt | Gt | Neq | Leq | Geq
@@ -27,7 +27,7 @@ type binary_operator =
   | Index | Lookback
   | For | Do
 
-type unary_operator =
+type un_op =
   | Not | Neg
 
 type lambda = {
@@ -36,7 +36,7 @@ type lambda = {
   ret_expr  : expr;
 }
 
-type lit =
+and lit =
   | LitInt of int
   | LitFloat of float
   | LitBool of bool
@@ -46,7 +46,7 @@ type lit =
   | LitArray of expr list (* include optional type annotation here? *)
   | LitStruct of string * bind list (* should this be more sophisticated? *)
 
-type expr =
+and expr =
   | Lit of lit
   | Id of string
   | Binop of expr * bin_op * expr
@@ -54,7 +54,7 @@ type expr =
   | Cond of expr * expr * expr (* technically Ternop *)
   | Call of string * expr list
 
-type stmt =
+and stmt =
   | VDecl of bind * expr
   | Expr of expr
 
@@ -81,7 +81,7 @@ type ns_def = {
   body      : program;
 }
 
-type ns_decl =
+and ns_decl =
   | NsDecl of ns_def
 
-type program = ns_decl list * let_decl list * fn_decl list
+and program = ns_decl list * let_decl list * fn_decl list
