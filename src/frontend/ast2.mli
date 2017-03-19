@@ -11,6 +11,9 @@ type typ =
   | Array of typ
   | Vector of int
 
+type bind =
+  | Bind of typ * string
+
 type fn_typ =
   | Kn
   | Gn
@@ -21,29 +24,34 @@ type binary_operator =
   | Lt | Gt | Neq | Leq | Geq
   | And | Or
   | Filter | Map
-  | Index | Dot | DotDot
+  | Index | Lookback
+  | For | Do
 
 type unary_operator =
   | Not | Neg
-
-type iter_typ =
-  | For
-  | Do
 
 type lambda = {
   formals   : bind list;
   body      : stmt list;
   ret_expr  : expr;
 }
-  
+
+type lit =
+  | LitInt of int
+  | LitFloat of float
+  | LitBool of bool
+  | LitStr of string
+  | LitKn of lambda
+  | LitVector of float list (* shouldn't we be able to construct vectors dynamically? *)
+  | LitArray of expr list (* include optional type annotation here? *)
+  | LitStruct of string * bind list (* should this be more sophisticated? *)
+
 type expr =
   | Lit of lit
-  | Lambda of lambda
   | Id of string
   | Binop of expr * bin_op * expr
   | Uniop of un_op * expr
-  | Cond of expr * expr * expr
-  | Iter of iter_typ * expr * expr
+  | Cond of expr * expr * expr (* technically Ternop *)
   | Call of string * expr list
 
 type stmt =
