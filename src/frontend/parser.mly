@@ -32,59 +32,59 @@
 %%
 
 program:
-  /* nothing */ EOF                     { ([], [], []) }
+| /* nothing */ EOF                     { ([], [], []) }
 | ns_decls let_decls fn_decls EOF       { ($1, $2, $3) }
 
 ns_decls:
-  ns_decls ns_decl                      { $2::$1 }
+| ns_decls ns_decl                      { $2::$1 }
 | ns_decl                               { [$1] }
 
 let_decls:
-  let_decls let_decl                    { $2::$1 }  
+| let_decls let_decl                    { $2::$1 }  
 | let_decl                              { [$1] }
 
 fn_decls: 
-  fn_decls fn_decl                      { $2::$1 }
+| fn_decls fn_decl                      { $2::$1 }
 | fn_decl                               { [$1] } 
 
 ns_decl:
-  NS ID ASSIGN LBRACE program RBRACE    { {nname = $2; body = $5} }
+| NS ID ASSIGN LBRACE program RBRACE    { {nname = $2; body = $5} }
 
 let_decl:
-  LET typ ID ASSIGN expr SEMI           { (($2, $3), $5) } /* might not work, need to eval expr */
+| LET typ ID ASSIGN expr SEMI           { (($2, $3), $5) } /* might not work, need to eval expr */
 | LET STRUCT ID ASSIGN LBRACE struct_def RBRACE
                                         { {sname = $3; fields = $6} }
 
 struct_def:
-  struct_def val_decl SEMI              { $2::$1 }
+| struct_def val_decl SEMI              { $2::$1 }
 | val_decl SEMI                         { [$1] }
 
 fn_decl:
-  fn_type ID LPAREN formals RPAREN ret_type LBRACE statements ret_expr RBRACE 
+| fn_type ID LPAREN formals RPAREN ret_type LBRACE statements ret_expr RBRACE 
                                         { {fname = $2; fn_typ = $1; ret_typ = $6;
                                           formals = $4; body = $8; ret_expr = $9} } 
 
 statements:                 
-  statements statement SEMI             { $2::$1 }
+| statements statement SEMI             { $2::$1 }
 | statement SEMI                        { [$1] } 
 
 statement:
-  decl                                  { $1 }
+| decl                                  { $1 }
 | expr                                  { $1 } 
 
 ret_expr:
- expr                                   { $1 } 
+| expr                                  { $1 } 
 | /* nothing */                         { Noexpr }
 
 expr:
-  asn_expr                              { $1 } 
+| asn_expr                              { $1 } 
 
 asn_expr:
-  unary_expr asn_op asn_expr            { Binop ($1, $2, $3) }
+| unary_expr asn_op asn_expr            { Binop ($1, $2, $3) }
 | conditional_expr                      { $1 } 
 
 conditional_expr:
-  fn_expr COLON conditional_expr        { Cond(fn_expr, fn_expr, conditional_expr) }
+| fn_expr COLON conditional_expr        { Cond(fn_expr, fn_expr, conditional_expr) }
 | bool_expr QUES fn_expr COLON conditional_expr
                                         { Cond($1, $3, $5) }
 | IF bool_expr THEN fn_expr ELSE conditional_expr
@@ -92,103 +92,103 @@ conditional_expr:
 | fn_expr                               { $1 }
 
 fn_expr:
-  iter_expr fn_op kns                   { Binop($1, $2, $3) } 
+| iter_expr fn_op kns                   { Binop($1, $2, $3) } 
 | iter_expr                             { $1 } 
 
 kns:
-  kn fn_op kns                          { Binop($1, $2, $3) }
+| kn fn_op kns                          { Binop($1, $2, $3) }
 | kn                                    { $1 }
 
 kn:
-  ID                                    { Id($1) }
+| ID                                    { Id($1) }
 | LPAREN formals RPAREN FUNC LBRACE statements ret_expr RBRACE
                                         { LitKn({formals = $2; body = $6; ret_expr = $7}) } 
 
 iter_expr:
-  iter_type unit_expr gn_call           { Binop($2, $1, $3) }
+| iter_type unit_expr gn_call           { Binop($2, $1, $3) }
 | unit_expr                             { $1 }
 
 gn_call:
- ID LPAREN actuals RPAREN               { Call($1, $3) } /* TODO: check if we need a separate AST type for this */
+| ID LPAREN actuals RPAREN               { Call($1, $3) } /* TODO: check if we need a separate AST type for this */
 
 /* all the stuff below is pretty much taken and adapted from K&R */
 unit_expr:
-  bool_expr                             { $1 } 
+| bool_expr                             { $1 } 
 
 bool_expr:
-  bool_or_expr                          { $1 } 
+| bool_or_expr                          { $1 } 
 
 bool_or_expr:
-  bool_or_expr LOG_OR bool_and_expr     { Binop($1, LogOr, $3) } 
+| bool_or_expr LOG_OR bool_and_expr     { Binop($1, LogOr, $3) } 
 | bool_and_expr                         { $1 } 
 
 bool_and_expr:
-  bool_and_expr LOG_AND cmp_expr        { Binop($1, LogAnd, $3) }
+| bool_and_expr LOG_AND cmp_expr        { Binop($1, LogAnd, $3) }
 | cmp_expr                              { $1 }
 
 cmp_expr:
-  eq_expr                               { $1 }
+| eq_expr                               { $1 }
 
 eq_expr:
-  eq_expr eq_op relat_expr              { Binop($1, $2, $3) }
+| eq_expr eq_op relat_expr              { Binop($1, $2, $3) }
 | relat_expr                            { $1 }
 
 relat_expr:
-  shift_expr relat_op shift_expr        { Binop($1, $2, $3) }
+| shift_expr relat_op shift_expr        { Binop($1, $2, $3) }
 | shift_expr                            { $1 } 
 
 shift_expr:
-  arithmetic_expr                       { $1 } 
+| arithmetic_expr                       { $1 } 
 
 arithmetic_expr:
-  add_expr                              { $1 } 
+| add_expr                              { $1 } 
 
 add_expr:
-  add_expr add_op mult_expr             { Binop($1, $2, $3) }
+| add_expr add_op mult_expr             { Binop($1, $2, $3) }
 | mult_expr                             { $1 }
 
 mult_expr:
-  mult_expr mult_op unary_expr          { Binop($1, $2, $3) }
+| mult_expr mult_op unary_expr          { Binop($1, $2, $3) }
 | unary_expr                            { $1 }
 
 unary_expr:
-  unary_op unary_expr                   { Uniop($1, $2) }
+| unary_op unary_expr                   { Uniop($1, $2) }
 | postfix_expr                          { $1 } 
 
 postfix_expr:
-  postfix_expr LBRACK expr RBRACK       { Binop($1, Index, $3) }
+| postfix_expr LBRACK expr RBRACK       { Binop($1, Index, $3) }
 | postfix_expr LPAREN actuals RPAREN    { Binop($1, Call, $3) } /* TODO: make Call an operator */
 | postfix_expr DOT INT_LIT              { Binop($1, Lookback, $3) }
 | postfix_expr DOTDOT INT_LIT           { Binop($1, Lookback, -$3) }
 | primary_expr                          { $1 }
 
 primary_expr:
-  ID                                    { Id($1) }
+| ID                                    { Id($1) }
 | lit                                   { $1 }
 | LPAREN expr RPAREN                    { $2 }
 
 formals:
-  formal_list                           { [$1] }
+| formal_list                           { $1 }
 | /* nothing */                         { Noexpr }
 
 formal_list:
-  val_decl COMMA formal_list            { $1::$3 }
+| val_decl COMMA formal_list            { $1::$3 }
 | val_decl                              { [$1] } 
 
 actuals:
-  actual_list                           { [$1] }
+| actual_list                           { [$1] }
 | /* nothing */                         { Noexpr } 
 
 actual_list:
-  expr COMMA actual_list                { $1::$3 }
+| expr COMMA actual_list                { $1::$3 }
 | expr                                  { [$1] } 
 
 decl:
-  decl_mod typ ID                       { VDecl(Bind($1, $2, $3)) }
+| decl_mod typ ID                       { VDecl(Bind($1, $2, $3)) }
 | decl_mod typ ID ASSIGN expr           { VDecl(Bind($1, $2, $3), $5) }
 
 asn_op:
-  ASSIGN                                { Asn } 
+| ASSIGN                                { Asn } 
 | ADD_ASN                               { AddAsn }
 | SUB_ASN                               { SubAsn }
 | MUL_ASN                               { MulAsn }
@@ -197,35 +197,35 @@ asn_op:
 | EXP_ASN                               { ExpAsn }
 
 decl_mod:
-  VAR                                   { Mutable }
+| VAR                                   { Mutable }
 | /* nothing, val */                    { Immutable }
 
 val_decl:
-  typ ID                                { Bind(Immutable, $1, $2) }
+| typ ID                                { Bind(Immutable, $1, $2) }
 
 ret_type:
-  typ                                   { $1 }
+| typ                                   { $1 }
 
 typ:
-  typ LBRACK RBRACK                     { Array($1) }
+| typ LBRACK RBRACK                     { Array($1) }
 | unit_t                                { $1 }
 
 unit_t:
-  STRUCT ID                             { Struct($2) } /* user defined structs */
+| STRUCT ID                             { Struct($2) } /* user defined structs */
 | primitive_t                           { $1 }
 
 primitive_t:
-  INT_T                                 { Int }
+| INT_T                                 { Int }
 | FLOAT_T                               { Float }
 | STRING_T                              { String }
 | BOOL_T                                { Bool }
 | vector_t                              { $1 }
 
 vector_t:
-  VECTOR_T LPAREN INT_LIT RPAREN        { Vector($3) }
+| VECTOR_T LPAREN INT_LIT RPAREN        { Vector($3) }
 
 lit:
-  struct_lit                            { $1 } 
+| struct_lit                            { $1 } 
 | array_lit                             { $1 }
 | vector_lit                            { $1 }
 | STRING_LIT                            { LitStr($1) }
@@ -234,61 +234,61 @@ lit:
 | INT_LIT                               { LitInt($1) }
 
 struct_lit:  
-  LBRACE struct_lit_fields RBRACE       {  } /* syntax does not specify struct name */
+| LBRACE struct_lit_fields RBRACE       {  } /* syntax does not specify struct name */
 | LBRACE RBRACE                         { [] }
 
 struct_lit_fields:
-  struct_lit_field struct_lit_fields    { $1::$2 }
+| struct_lit_field struct_lit_fields    { $1::$2 }
 | struct_lit_field                      { [$1] }
 
 struct_lit_field:
-  DOT ID ASSIGN expr                    { Binop(Asn, Id($2), $4) }
+| DOT ID ASSIGN expr                    { Binop(Asn, Id($2), $4) }
 
 array_lit:
-  LBRACK list_lit_elements RBRACK       { LitArray($2) }
+| LBRACK list_lit_elements RBRACK       { LitArray($2) }
 | LBRACK RBRACK                         { LitArray([]) }
 
 vector_lit:
-  LPAREN list_lit_elements RPAREN       { LitVector($2) }
+| LPAREN list_lit_elements RPAREN       { LitVector($2) }
 | LPAREN RPAREN                         { LitVector([]) }
 
 list_lit_elements:
-  expr COMMA list_lit_elements          { $1::$3 }
+| expr COMMA list_lit_elements          { $1::$3 }
 | expr                                  { [$1] }
 
 eq_op:
-  EQ                                    { Eq }
+| EQ                                    { Eq }
 | NEQ                                   { Neq }
 
 relat_op:
-  LT                                    { Lt }
+| LT                                    { Lt }
 | GT                                    { Gt }
 | LEQ                                   { Leq }
 | GEQ                                   { Geq }
 
 add_op:
-  PLUS                                  { Add }
+| PLUS                                  { Add }
 | MINUS                                 { Sub }
 
 mult_op:
-  TIMES                                 { Mul }
+| TIMES                                 { Mul }
 | DIVIDE                                { Div }
 | MOD                                   { Mod }
 | EXPONENT                              { Exp }
 
 unary_op:
-  PLUS                                  { Pos } /* can't return nothing */
+| PLUS                                  { Pos } /* can't return nothing */
 | MINUS                                 { Neg }
 | LOG_NOT                               { LogNot } 
 
 fn_op:
-  MAP                                   { Map }
+| MAP                                   { Map }
 | FILTER                                { Filter }
 
 fn_type:
-  GN                                    { Kn }
+| GN                                    { Kn }
 | KN                                    { Gn }
 
 iter_type:
-  FOR                                   { For }
+| FOR                                   { For }
 | DO                                    { Do }
