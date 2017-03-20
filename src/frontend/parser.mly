@@ -92,24 +92,24 @@ conditional_expr:
 | fn_expr                               { $1 }
 
 fn_expr:
-  iter_expr fn_op kns                   { [] } 
+  iter_expr fn_op kns                   { Binop($1, $2, $3) } 
 | iter_expr                             { $1 } 
 
 kns:
-  kn kns                                { [] }
-| kn                                    { [] }
+  kn fn_op kns                          { Binop($1, $2, $3) }
+| kn                                    { $1 }
 
 kn:
   ID                                    { Id($1) }
 | LPAREN formals RPAREN FUNC LBRACE statements ret_expr RBRACE
-                                        { [] } 
+                                        { LitKn({formals = $2; body = $6; ret_expr = $7}) } 
 
 iter_expr:
-  iter_type unit_expr gn                { [] }
+  iter_type unit_expr gn_call           { Binop($2, $1, $3) }
 | unit_expr                             { $1 }
 
-gn:
- ID LPAREN actuals RPAREN               { [] }
+gn_call:
+ ID LPAREN actuals RPAREN               { Call($1, $3) } /* TODO: check if we need a separate AST type for this */
 
 /* all the stuff below is pretty much taken and adapted from K&R */
 unit_expr:

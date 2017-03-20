@@ -22,7 +22,7 @@ type bin_op =
   | Add | Sub | Mul | Div | Mod | Exp
   | Asn | AddAsn | SubAsn | MulAsn | DivAsn | ModAsn | ExpAsn
   | Lt | Gt | Neq | Leq | Geq
-  | And | Or
+  | LogAnd | LogOr
   | Filter | Map
   | Index | Lookback
   | For | Do
