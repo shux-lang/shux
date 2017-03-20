@@ -89,6 +89,7 @@ conditional_expr:
                                         { Cond($1, $3, $5) }
 | IF bool_expr THEN fn_expr ELSE conditional_expr
                                         { Cond($2, $4, $6) } 
+| fn_expr                               { $1 }
 
 fn_expr:
   iter_expr fn_op kns					{ [] } 
