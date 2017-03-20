@@ -69,12 +69,12 @@ statements:
 | statement SEMI						            { [$1] } 
 
 statement:
-  decl									{ [] }
-| expr									{ [] } 
+  decl									                { $1 }
+| expr									                { $1 } 
 
 ret_expr:
- expr									{ $1 } 
-| /* nothing */ 						{ Return Noexpr }
+ expr									                  { $1 } 
+| /* nothing */ 						            { Noexpr }
 
 expr:
   asn_expr								{ [] } 

@@ -47,6 +47,7 @@ and lit =
   | LitStruct of string * bind list (* should this be more sophisticated? *)
 
 and expr =
+  | NoExpr
   | Lit of lit
   | Id of string
   | Binop of expr * bin_op * expr
