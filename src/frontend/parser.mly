@@ -60,11 +60,13 @@ struct_def:
 | val_decl SEMI							            { [$1] }
 
 fn_decl:
-  fn_type ID LPAREN formals RPAREN ret_type LBRACE statements ret_expr RBRACE { [] } 
+  fn_type ID LPAREN formals RPAREN ret_type LBRACE statements ret_expr RBRACE 
+                                        { {fname = $2; fn_typ = $1; ret_typ = $6;
+                                          formals = $4; body = $8; ret_expr = $9} } 
 
 statements:								 
-  statements statement SEMI				{ [] }
-| statement SEMI						{ [] } 
+  statements statement SEMI				      { $2::$1 }
+| statement SEMI						            { [$1] } 
 
 /* needs to define these
 | conditional_statement					{ [] } 
