@@ -32,34 +32,32 @@
 %%
 
 program:
-  /* nothing */ EOF                     { }
-| ns_decls let_decls fn_decls EOF       { $1, $2, $3 }
+  /* nothing */ EOF                     { ([], [], []) }
+| ns_decls let_decls fn_decls EOF       { ($1, $2, $3) }
 
-/* all { [] } statements need to have proper
- * return literals implemented */ 
 ns_decls:
-  ns_decls ns_decl						{ [] }
-| ns_decl								{ [] }
+  ns_decls ns_decl						          { $2::$1 }
+| ns_decl								                { [$1] }
 
 let_decls:
-  let_decls let_decl                    { [] }  
-| let_decl								{ [] }  
+  let_decls let_decl                    { $2::$1 }  
+| let_decl								              { [$1] }
 
 fn_decls: 
-  fn_decls fn_decl						{ [] }
-| fn_decl								{ [] } 
+  fn_decls fn_decl						          { $2::$1 }
+| fn_decl								                { [$1] } 
 
 ns_decl:
-  NS ID ASSIGN LBRACE program RBRACE    { [] }
+  NS ID ASSIGN LBRACE program RBRACE    { {nname = $2; body = $5} }
 
-/* need to consider structs */
 let_decl:
-  LET typ ID ASSIGN expr SEMI			 { []  }
-| LET STRUCT ID ASSIGN LBRACE struct_def RBRACE { [] }
+  LET typ ID ASSIGN expr SEMI			      { (($2, $3), $5) } /* might not work, need to eval expr */
+| LET STRUCT ID ASSIGN LBRACE struct_def RBRACE
+                                        { {sname = $3; fields = $6} }
 
 struct_def:
-  struct_def val_decl SEMI				{ [] }
-| val_decl SEMI							{ [] }
+  struct_def val_decl SEMI				      { $2::$1 }
+| val_decl SEMI							            { [$1] }
 
 fn_decl:
   fn_type ID LPAREN formals RPAREN ret_type LBRACE statements ret_expr RBRACE { [] } 

@@ -73,7 +73,7 @@ type struct_def = {
 }
 
 type let_decl =
-  | LetDecl of bind
+  | LetDecl of bind * lit
   | StructDef of struct_def
 
 type ns_def = {
