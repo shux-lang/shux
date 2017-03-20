@@ -68,11 +68,6 @@ statements:
   statements statement SEMI				      { $2::$1 }
 | statement SEMI						            { [$1] } 
 
-/* needs to define these
-| conditional_statement					{ [] } 
-| iteration_statement					{ [] }
-*/ 
-
 statement:
   decl									{ [] }
 | expr									{ [] } 
