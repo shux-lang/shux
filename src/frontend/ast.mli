@@ -1,18 +1,19 @@
 open Core.Std
 
-type type_name = string
-
 type typ =
   | Int
   | Float
   | String
   | Bool
-  | Struct of type_name
+  | Struct of string
   | Array of typ
   | Vector of int
 
-type bind =
-  | Bind of typ * string
+type mut =
+  | Mutable
+  | Immutable
+
+type bind = Bind of mut * typ * string
 
 type fn_typ =
   | Kn
@@ -45,7 +46,7 @@ and lit =
   | LitKn of lambda
   | LitVector of float list (* shouldn't we be able to construct vectors dynamically? *)
   | LitArray of expr list (* include optional type annotation here? *)
-  | LitStruct of string * bind list (* should this be more sophisticated? *)
+  | LitStruct of string * expr list (* should this be more sophisticated? *)
 
 and expr =
   | NoExpr (* TODO: might this be a bad idea? *)
@@ -56,7 +57,7 @@ and expr =
   | Cond of expr * expr * expr (* technically Ternop *)
 
 and stmt =
-  | VDecl of bind * expr
+  | VDecl of bind * expr optional
   | Expr of expr
 
 type fn_decl = {

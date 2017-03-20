@@ -80,7 +80,7 @@ expr:
   asn_expr                              { $1 } 
 
 asn_expr:
-  unary_expr ASSIGN asn_expr            { Binop ($1, Asn, $3) }
+  unary_expr asn_op asn_expr            { Binop ($1, $2, $3) }
 | conditional_expr                      { $1 } 
 
 conditional_expr:
@@ -164,96 +164,97 @@ postfix_expr:
 
 primary_expr:
   ID                                    { Id($1) }
-| lit                                   { [] }
-| LPAREN expr RPAREN                    { [] }
+| lit                                   { $1 }
+| LPAREN expr RPAREN                    { $2 }
 
 formals:
   formal_list                           { [$1] }
-| /* nothing */                         { Return Noexpr }
+| /* nothing */                         { Noexpr }
 
 formal_list:
-  val_decl COMMA formal_list            { [] }
-| val_decl                              { $1 } 
+  val_decl COMMA formal_list            { $1::$3 }
+| val_decl                              { [$1] } 
 
 actuals:
   actual_list                           { [$1] }
-| /* nothing */                         { Return Noexpr } 
+| /* nothing */                         { Noexpr } 
 
 actual_list:
-  expr COMMA actual_list                { [] }
+  expr COMMA actual_list                { $1::$3 }
 | expr                                  { [$1] } 
 
 decl:
-  decl_mod val_decl                     { [] }
-| decl_mod val_decl asn_op expr         { [] }
+  decl_mod typ ID                       { VDecl(Bind($1, $2, $3)) }
+| decl_mod typ ID ASSIGN expr           { VDecl(Bind($1, $2, $3), $5) }
 
 asn_op:
   ASSIGN                                { Asn } 
-| ADD_ASN                               { [] }
-| SUB_ASN                               { [] }
-| MUL_ASN                               { [] }
-| DIV_ASN                               { [] }
-| MOD_ASN                               { [] }
-| EXP_ASN                               { [] }
+| ADD_ASN                               { AddAsn }
+| SUB_ASN                               { SubAsn }
+| MUL_ASN                               { MulAsn }
+| DIV_ASN                               { DivAsn }
+| MOD_ASN                               { ModAsn }
+| EXP_ASN                               { ExpAsn }
 
 decl_mod:
-  VAR                                   { [] }
-| /* nothing, val */                    { Return Noexpr }
+  VAR                                   { Mutable }
+| /* nothing, val */                    { Immutable }
 
 val_decl:
-  typ ID                                { [] }
+  typ ID                                { Bind(Immutable, $1, $2) }
 
 ret_type:
-  typ                                   { [] }
+  typ                                   { $1 }
+
 typ:
-  primitive_t array_t                   { [] } 
-| STRUCT ID array_t                     { [] }
-/* user defined structs */ 
+  typ LBRACK RBRACK                     { Array($1) }
+| unit_t                                { $1 }
+
+unit_t:
+  STRUCT ID                             { Struct($2) } /* user defined structs */
+| primitive_t                           { $1 }
 
 primitive_t:
-  INT_T                                 { [] }
-| FLOAT_T                               { [] }
-| STRING_T                              { [] }
-| BOOL_T                                { [] }
-| vector_t                              { [] }
+  INT_T                                 { Int }
+| FLOAT_T                               { Float }
+| STRING_T                              { String }
+| BOOL_T                                { Bool }
+| vector_t                              { $1 }
 
 vector_t:
-  VECTOR_T LT INT_LIT GT                { [] }
-
-array_t:
-  LBRACK RBRACK array_t                 { [] }
-| /* optional */                        { [] }
+  VECTOR_T LPAREN INT_LIT RPAREN        { Vector($3) }
 
 lit:
-  struct_lit                            { [] } 
-| array_lit                             { [] }
-| vector_lit                            { [] }
-| STRING_LIT                            { [] }
-| BOOL_LIT                              { [] }
-| FLOAT_LIT                             { [] }
+  struct_lit                            { $1 } 
+| array_lit                             { $1 }
+| vector_lit                            { $1 }
+| STRING_LIT                            { LitStr($1) }
+| BOOL_LIT                              { LitBool($1) }
+| FLOAT_LIT                             { LitFloat($1) }
+| INT_LIT                               { LitInt($1) }
 
 struct_lit:  
-  LBRACE struct_lit_fields RBRACE       { [] }
+  LBRACE struct_lit_fields RBRACE       {  } /* syntax does not specify struct name */
 | LBRACE RBRACE                         { [] }
 
 struct_lit_fields:
-  struct_lit_field struct_lit_fields    { [] }
-| struct_lit_field                      { [] }
+  struct_lit_field struct_lit_fields    { $1::$2 }
+| struct_lit_field                      { [$1] }
 
 struct_lit_field:
-  DOT ID ASSIGN expr                    { [] }
+  DOT ID ASSIGN expr                    { Binop(Asn, Id($2), $4) }
 
 array_lit:
-  LBRACK list_lit_elements RBRACK       { [] }
-| LBRACK RBRACK                         { [] }
+  LBRACK list_lit_elements RBRACK       { LitArray($2) }
+| LBRACK RBRACK                         { LitArray([]) }
 
 vector_lit:
-  LT list_lit_elements GT               { [] }
-| LT GT                                 { [] }
+  LPAREN list_lit_elements RPAREN       { LitVector($2) }
+| LPAREN RPAREN                         { LitVector([]) }
 
 list_lit_elements:
-  expr COMMA list_lit_elements          { [] }
-| expr                                  { [] }
+  expr COMMA list_lit_elements          { $1::$3 }
+| expr                                  { [$1] }
 
 eq_op:
   EQ                                    { [] }
