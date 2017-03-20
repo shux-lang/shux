@@ -119,22 +119,22 @@ bool_expr:
   bool_or_expr                          { $1 } 
 
 bool_or_expr:
-  bool_or_expr LOG_OR bool_and_expr     { [] } 
-| bool_and_expr                         { [] } 
+  bool_or_expr LOG_OR bool_and_expr     { Binop($1, LogOr, $3) } 
+| bool_and_expr                         { $1 } 
 
 bool_and_expr:
-  bool_and_expr LOG_AND cmp_expr        { [] }
+  bool_and_expr LOG_AND cmp_expr        { Binop($1, LogAnd, $3) }
 | cmp_expr                              { $1 }
 
 cmp_expr:
   eq_expr                               { $1 }
 
 eq_expr:
-  eq_expr eq_op relat_expr              { [] }
-| relat_expr                            { [] }
+  eq_expr eq_op relat_expr              { Binop($1, $2, $3) }
+| relat_expr                            { $1 }
 
 relat_expr:
-  shift_expr relat_op shift_expr        { [] }
+  shift_expr relat_op shift_expr        { Binop($1, $2, $3) }
 | shift_expr                            { $1 } 
 
 shift_expr:
@@ -144,26 +144,23 @@ arithmetic_expr:
   add_expr                              { $1 } 
 
 add_expr:
-  add_expr add_op mult_expr             { $1 }
+  add_expr add_op mult_expr             { Binop($1, $2, $3) }
 | mult_expr                             { $1 }
 
 mult_expr:
-  mult_expr mult_op unary_expr          { $1 }
+  mult_expr mult_op unary_expr          { Binop($1, $2, $3) }
 | unary_expr                            { $1 }
 
 unary_expr:
-  unary_op postfix_expr                 { [] }
+  unary_op unary_expr                   { Uniop($1, $2) }
 | postfix_expr                          { $1 } 
 
 postfix_expr:
-  postfix_expr postfix                  { [] }
+  postfix_expr LBRACK expr RBRACK       { Binop($1, Index, $3) }
+| postfix_expr LPAREN actuals RPAREN    { Binop($1, Call, $3) } /* TODO: make Call an operator */
+| postfix_expr DOT INT_LIT              { Binop($1, Lookback, $3) }
+| postfix_expr DOTDOT INT_LIT           { Binop($1, Lookback, -$3) }
 | primary_expr                          { $1 }
-
-postfix:
-  LBRACK expr RBRACK                    { [] }
-| LPAREN actuals RPAREN                 { [] }
-| DOT INT_LIT                           { [] } 
-| DOTDOT INT_LIT                        { [] }
 
 primary_expr:
   ID                                    { Id($1) }

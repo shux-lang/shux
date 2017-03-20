@@ -26,6 +26,7 @@ type bin_op =
   | Filter | Map
   | Index | Lookback
   | For | Do
+  | Call
 
 type un_op =
   | Not | Neg
@@ -53,7 +54,6 @@ and expr =
   | Binop of expr * bin_op * expr
   | Uniop of un_op * expr
   | Cond of expr * expr * expr (* technically Ternop *)
-  | Call of string * expr list
 
 and stmt =
   | VDecl of bind * expr
