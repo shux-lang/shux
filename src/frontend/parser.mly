@@ -77,16 +77,18 @@ ret_expr:
 | /* nothing */ 						            { Noexpr }
 
 expr:
-  asn_expr								{ [] } 
+  asn_expr								              { $1 } 
 
 asn_expr:
-  unary_expr ASSIGN asn_expr			{ [] }
-| conditional_expr						{ [] } 
+  unary_expr ASSIGN asn_expr			      { Binop ($1, Asn, $3) }
+| conditional_expr						          { $1 } 
 
 conditional_expr:
-  fn_expr COLON conditional_expr /* historical */	{ [] } 
-| bool_expr QUES fn_expr COLON conditional_expr		{ [] }
-| IF bool_expr THEN fn_expr ELSE conditional_expr	{ [] } 
+  fn_expr COLON conditional_expr        { Cond(fn_expr, fn_expr, conditional_expr) }
+| bool_expr QUES fn_expr COLON conditional_expr
+                                        { Cond($1, $3, $5) }
+| IF bool_expr THEN fn_expr ELSE conditional_expr
+                                        { Cond($2, $4, $6) } 
 
 fn_expr:
   iter_expr fn_op kns					{ [] } 
