@@ -257,37 +257,38 @@ list_lit_elements:
 | expr                                  { [$1] }
 
 eq_op:
-  EQ                                    { [] }
-| NEQ                                   { [] }
+  EQ                                    { Eq }
+| NEQ                                   { Neq }
 
 relat_op:
-  LT                                    { [] }
-| GT                                    { [] }
-| LEQ                                   { [] }
-| GEQ                                   { [] }
+  LT                                    { Lt }
+| GT                                    { Gt }
+| LEQ                                   { Leq }
+| GEQ                                   { Geq }
 
 add_op:
-  PLUS                                  { [] }
-| MINUS                                 { [] }
+  PLUS                                  { Add }
+| MINUS                                 { Sub }
 
 mult_op:
-  TIMES                                 { [] }
-| DIVIDE                                { [] }
-| MOD                                   { [] }
+  TIMES                                 { Mul }
+| DIVIDE                                { Div }
+| MOD                                   { Mod }
+| EXPONENT                              { Exp }
 
 unary_op:
-  PLUS                                  { [] }
-| MINUS                                 { [] }
-| LOG_NOT                               { [] } 
+  PLUS                                  { Pos } /* can't return nothing */
+| MINUS                                 { Neg }
+| LOG_NOT                               { LogNot } 
 
 fn_op:
-  MAP                                   { [] }
-| FILTER                                { [] }
+  MAP                                   { Map }
+| FILTER                                { Filter }
 
 fn_type:
-  GN                                    { [] }
-| KN                                    { [] }
+  GN                                    { Kn }
+| KN                                    { Gn }
 
 iter_type:
-  FOR                                   { [] }
-| DO                                    { [] }
+  FOR                                   { For }
+| DO                                    { Do }

@@ -22,7 +22,7 @@ type fn_typ =
 type bin_op =
   | Add | Sub | Mul | Div | Mod | Exp
   | Asn | AddAsn | SubAsn | MulAsn | DivAsn | ModAsn | ExpAsn
-  | Lt | Gt | Neq | Leq | Geq
+  | Eq | Lt | Gt | Neq | Leq | Geq
   | LogAnd | LogOr
   | Filter | Map
   | Index | Lookback
@@ -30,7 +30,7 @@ type bin_op =
   | Call
 
 type un_op =
-  | Not | Neg
+  | LogNot | Neg | Pos
 
 type lambda = {
   formals   : bind list;
