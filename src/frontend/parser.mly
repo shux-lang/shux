@@ -167,7 +167,6 @@ primary_expr:
 | lookback_val                          { Id($1) }
 
 lookback_val:
-| ID DOT INT_LIT                        { Binop($1, Lookforward, $3) }
 | ID DOTDOT INT_LIT                     { Binop($1, Lookback, $3) }
 | ID                                    { Id($1) }
 
@@ -246,7 +245,7 @@ struct_lit_fields:
 | struct_lit_field                      { [$1] }
 
 struct_lit_field:
-| DOT ID ASSIGN expr                    { Binop(Asn, Id($2), $4) }
+| DOT ID ASSIGN primary_expr                    { Binop(Asn, Id($2), $4) }
 
 array_lit:
 | LBRACK list_lit_elements RBRACK       { LitArray($2) }
