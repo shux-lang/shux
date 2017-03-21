@@ -135,7 +135,7 @@ eq_expr:
 
 relat_expr:
 | shift_expr relat_op shift_expr        { Binop($1, $2, $3) }
-| shift_expr                            { $1 } 
+| shift_expr                            { $1 }
 
 shift_expr:
 | arithmetic_expr                       { $1 } 
@@ -253,13 +253,13 @@ array_lit:
 | LBRACK RBRACK                         { LitArray([]) }
 
 vector_lit:
-/*| LPAREN list_lit_elements RPAREN       { LitVector($2) } */
-| LDBRACK list_lit_elements RDBRACK     { } 
-| LPAREN RPAREN                         { LitVector([]) }
+| LT list_lit_elements GT        { LitVector($2) }
+/*| LDBRACK list_lit_elements RDBRACK     { } */  
+| LT GT                         { LitVector([]) }
 
 list_lit_elements:
-| list_lit_elements COMMA expr          { $3::$1 }
-| expr                                  { [$1] }
+| list_lit_elements COMMA shift_expr          { $3::$1 }
+| shift_expr                                  { [$1] }
 
 eq_op:
 | EQ                                    { Eq }
