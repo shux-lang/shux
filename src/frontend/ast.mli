@@ -46,7 +46,9 @@ and lit =
   | LitKn of lambda
   | LitVector of float list (* shouldn't we be able to construct vectors dynamically? *)
   | LitArray of expr list (* include optional type annotation here? *)
-  | LitStruct of string * expr list (* should this be more sophisticated? *)
+  | LitStruct of struct_field list (* should this be more sophisticated? *)
+
+and struct_field = StructField of string * expr
 
 and expr =
   | NoExpr (* TODO: might this be a bad idea? *)

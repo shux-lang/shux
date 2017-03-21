@@ -238,8 +238,8 @@ lit:
 | INT_LIT                               { LitInt($1) }
 
 struct_lit:  
-| LBRACE struct_lit_fields RBRACE       {  } /* syntax does not specify struct name */
-| LBRACE RBRACE                         { [] }
+| LBRACE struct_lit_fields RBRACE       { LitStruct($2) }
+| LBRACE RBRACE                         { LitStruct([]) }
 
 struct_lit_fields:
 | struct_lit_field SEMI struct_lit_fields
@@ -247,7 +247,7 @@ struct_lit_fields:
 | struct_lit_field                      { [$1] }
 
 struct_lit_field:
-| DOT ID ASSIGN expr                    { Binop(Asn, Id($2), $4) }
+| DOT ID ASSIGN expr                    { StructField($2, $4) }
 
 array_lit:
 | LBRACK list_lit_elements RBRACK       { LitArray($2) }
