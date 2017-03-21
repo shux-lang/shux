@@ -253,8 +253,7 @@ array_lit:
 | LBRACK RBRACK                         { LitArray([]) }
 
 vector_lit:
-/*| LPAREN list_lit_elements RPAREN       { LitVector($2) } */
-| LDBRACK list_lit_elements RDBRACK     { } 
+| LPAREN list_lit_elements RPAREN       { LitVector($2) }
 | LPAREN RPAREN                         { LitVector([]) }
 
 list_lit_elements:
