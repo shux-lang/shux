@@ -252,13 +252,16 @@ array_lit:
 | LBRACK RBRACK                         { LitArray([]) }
 
 vector_lit:
-| LT list_lit_elements GT        { LitVector($2) }
-/*| LDBRACK list_lit_elements RDBRACK     { } */  
+| LT vlist_lit_elements GT        { LitVector($2) }
 | LT GT                         { LitVector([]) }
 
 list_lit_elements:
-| list_lit_elements COMMA shift_expr          { $3::$1 }
-| shift_expr                                  { [$1] }
+| list_lit_elements COMMA expr 		          { $3::$1 }
+| expr 		                                  { [$1] }
+
+vlist_lit_elements:
+| vlist_lit_elements COMMA shift_expr		  { $3::$1 }
+| shift_expr								  { [$1]   }
 
 eq_op:
 | EQ                                    { Eq }
