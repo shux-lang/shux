@@ -8,6 +8,7 @@
 %token LOG_AND LOG_OR LOG_NOT LT GT EQ NEQ LEQ GEQ
 %token QUES COLON FILTER MAP FUNC IF THEN ELIF ELSE FOR WHILE DO
 %token NS GN KN STRUCT LET VAR INT_T FLOAT_T STRING_T BOOL_T VECTOR_T
+%token LDBRACK RDBRACK
 
 %token <bool> BOOL_LIT
 %token <int> INT_LIT
@@ -241,8 +242,9 @@ struct_lit:
 | LBRACE RBRACE                         { [] }
 
 struct_lit_fields:
-| struct_lit_field SEMI struct_lit_fields    { $1::$3 }
-| struct_lit_field     		                 { [$1] }
+| struct_lit_field SEMI struct_lit_fields
+                                        { $1::$3 }
+| struct_lit_field                      { [$1] }
 
 struct_lit_field:
 | DOT ID ASSIGN expr                    { Binop(Asn, Id($2), $4) }
@@ -252,17 +254,18 @@ array_lit:
 | LBRACK RBRACK                         { LitArray([]) }
 
 vector_lit:
-| LPAREN list_lit_elements RPAREN       { LitVector($2) }
-| LPAREN RPAREN                         { LitVector([]) }
+| LDBRACK list_lit_elements RDBRACK     { LitVector($2) }
+| LDBRACK RDBRACK                       { LitVector([]) }
 
 list_lit_elements:
-| list_lit_elements COMMA expr 		          { $3::$1 }
-| expr 		                                  { [$1] }
+| list_lit_elements COMMA expr          { $3::$1 }
+| expr                                  { [$1] }
 
+/*
 vlist_lit_elements:
-| vlist_lit_elements COMMA shift_expr		  { $3::$1 }
-| shift_expr								  { [$1]   }
-
+| vlist_lit_elements COMMA shift_expr   { $3::$1 }
+| shift_expr                            { [$1] }
+*/
 eq_op:
 | EQ                                    { Eq }
 | NEQ                                   { Neq }
