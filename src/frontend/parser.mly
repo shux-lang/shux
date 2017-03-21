@@ -252,8 +252,8 @@ array_lit:
 | LBRACK RBRACK                         { LitArray([]) }
 
 vector_lit:
-| LT vlist_lit_elements GT        { LitVector($2) }
-| LT GT                         { LitVector([]) }
+| LPAREN list_lit_elements RPAREN       { LitVector($2) }
+| LPAREN RPAREN                         { LitVector([]) }
 
 list_lit_elements:
 | list_lit_elements COMMA expr 		          { $3::$1 }
