@@ -241,11 +241,11 @@ struct_lit:
 | LBRACE RBRACE                         { [] }
 
 struct_lit_fields:
-| struct_lit_field struct_lit_fields    { $1::$2 }
-| struct_lit_field                      { [$1] }
+| struct_lit_field SEMI struct_lit_fields    { $1::$3 }
+| struct_lit_field     		                 { [$1] }
 
 struct_lit_field:
-| DOT ID ASSIGN primary_expr                    { Binop(Asn, Id($2), $4) }
+| DOT ID ASSIGN expr                    { Binop(Asn, Id($2), $4) }
 
 array_lit:
 | LBRACK list_lit_elements RBRACK       { LitArray($2) }
