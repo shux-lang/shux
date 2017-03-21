@@ -1,156 +1,89 @@
 open Core.Std
 
-type type_name = string
-type t =
+type typ =
   | Int
   | Float
   | String
   | Bool
-  | Type of type_name
-  | Array of t
+  | Struct of string
+  | Array of typ
+  | Vector of int
 
-type ternary_operator =
-  | Ques
+type mut =
+  | Mutable
+  | Immutable
 
-type binary_operator =
+type bind = Bind of mut * typ * string
+
+type fn_typ =
+  | Kn
+  | Gn
+
+type bin_op =
   | Add | Sub | Mul | Div | Mod | Exp
   | Asn | AddAsn | SubAsn | MulAsn | DivAsn | ModAsn | ExpAsn
-  | Lt | Gt | Neq | Leq | Geq
-  | And | Or
-  | Filter | Map | Func
+  | Eq | Lt | Gt | Neq | Leq | Geq
+  | LogAnd | LogOr
+  | Filter | Map
+  | Index | Lookback | StructField
+  | For | Do
+  | Call
 
-type unary_operator =
-  | Not
-  | Neg
+type un_op =
+  | LogNot | Neg | Pos
 
+type lambda = {
+  formals   : bind list;
+  body      : stmt list;
+  ret_expr  : expr;
+}
 
-(* LVS NOT TOUCHED BELOW *)
-type var_reference = string list
-
-type mutability = Mutable | Immutable
-
-type expr =
-  | Binop of expr * binary_operator * expr
-  | Uniop of unary_operator * expr
-  | LitBool of bool
+and lit =
   | LitInt of int
   | LitFloat of float
+  | LitBool of bool
   | LitStr of string
-  | VarRef of var_reference
-  | FunApply of string * expr list
-  | ArrIdx of var_reference * expr
-  | Arr of expr list * t option
-  | ArrMusic of expr list 
-  | Block of expr list
-  | Conditional of expr * expr * expr
-  | For of string * expr * expr
-  | Throw of expr
-  | Assign of var_reference * expr * mutability
-  | StructInit of string * expr list
+  | LitKn of lambda
+  | LitVector of float list (* shouldn't we be able to construct vectors dynamically? *)
+  | LitArray of expr list (* include optional type annotation here? *)
+  | LitStruct of string * expr list (* should this be more sophisticated? *)
 
-type fundef =
-  | FunDef of string * string list * expr
+and expr =
+  | NoExpr (* TODO: might this be a bad idea? *)
+  | Lit of lit
+  | Id of string
+  | Binop of expr * bin_op * expr
+  | Uniop of un_op * expr
+  | Cond of expr * expr * expr (* technically Ternop *)
 
-type externfun =
-  (* Header file name, namespace, C++ function name, NH function name, list of param types, return type *)
-  | ExternFunDecl of string * string * string * string * t list * t
+and stmt =
+  | VDecl of bind * expr optional
+  | Expr of expr
 
-type typedef =
-  | TypeDef of string * expr list
+type fn_decl = {
+  fname     : string;
+  fn_typ    : fn_typ;
+  ret_typ   : typ;
+  formals   : bind list;
+  body      : stmt list;
+  ret_expr  : expr;
+}
 
-type program = string list * fundef list * externfun list * expr list * typedef list
+type struct_def = {
+  sname     : string;
+  fields    : bind list;
+}
 
-let rec string_of_type t =
-  match t with
-  | Unit -> "unit"
-  | Int -> "int"
-  | Float -> "float"
-  | String -> "string"
-  | Bool -> "bool"
-  | Type(name) -> name
-  | Array(t) -> string_of_type t ^ "{}"
+type let_decl =
+  | LetDecl of bind * lit
+  | StructDef of struct_def
 
-let string_of_type_op t =
-  match t with
-  |Some t -> string_of_type t
-  |None -> "None"
+type ns_def = {
+  nname     : string;
+  body      : program;
+}
 
-let string_of_op o =
-  match o with
-  | Add -> "+"
-  | Sub -> "-"
-  | Mul -> "*"
-  | Div -> "/"
-  | Mod -> "%"
-  | Eq  -> "=="
-  | Neq -> "!="
-  | Lt  -> "<"
-  | Lte -> "<="
-  | And -> "&&"
-  | Or  -> "||"
-  | Concat -> "."
-  | Chord -> ","
-  | Zip -> ":"
-  | Octave -> "@"
+and ns_decl =
+  | NsDecl of ns_def
 
-let string_of_unop o = match o with | Not -> "!" | Neg -> "-" | Sharp -> "#"
-                    | Flat -> "b"
-
-let rec string_of_expr e =
-  match e with
-  | Block l -> String.concat ~sep:" " [ "["; string_of_exp_list l; "]" ]
-  | Conditional(x, y, z) ->
-      String.concat ~sep:" " [ "IF"; string_of_expr x; "THEN"; string_of_expr y; "ELSE"; string_of_expr z ]
-  | For(x, y, z) -> String.concat ~sep:" " [ "FOR"; x; "IN "; string_of_expr y; "DO"; string_of_expr z ]
-  | Binop(x, op, y) -> String.concat ~sep:" " [ "("; string_of_expr x; string_of_op op; string_of_expr y; ")" ]
-  | Uniop(op, x) -> String.concat ~sep:" " [ "("; string_of_unop op; string_of_expr x; ")" ]
-  | LitBool(x) -> Bool.to_string x
-  | LitInt(x) -> Int.to_string x
-  | LitFloat(x) -> Float.to_string x
-  | LitStr(x) -> x
-  | VarRef(x) -> String.concat ~sep:"$" x
-  | Assign(name, expr, mutability) ->
-      sprintf "( %s %s = %s )"
-        (if mutability = Immutable then "let" else "var") (string_of_expr (VarRef(name))) (string_of_expr expr)
-  | StructInit(x, y) -> String.concat ~sep:" " [ x; string_of_exp_list y ]
-  | FunApply(x, y) -> String.concat ~sep:" " [ x; "("; string_of_exp_list y; ")" ]
-  | ArrIdx (x, y) -> String.concat ~sep:" " [ string_of_expr (VarRef(x)); ".("; string_of_expr y; ")" ]
-  | Arr(x, t) -> String.concat ~sep:" " [ "{"; string_of_exp_list x; "}, "; string_of_type_op t ]
-  | ArrMusic(x) -> String.concat ~sep:" " [ "["; string_of_exp_list x; "]"]
-  | Throw(x) -> String.concat ~sep:" " ["Throw"; string_of_expr x]
-and string_of_exp_list l =
-  match l with
-  | [] -> ""
-  | [ s ] -> string_of_expr s
-  | s :: rest -> String.concat ~sep:" " [ string_of_expr s; ","; string_of_exp_list rest ]
-
-let string_of_fdef fdef =
-  let FunDef(name, args, body) = fdef in
-  String.concat ~sep:" " ([ name ] @ args @ [ string_of_expr body ])
-
-let string_of_extern extern =
-  let ExternFunDecl(hpp, ns, cpp_name, nh_name, param_types, ret_type) = extern in
-    let cpp_path = String.concat ~sep:"::" [ hpp; ns; cpp_name ] in
-    let type_strs = List.map param_types ~f:string_of_type in
-    String.concat ~sep:" " ([ "extern"; cpp_path] @ type_strs @ ["->"; string_of_type ret_type; "as"; nh_name ])
-
-let rec string_of_incl_list p =
-  match p with
-  | [] -> "[]"
-  | s :: rest -> String.concat ~sep:" " [ s; string_of_incl_list rest ]
-
-let rec string_of_typedefs typedefs =
-  match typedefs with
-  | [] -> ""
-  | TypeDef(name, exprs) :: rest -> name ^ string_of_exp_list exprs ^ "\n" ^ string_of_typedefs rest
-
-let string_of_prog_struc p =
-  match p with
-  | (incls, fdefs, externs, exprs, typedefs) ->
-      String.concat ~sep:"\n"
-        [ "INCLUDES: " ^ string_of_incl_list incls;
-          "TYPEDEFS: " ^ string_of_typedefs typedefs;
-          "FDEF: " ^ String.concat ~sep:"\n" (List.map fdefs ~f:string_of_fdef);
-          "EXTFUN: " ^ String.concat ~sep:"\n" (List.map externs ~f:string_of_extern);
-          "EXPR: " ^ string_of_exp_list exprs;
-        ]
+and program = ns_decl list * let_decl list * fn_decl list
