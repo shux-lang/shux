@@ -152,20 +152,24 @@ mult_expr:
 | unary_expr                            { $1 }
 
 unary_expr:
-| unary_op unary_expr                   { Uniop($1, $2) }
+| prefix_op unary_expr                  { Uniop($1, $2) }
 | postfix_expr                          { $1 } 
 
 postfix_expr:
 | postfix_expr LBRACK expr RBRACK       { Binop($1, Index, $3) }
 | postfix_expr LPAREN actuals RPAREN    { Binop($1, Call, $3) } /* TODO: make Call an operator */
-| postfix_expr DOT INT_LIT              { Binop($1, Lookback, $3) }
-| postfix_expr DOTDOT INT_LIT           { Binop($1, Lookback, -$3) }
+| postfix_expr DOT ID                   { Binop($1, StructField, $3) }
 | primary_expr                          { $1 }
 
 primary_expr:
-| ID                                    { Id($1) }
-| lit                                   { $1 }
 | LPAREN expr RPAREN                    { $2 }
+| lit                                   { $1 }
+| lookback_val                          { Id($1) }
+
+lookback_val:
+| ID DOT INT_LIT                        { Binop($1, Lookforward, $3) }
+| ID DOTDOT INT_LIT                     { Binop($1, Lookback, $3) }
+| ID                                    { Id($1) }
 
 formals:
 | formal_list                           { $1 }
@@ -249,11 +253,12 @@ array_lit:
 | LBRACK RBRACK                         { LitArray([]) }
 
 vector_lit:
-| LPAREN list_lit_elements RPAREN       { LitVector($2) }
+/*| LPAREN list_lit_elements RPAREN       { LitVector($2) } */
+| LDBRACK list_lit_elements RDBRACK     { } 
 | LPAREN RPAREN                         { LitVector([]) }
 
 list_lit_elements:
-| expr COMMA list_lit_elements          { $1::$3 }
+| list_lit_elements COMMA expr          { $3::$1 }
 | expr                                  { [$1] }
 
 eq_op:
@@ -276,7 +281,7 @@ mult_op:
 | MOD                                   { Mod }
 | EXPONENT                              { Exp }
 
-unary_op:
+prefix_op:
 | PLUS                                  { Pos } /* can't return nothing */
 | MINUS                                 { Neg }
 | LOG_NOT                               { LogNot } 

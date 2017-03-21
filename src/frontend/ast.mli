@@ -25,7 +25,7 @@ type bin_op =
   | Eq | Lt | Gt | Neq | Leq | Geq
   | LogAnd | LogOr
   | Filter | Map
-  | Index | Lookback
+  | Index | Lookback | StructField
   | For | Do
   | Call
 
