@@ -8,7 +8,7 @@ INCLUDE=-I ../include -I $(BACKEND)
 OCAML_FLAGS=$(INCLUDE) $(EXT_OBJS)
 
 #all: $(OBJS)
-all: scanner.ml
+all: parser.cmo scanner.ml
 
 #%: %.ml $(OBJS)
 #	$(OCAML) $(OCAML_FLAGS) -o $@ $(LIBS) $(OBJS) $<
@@ -16,8 +16,8 @@ all: scanner.ml
 scanner.ml: scanner.mll
 	ocamllex scanner.mll
 
-#parser.ml parser.mli: parser.mly
-#	ocamlyacc parser.mly
+parser.ml parser.mli: parser.mly
+	ocamlyacc parser.mly
 
 #automata: parser.mly
 #	ocamlyacc -v parser.mly
@@ -39,5 +39,4 @@ parser.cmo: ast.cmi parser.cmi
 #scanner.cmo: parser.cmi
 #scanner.cmx: parser.cmx
 ast.cmi:
-#parser.cmi: ast.cmi
-
+parser.cmi: ast.cmi

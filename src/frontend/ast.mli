@@ -25,9 +25,9 @@ type bin_op =
   | Eq | Lt | Gt | Neq | Leq | Geq
   | LogAnd | LogOr
   | Filter | Map
-  | Index | Lookback | StructField
+  | Index | Lookback
   | For | Do
-  | Call
+  | StructMember
 
 type un_op =
   | LogNot | Neg | Pos
@@ -44,7 +44,7 @@ and lit =
   | LitBool of bool
   | LitStr of string
   | LitKn of lambda
-  | LitVector of float list (* shouldn't we be able to construct vectors dynamically? *)
+  | LitVector of expr list (* shouldn't we be able to construct vectors dynamically? *)
   | LitArray of expr list (* include optional type annotation here? *)
   | LitStruct of struct_field list (* should this be more sophisticated? *)
 
@@ -55,6 +55,7 @@ and expr =
   | Lit of lit
   | Id of string
   | Binop of expr * bin_op * expr
+  | Call of expr * expr list
   | Uniop of un_op * expr
   | Cond of expr * expr * expr (* technically Ternop *)
 
@@ -77,15 +78,12 @@ type struct_def = {
 }
 
 type let_decl =
-  | LetDecl of bind * lit
+  | LetDecl of bind * expr
   | StructDef of struct_def
 
-type ns_def = {
+type ns_decl = {
   nname     : string;
   body      : program;
 }
-
-and ns_decl =
-  | NsDecl of ns_def
 
 and program = ns_decl list * let_decl list * fn_decl list
