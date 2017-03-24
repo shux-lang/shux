@@ -40,8 +40,6 @@ rule token = parse
 | ')'     { RPAREN }
 | '{'     { LBRACE }
 | '}'     { RBRACE }
-| "[["    { LDBRACK }
-| "]]"    { RDBRACK }
 | '['     { LBRACK }
 | ']'     { RBRACK }
 

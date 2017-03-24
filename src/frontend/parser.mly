@@ -8,7 +8,6 @@
 %token LOG_AND LOG_OR LOG_NOT LT GT EQ NEQ LEQ GEQ
 %token QUES COLON FILTER MAP FUNC IF THEN ELIF ELSE FOR WHILE DO
 %token NS GN KN STRUCT LET VAR INT_T FLOAT_T STRING_T BOOL_T VECTOR_T
-%token LDBRACK RDBRACK
 %token UNDERSCORE
 
 %token <bool> BOOL_LIT
@@ -254,18 +253,12 @@ array_lit:
   | LBRACK RBRACK                         { LitArray([]) }
 
 vector_lit:
-  | LDBRACK list_lit_elements RDBRACK     { LitVector($2) }
-  | LDBRACK RDBRACK                       { LitVector([]) }
+  | LPAREN list_lit_elements COMMA expr RPAREN { LitVector($4::$2) }
 
 list_lit_elements:
   | list_lit_elements COMMA expr          { $3::$1 }
   | expr                                  { [$1] }
 
-/*
-vlist_lit_elements:
-  | vlist_lit_elements COMMA shift_expr   { $3::$1 }
-  | shift_expr                            { [$1] }
-*/
 eq_op:
   | EQ                                    { Eq }
   | NEQ                                   { Neq }
