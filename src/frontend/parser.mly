@@ -9,6 +9,7 @@
 %token QUES COLON FILTER MAP FUNC IF THEN ELIF ELSE FOR WHILE DO
 %token NS GN KN STRUCT LET VAR INT_T FLOAT_T STRING_T BOOL_T VECTOR_T
 %token LDBRACK RDBRACK
+%token UNDERSCORE
 
 %token <bool> BOOL_LIT
 %token <int> INT_LIT
@@ -110,7 +111,8 @@ iter_expr:
   | unit_expr                             { $1 }
 
 gn_call:
-  | id LPAREN actuals RPAREN              { Call($1, $3) }
+  | id LPAREN actuals RPAREN              { Call(Some($1), $3) }
+  | UNDERSCORE                            { Call(None, []) }
 
 /* all the stuff below is pretty much taken and adapted from K&R */
 unit_expr:
@@ -158,7 +160,7 @@ unary_expr:
 
 postfix_expr:
   | postfix_expr LBRACK expr RBRACK       { Binop($1, Index, $3) }
-  | postfix_expr LPAREN actuals RPAREN    { Call($1, $3) }
+  | postfix_expr LPAREN actuals RPAREN    { Call(Some($1), $3) }
   | postfix_expr DOT id                   { Binop($1, StructMember, $3) }
   | primary_expr                          { $1 }
 

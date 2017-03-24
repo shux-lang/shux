@@ -122,6 +122,7 @@ rule token = parse
 | float as f              { FLOAT_LIT(float_of_string f) }
 | string                  { STRING_LIT(unescape s)}
 | id as n                 { ID(n) }
+| '_'                     { UNDERSCORE }
 
 (* ye good olde *)
 | eof       { EOF }
