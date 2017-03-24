@@ -35,7 +35,7 @@ type un_op =
 type lambda = {
   formals   : bind list;
   body      : stmt list;
-  ret_expr  : expr;
+  ret_expr  : expr option;
 }
 
 and lit =
@@ -51,7 +51,6 @@ and lit =
 and struct_field = StructField of string * expr
 
 and expr =
-  | NoExpr (* TODO: might this be a bad idea? *)
   | Lit of lit
   | Id of string
   | Binop of expr * bin_op * expr
@@ -69,7 +68,7 @@ type fn_decl = {
   ret_typ   : typ;
   formals   : bind list;
   body      : stmt list;
-  ret_expr  : expr;
+  ret_expr  : expr option;
 }
 
 type struct_def = {

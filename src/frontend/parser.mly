@@ -74,8 +74,8 @@ statement:
   | expr                                  { Expr($1) } 
 
 ret_expr:
-  | expr                                  { $1 } 
-  | /* nothing */                         { NoExpr }
+  | expr                                  { Some($1) } 
+  | /* nothing */                         { None }
 
 expr:
   | asn_expr                              { $1 } 
