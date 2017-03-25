@@ -65,7 +65,7 @@ and stmt =
 type fn_decl = {
   fname     : string;
   fn_typ    : fn_typ;
-  ret_typ   : typ;
+  ret_typ   : typ option;
   formals   : bind list;
   body      : stmt list;
   ret_expr  : expr option;
