@@ -5,6 +5,7 @@ _build
 *.cmo
 *.native
 *.byte
+scanner.ml
 parser.output
 parser.ml
 parser.mli
