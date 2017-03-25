@@ -31,110 +31,107 @@ let int = digit+
 let id = alpha (alpha | digit | '_')*
 
 rule token = parse
-  whitespace  { token lexbuf }
-| newline     { incr lineno; token lexbuf }
-| "/*"    { incr depth; comment lexbuf }
+  | whitespace  { token lexbuf }
+  | newline     { incr lineno; token lexbuf }
+  | "/*"        { incr depth; comment lexbuf }
 
 (* parens *)
-| '('     { LPAREN } 
-| ')'     { RPAREN }
-| '{'     { LBRACE }
-| '}'     { RBRACE }
-| "[["    { LDBRACK }
-| "]]"    { RDBRACK }
-| '['     { LBRACK }
-| ']'     { RBRACK }
+  | '('     { LPAREN } 
+  | ')'     { RPAREN }
+  | '{'     { LBRACE }
+  | '}'     { RBRACE }
+  | '['     { LBRACK }
+  | ']'     { RBRACK }
 
 (* strings *)
-| '"'     { DBL_QUOTE }
-| '\''    { SNG_QUOTE }
+  | '"'     { DBL_QUOTE }
+  | '\''    { SNG_QUOTE }
 
 (* separators *)
-| ';'     { SEMI }
-| ','     { COMMA }
-| ".."    { DOTDOT }
-| '.'     { DOT }
+  | ';'     { SEMI }
+  | ','     { COMMA }
+  | ".."    { DOTDOT }
+  | '.'     { DOT }
 
 (* arithmetic operators *)
-| '+'     { PLUS }
-| '-'     { MINUS }
-| '*'     { TIMES }
-| '/'     { DIVIDE }
-| '%'     { MOD }
-| '^'     { EXPONENT }
+  | '+'     { PLUS }
+  | '-'     { MINUS }
+  | '*'     { TIMES }
+  | '/'     { DIVIDE }
+  | '%'     { MOD }
+  | '^'     { EXPONENT }
 
 (* assignment operators *)
-| '='     { ASSIGN }
-| "+="    { ADD_ASN }
-| "-="    { SUB_ASN }
-| "*="    { MUL_ASN }
-| "/="    { DIV_ASN }
-| "%="    { MOD_ASN }
-| "^="    { EXP_ASN }
+  | '='     { ASSIGN }
+  | "+="    { ADD_ASN }
+  | "-="    { SUB_ASN }
+  | "*="    { MUL_ASN }
+  | "/="    { DIV_ASN }
+  | "%="    { MOD_ASN }
+  | "^="    { EXP_ASN }
 
 (* logical operators *)
-| "&&"    { LOG_AND }
-| "||"    { LOG_OR }
-| "!"     { LOG_NOT }
+  | "&&"    { LOG_AND }
+  | "||"    { LOG_OR }
+  | "!"     { LOG_NOT }
 
 (* comparison operators *)
-| '<'     { LT }
-| '>'     { GT }
-| "=="    { EQ }
-| "!="    { NEQ }
-| "<="    { LEQ }
-| ">="    { GEQ }
+  | '<'     { LT }
+  | '>'     { GT }
+  | "=="    { EQ }
+  | "!="    { NEQ }
+  | "<="    { LEQ }
+  | ">="    { GEQ }
 
-(* shuxxx *)
-| '?'     { QUES }
-| ':'     { COLON }
-| "::"    { FILTER }
-| '@'     { MAP }
-| "->"    { FUNC }
+(* shux *)
+  | '?'     { QUES }
+  | ':'     { COLON }
+  | "::"    { FILTER }
+  | '@'     { MAP }
+  | "->"    { FUNC }
 
 (* control keywords *)
-| "if"      { IF }
-| "then"    { THEN }
-| "elif"    { ELIF }
-| "else"    { ELSE }
-| "for"     { FOR }
-| "while"   { WHILE }
-| "do"      { DO }
+  | "if"      { IF }
+  | "then"    { THEN }
+  | "elif"    { ELIF }
+  | "else"    { ELSE }
+  | "for"     { FOR }
+  | "while"   { WHILE }
+  | "do"      { DO }
 
 (* declarations *)
-| "ns"      { NS }
-| "gn"      { GN }
-| "kn"      { KN }
-| "struct"  { STRUCT }
-| "let"     { LET }
-| "var"     { VAR }
+  | "ns"      { NS }
+  | "gn"      { GN }
+  | "kn"      { KN }
+  | "struct"  { STRUCT }
+  | "let"     { LET }
+  | "var"     { VAR }
+  | "extern"  { EXTERN }
 
 (* types *)
-| "int"               { INT_T }
-| "scalar" | "float"  { FLOAT_T }
-| "string"            { STRING_T }
-| "bool"              { BOOL_T }
-| "vector"            { VECTOR_T }
+  | "int"               { INT_T }
+  | "scalar" | "float"  { FLOAT_T }
+  | "string"            { STRING_T }
+  | "bool"              { BOOL_T }
+  | "vector"            { VECTOR_T }
 
 (* literals *)
-| "true" | "false" as tf  { BOOL_LIT(bool_of_string tf) } 
-| int as i                { INT_LIT(int_of_string i) }
-| float as f              { FLOAT_LIT(float_of_string f) }
-| string                  { STRING_LIT(unescape s)}
-| id as n                 { ID(n) }
-| '_'                     { UNDERSCORE }
+  | "true" | "false" as tf  { BOOL_LIT(bool_of_string tf) } 
+  | int as i                { INT_LIT(int_of_string i) }
+  | float as f              { FLOAT_LIT(float_of_string f) }
+  | string                  { STRING_LIT(unescape s)}
+  | id as n                 { ID(n) }
+  | '_'                     { UNDERSCORE }
 
 (* ye good olde *)
-| eof       { EOF }
-
+  | eof       { EOF }
 
 (* The Reign of Error *)
-| '"'       { raise (Exceptions.UnmatchedQuotation(!lineno)) }
-| _ as e    { raise (Exceptions.IllegalCharacter(!filename, e, !lineno)) }
-
+  | '"'       { raise (Exceptions.UnmatchedQuotation(!lineno)) }
+  | _ as e    { raise (Exceptions.IllegalCharacter(!filename, e, !lineno)) }
 
 (* comments *)
 and comment = parse
-  "/*"      { incr depth; comment lexbuf }
-| "*/"      { decr depth; if depth > 0 then token lexbuf else token lexbuf }
-| newline   { incr lineno; comment lexbuf }
+  | "/*"      { incr depth; comment lexbuf }
+  | "*/"      { decr depth; if !depth > 0 then token lexbuf else token lexbuf }
+  | newline   { incr lineno; comment lexbuf }
