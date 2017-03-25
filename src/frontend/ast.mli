@@ -27,7 +27,7 @@ type bin_op =
   | Filter | Map
   | Index | Lookback
   | For | Do
-  | StructMember
+  | Access
 
 type un_op =
   | LogNot | Neg | Pos
