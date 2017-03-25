@@ -6,9 +6,8 @@
 %token SEMI COMMA DOTDOT DOT PLUS MINUS TIMES DIVIDE MOD EXPONENT
 %token ASSIGN ADD_ASN SUB_ASN MUL_ASN DIV_ASN MOD_ASN EXP_ASN
 %token LOG_AND LOG_OR LOG_NOT LT GT EQ NEQ LEQ GEQ
-%token QUES COLON FILTER MAP FUNC IF THEN ELIF ELSE FOR WHILE DO
-%token NS GN KN STRUCT LET VAR INT_T FLOAT_T STRING_T BOOL_T VECTOR_T
-%token UNDERSCORE
+%token QUES COLON FILTER MAP FUNC IF THEN ELIF ELSE FOR WHILE DO UNDERSCORE
+%token NS GN KN STRUCT LET EXTERN VAR INT_T FLOAT_T STRING_T BOOL_T VECTOR_T
 
 %token <bool> BOOL_LIT
 %token <int> INT_LIT
@@ -110,7 +109,7 @@ iter_expr:
   | unit_expr                             { $1 }
 
 gn_call:
-  | id LPAREN actuals RPAREN              { Call(Some($1), $3) }
+  | ID LPAREN actuals RPAREN              { Call(Some($1), $3) }
   | UNDERSCORE                            { Call(None, []) }
 
 /* all the stuff below is pretty much taken and adapted from K&R */
@@ -159,7 +158,7 @@ unary_expr:
 
 postfix_expr:
   | postfix_expr LBRACK expr RBRACK       { Binop($1, Index, $3) }
-  | postfix_expr LPAREN actuals RPAREN    { Call(Some($1), $3) }
+  | ID LPAREN actuals RPAREN    { Call(Some($1), $3) }
   | postfix_expr DOT id                   { Binop($1, StructMember, $3) }
   | primary_expr                          { $1 }
 
