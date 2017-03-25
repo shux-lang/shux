@@ -16,15 +16,6 @@
 %token <string> ID
 %token EOF
 
-%nonassoc ELSE
-%nonassoc LT GT
-%right ASSIGN
-%left OR
-%left AND
-%left EQ NEQ LEQ GEQ
-%left PLUS MINUS
-%left TIMES DIVIDE MOD
-
 %start program
 
 %type <Ast.program> program
