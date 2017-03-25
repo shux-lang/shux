@@ -11,9 +11,7 @@ let _ =
 		if Array.length Sys.argv > 1
 			then open_in Sys.argv.(1)
 		else 
-                stdin;
-                print_string "Not enough arguments"; 
-                exit 4
+			stdin
 		in
 	let lexbuf = Lexing.from_channel cin in
 	let ast = Parser.program Scanner.token lexbuf in
