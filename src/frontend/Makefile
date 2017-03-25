@@ -6,6 +6,7 @@ EXT_OBJS=$(BACKEND)/semant.cmo $(BACKEND)/codegen.cmo
 INCLUDE=-I ../include -I $(BACKEND)
 TARGETS=$(COMPILER)
 OCAML_FLAGS=$(INCLUDE) $(OBJS) $(EXT_OBJS)
+
 COMPILER=shuxc
 
 all: $(OBJS) $(TARGETS)
