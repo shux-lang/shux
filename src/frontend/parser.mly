@@ -306,11 +306,9 @@ lit_elements:
   | expr                                    { [$1] }
 
 
-
-/* LitInt wrapper */
+/* Type wrappers */
 int_lit:
   | INT_LIT                                 { LitInt($1) }
 
-/* Id wrapper */
 id:
   | ID                                      { Id($1) }
