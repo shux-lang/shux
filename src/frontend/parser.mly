@@ -33,9 +33,13 @@
 
 program:
   | /* nothing */ EOF                       { ([], [], []) }
-  | ns_decls let_decls fn_decls EOF         { ($1, $2, $3) }
+  | ns_section let_section fn_section EOF   { ($1, $2, $3) }
 
 /* namespace declaration rules */
+ns_section:
+  | ns_decls                                { $1 }
+  | /* nothing */                           { [] }
+
 ns_decls:
   | ns_decls ns_decl                        { $2::$1 }
   | ns_decl                                 { [$1] }
@@ -45,14 +49,19 @@ ns_decl:
 
 
 /* let declaration rules */
+let_section:
+  | let_decls                               { $1 }
+  | /* nothing */                           { [] }
+
 let_decls:
   | let_decls let_decl                      { $2::$1 }  
   | let_decl                                { [$1] }
 
 let_decl:
-  | LET typ ID ASSIGN expr SEMI             { LetDecl( (Bind (Immutable, $2, $3), $5)) }
+  | LET typ ID ASSIGN expr SEMI             { LetDecl((Bind(Immutable, $2, $3), $5)) }
   | STRUCT ID LBRACE struct_def RBRACE      { StructDef({sname = $2; fields = $4}) }
-  | EXTERN ID RPAREN formals LPAREN ret_typ { ExternDecl({fname = $2; ret_typ = $6;
+  | EXTERN ID RPAREN formals LPAREN 
+    ret_typ SEMI                            { ExternDecl({fname = $2; ret_typ = $6;
                                               formals = $4;}) }
 
 struct_def:
@@ -61,6 +70,9 @@ struct_def:
 
 
 /* function declaration rules */
+fn_section:
+  | fn_decls                                { $1 }
+
 fn_decls: 
   | fn_decls fn_decl                        { $2::$1 }
   | fn_decl                                 { [$1] } 
