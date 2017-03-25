@@ -1,8 +1,7 @@
 {
   open Core.Std
-
   open Parser
-  
+  open Exceptions
   let lineno = ref 1
   let depth = ref 0
   let filename = ref "" (* what do with this *)
@@ -128,7 +127,7 @@ rule token = parse
 | eof       { EOF }
 
 
-(* The Reign of Error *)
+(* The Reign of Error *) 
 | '"'       { raise (Exceptions.UnmatchedQuotation(!lineno)) }
 | _ as e    { raise (Exceptions.IllegalCharacter(!filename, e, !lineno)) }
 
@@ -136,5 +135,5 @@ rule token = parse
 (* comments *)
 and comment = parse
   "/*"      { incr depth; comment lexbuf }
-| "*/"      { decr depth; if depth > 0 then token lexbuf else token lexbuf }
+(* | "*/"      { decr depth; if depth > 0 then token lexbuf else token lexbuf } *)
 | newline   { incr lineno; comment lexbuf }
