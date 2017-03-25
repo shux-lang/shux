@@ -118,7 +118,7 @@ rule token = parse
 (* literals *)
 | "true" | "false" as tf  { BOOL_LIT(bool_of_string tf) } 
 | int as i                { INT_LIT(int_of_string i) }
-| float as f              { FLOAT_LIT(float_of_string f) }
+| float as f              { FLOAT_LIT(Float.of_string f) }
 | string                  { STRING_LIT(unescape s)}
 | id as n                 { ID(n) }
 | '_'                     { UNDERSCORE }
