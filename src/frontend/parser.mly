@@ -158,7 +158,7 @@ unary_expr:
 
 postfix_expr:
   | postfix_expr LBRACK expr RBRACK       { Binop($1, Index, $3) }
-  | ID LPAREN actuals RPAREN    { Call(Some($1), $3) }
+  | ID LPAREN actuals RPAREN              { Call(Some($1), $3) }
   | postfix_expr DOT id                   { Binop($1, StructMember, $3) }
   | primary_expr                          { $1 }
 
