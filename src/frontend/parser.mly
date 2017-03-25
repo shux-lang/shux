@@ -52,6 +52,8 @@ let_decls:
 let_decl:
   | LET typ ID ASSIGN expr SEMI             { LetDecl( (Bind (Immutable, $2, $3), $5)) }
   | STRUCT ID LBRACE struct_def RBRACE      { StructDef({sname = $2; fields = $4}) }
+  | EXTERN ID RPAREN formals LPAREN ret_typ { ExternDecl({fname = $2; ret_typ = $6;
+                                              formals = $4;}) }
 
 struct_def:
   | struct_def val_decl SEMI                { $2::$1 }

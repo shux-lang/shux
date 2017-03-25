@@ -76,9 +76,17 @@ type struct_def = {
   fields    : bind list;
 }
 
+type extern_decl = {
+  fname     : string;
+  ret_typ   : typ option;
+  formals   : bind list;
+}
+
+
 type let_decl =
   | LetDecl of bind * expr
   | StructDef of struct_def
+  | ExternDecl of extern_decl
 
 type ns_decl = {
   nname     : string;
