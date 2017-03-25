@@ -1,0 +1,3 @@
+
+let check ast = 
+       ast 

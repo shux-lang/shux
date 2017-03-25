@@ -1,8 +1,7 @@
 {
   open Core.Std
-
   open Parser
-  
+  open Exceptions
   let lineno = ref 1
   let depth = ref 0
   let filename = ref "" (* what do with this *)
@@ -118,11 +117,10 @@ rule token = parse
 (* literals *)
   | "true" | "false" as tf  { BOOL_LIT(bool_of_string tf) } 
   | int as i                { INT_LIT(int_of_string i) }
-  | float as f              { FLOAT_LIT(float_of_string f) }
+  | float as f              { FLOAT_LIT(Float.of_string f) }
   | string                  { STRING_LIT(unescape s)}
   | id as n                 { ID(n) }
   | '_'                     { UNDERSCORE }
-
 (* ye good olde *)
   | eof       { EOF }
 
