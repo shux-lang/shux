@@ -33,7 +33,7 @@ let id = alpha (alpha | digit | '_')*
 rule token = parse
   whitespace  { token lexbuf }
 | newline     { incr lineno; token lexbuf }
-| "/*"    { incr depth; comment lexbuf }
+| "/*"        { incr depth; comment lexbuf }
 
 (* parens *)
 | '('     { LPAREN } 
@@ -134,5 +134,5 @@ rule token = parse
 (* comments *)
 and comment = parse
   "/*"      { incr depth; comment lexbuf }
-| "*/"      { decr depth; if depth > 0 then token lexbuf else token lexbuf }
+| "*/"      { decr depth; if !depth > 0 then token lexbuf else token lexbuf }
 | newline   { incr lineno; comment lexbuf }
