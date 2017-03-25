@@ -262,7 +262,7 @@ primitive_t:
   | vector_t                                { $1 }
 
 vector_t:
-  | VECTOR_T LPAREN INT_LIT RPAREN          { Vector($3) }
+  | VECTOR_T LT INT_LIT GT                  { Vector($3) }
 
 fn_type:
   | GN                                      { Kn }
