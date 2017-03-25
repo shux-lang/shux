@@ -5,9 +5,9 @@ type typ =
   | Float
   | String
   | Bool
-  | Struct of string
+  | Struct of string (* struct identifier *)
   | Array of typ
-  | Vector of int
+  | Vector of int (* number of elements in vector *)
 
 type mut =
   | Mutable
@@ -27,7 +27,7 @@ type bin_op =
   | Filter | Map
   | Index | Lookback
   | For | Do
-  | StructMember
+  | Access
 
 type un_op =
   | LogNot | Neg | Pos
@@ -44,7 +44,7 @@ and lit =
   | LitBool of bool
   | LitStr of string
   | LitKn of lambda
-  | LitVector of expr list (* shouldn't we be able to construct vectors dynamically? *)
+  | LitVector of expr list
   | LitArray of expr list (* include optional type annotation here? *)
   | LitStruct of struct_field list (* should this be more sophisticated? *)
 
@@ -54,7 +54,7 @@ and expr =
   | Lit of lit
   | Id of string
   | Binop of expr * bin_op * expr
-  | Call of expr option * expr list
+  | Call of string option * expr list
   | Uniop of un_op * expr
   | Cond of expr * expr * expr (* technically Ternop *)
 
@@ -65,7 +65,7 @@ and stmt =
 type fn_decl = {
   fname     : string;
   fn_typ    : fn_typ;
-  ret_typ   : typ;
+  ret_typ   : typ option;
   formals   : bind list;
   body      : stmt list;
   ret_expr  : expr option;
@@ -76,9 +76,17 @@ type struct_def = {
   fields    : bind list;
 }
 
+type extern_decl = {
+  fname     : string;
+  ret_typ   : typ option;
+  formals   : bind list;
+}
+
+
 type let_decl =
   | LetDecl of bind * expr
   | StructDef of struct_def
+  | ExternDecl of extern_decl
 
 type ns_decl = {
   nname     : string;
