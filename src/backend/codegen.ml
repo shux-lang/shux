@@ -112,4 +112,5 @@ let translate (namespaces, globals, functions) =
   (* End of build_function_body *)
 
   List.iter build_function_body functions;
+  Llvm_analysis.assert_valid_module the_module; (* check correctness *) 
   the_module
