@@ -4,10 +4,11 @@ OBJS=exceptions.cmo scanner.cmo parser.cmo semant.cmo codegen.cmo
 INCLUDE=-I ../src/include -g
 TARGETS=$(COMPILER)
 OCAML_FLAGS=$(INCLUDE) $(OBJS)
+EXAMPLES=../examples
 COMPILER=shuxc
 SYMLINK=ln -s -f
 
-all: symlink $(OBJS) $(TARGETS)
+all: clean symlink $(OBJS) $(TARGETS)
 
 hello: $(COMPILER) $(EXAMPLES)/hello_world.shux
 	./shuxc $(EXAMPLES)/hello_world.shux
