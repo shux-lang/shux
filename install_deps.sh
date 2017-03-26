@@ -92,6 +92,12 @@ elif [[ "$platform" == 'osx' ]]; then
     fi
 fi
 
+if choice 'Have you installed llvm-3.6-dev on Ubuntu?'; then
+    yes | echo 'Great, continuing with opam setup...' || true
+else
+    die 'Please install before attempting to run the script again.'
+fi
+
 # Configure OPAM
 if [[ -x "$HOME/.opam/" ]]; then
     echo 'opam init has already run. Skipping.'
@@ -110,8 +116,8 @@ fi
 # Add OPAM stuff to current session
 eval `opam config env`
 
-echo 'Installing core and utop.'
-opam install core utop
+echo 'Installing package dependencies'
+opam install core utop ocamlfind "llvm=3.6"
 
 echo 'Please add the following to ~/.ocamlinit:'
 echo ''

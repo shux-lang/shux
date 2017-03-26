@@ -11,6 +11,9 @@ all: $(OBJS) $(TARGETS)
 %: %.ml $(OBJS) $(EXT_OBJS)
 	$(OCAML) $(OCAML_FLAGS) -o $@ $(LIBS) $<
 
+hello: $(COMPILER) $(EXAMPLES)/hello_world.shux
+	./shuxc $(EXAMPLES)/hello_world.shux
+
 shuxc:
 
 scanner.ml: scanner.mll exceptions.cmo
