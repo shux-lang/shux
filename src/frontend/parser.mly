@@ -85,6 +85,7 @@ ret_expr:
 statements:                 
   | statements statement SEMI               { $2::$1 }
   | statement SEMI                          { [$1] } 
+	| /* nothing */														{ [] }
 
 statement:
   | decl                                    { $1 }

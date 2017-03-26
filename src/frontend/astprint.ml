@@ -84,13 +84,13 @@ and string_of_expr = function
  | Binop(e1, o, e2) -> string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
  | Call(s, el) -> string_of_opt nop s ^ "(" ^ string_of_list string_of_expr el ", " ^ ")"
  | Uniop(u, e) -> string_of_unop u ^ string_of_expr e
- | Cond(e1, e2, e3) -> string_of_expr e1 ^ "?" ^ string_of_expr e2 ^ ":" ^ string_of_expr e3 (*ternary op *)
+ | Cond(e1, e2, e3) -> string_of_expr e1 ^ " ? (" ^ string_of_expr e2 ^ ") : (" ^ string_of_expr e3 ^ ")" (*ternary op *)
 
 let string_of_bind = function
   | Bind(mut, typ, id) -> string_of_mut mut ^ _string_of_typ typ ^ " " ^ id
 
 let string_of_vdecl bind expr = 
-	string_of_bind bind ^ string_of_expr expr
+	string_of_bind bind ^ " " ^ string_of_expr expr
 
 let string_of_stmt = function 
   | VDecl (bind, expr) -> string_of_opt (string_of_vdecl bind) expr ^ ";\n"
@@ -100,7 +100,7 @@ let string_of_fdecl fdecl =
 	string_of_fn_typ fdecl.fn_typ ^ " " ^ fdecl.fname ^
 	"(" ^ String.concat ", " (List.map string_of_bind fdecl.formals) ^ ") " ^
 	string_of_typ fdecl.ret_typ ^ "\n{\n" ^ 
-	String.concat "" (List.map string_of_stmt fdecl.body) ^ 
+	String.concat "\n" (List.map string_of_stmt fdecl.body) ^ 
 	string_of_opt string_of_expr fdecl.ret_expr ^
 	"\n}\n"
 
