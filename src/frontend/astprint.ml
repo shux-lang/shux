@@ -8,14 +8,14 @@ let string_of_opt f x =
 	| None -> ""  
 	| Some y -> f y
 
-let _string_of_typ = function
+let rec _string_of_typ = function
   | Int -> "int"
   | Float -> "float"
   | String -> "string"
   | Bool -> "bool" 
-  | Struct t -> "struct" (* we want to separate this later for type checking for structs *) 
-  | Array t -> "array" (*same here *)  
-  | Vector t -> "vector"
+  | Struct t -> "struct " ^ t 
+  | Array t -> (_string_of_typ t) ^ "[]"
+  | Vector t -> "vector<" ^ string_of_int(t) ^ ">"
 
 let string_of_typ x = string_of_opt _string_of_typ x
 
