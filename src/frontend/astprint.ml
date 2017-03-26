@@ -62,22 +62,24 @@ let string_of_mut = function
 	| Immutable -> ""
 	| Mutable -> "var"
 
-let rec string_of_lit = function
+
+let rec string_of_list l = String.concat ", " (List.map string_of_expr l)
+  
+and string_of_lit = function
 	| LitInt(l) -> string_of_int l
 	| LitFloat(l) -> string_of_float l
 	| LitBool(l) -> string_of_bool l
 	| LitStr(l) -> l
   | LitKn(l) -> ""
-  | LitVector(l) -> ""
-  | LitArray(l) -> "[" ^ String.concat ", " (List.map string_of_expr l) ^ "]"
+  | LitVector(l) -> "<" ^ string_of_list l ^ ">"
+  | LitArray(l) -> "[" ^ string_of_list l ^ "]"
   | LitStruct(l) -> ""
 
 and string_of_expr = function
  | Lit(l) -> string_of_lit l
  | Id(s) -> s
  | Binop(e1, o, e2) -> string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
- | Call(s, el) -> (string_of_opt (fun x -> x) s) ^ "(" ^
-			String.concat ", " (List.map string_of_expr el) ^ ")"
+ | Call(s, el) -> (string_of_opt (fun x -> x) s) ^ "(" ^ string_of_list el ^ ")"
  | Uniop(u, e) -> string_of_unop u ^ string_of_expr e
  | Cond(e1, e2, e3) -> string_of_expr e1 ^ "?" ^ string_of_expr e2 ^ ":" ^ string_of_expr e3 (*ternary op *)
 
