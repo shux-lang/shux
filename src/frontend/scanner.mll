@@ -131,6 +131,6 @@ rule token = parse
 (* comments *)
 and comment = parse
   | "/*"      { incr depth; comment lexbuf }
-  | "*/"      { decr depth; if !depth > 0 then token lexbuf else token lexbuf }
+  | "*/"      { decr depth; if !depth > 0 then comment lexbuf else token lexbuf }
   | newline   { incr lineno; comment lexbuf }
   | _         { comment lexbuf }
