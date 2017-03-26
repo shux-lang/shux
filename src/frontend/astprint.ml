@@ -1,6 +1,7 @@
 open Ast
 
 (* Pretty printing *)
+let nop = fun x -> x
 
 (* for option types *)
 let string_of_opt f x =
@@ -63,7 +64,7 @@ let string_of_mut = function
 	| Mutable -> "var"
 
 
-let rec string_of_list l = String.concat ", " (List.map string_of_expr l)
+let rec string_of_list f l = String.concat ", " (List.map f (List.map string_of_expr l))
   
 and string_of_lit = function
 	| LitInt(l) -> string_of_int l
@@ -71,15 +72,15 @@ and string_of_lit = function
 	| LitBool(l) -> string_of_bool l
 	| LitStr(l) -> l
   | LitKn(l) -> ""
-  | LitVector(l) -> "<" ^ string_of_list l ^ ">"
-  | LitArray(l) -> "[" ^ string_of_list l ^ "]"
+  | LitVector(l) -> "<" ^ string_of_list nop l ^ ">"
+  | LitArray(l) -> "[" ^ string_of_list nop l ^ "]"
   | LitStruct(l) -> ""
 
 and string_of_expr = function
  | Lit(l) -> string_of_lit l
  | Id(s) -> s
  | Binop(e1, o, e2) -> string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
- | Call(s, el) -> (string_of_opt (fun x -> x) s) ^ "(" ^ string_of_list el ^ ")"
+ | Call(s, el) -> (string_of_opt nop s) ^ "(" ^ string_of_list nop el ^ ")"
  | Uniop(u, e) -> string_of_unop u ^ string_of_expr e
  | Cond(e1, e2, e3) -> string_of_expr e1 ^ "?" ^ string_of_expr e2 ^ ":" ^ string_of_expr e3 (*ternary op *)
 
