@@ -45,6 +45,20 @@ let translate (namespaces, globals, functions) =
   List.fold_left function_decl StringMap.empty functions
   in
 
+  (* Fill in the body of the given function *)
+  let build_function_body fdecl = 
+    (* Prep work *)
+    let (the_function, _) = StringMap.find fdecl.A.fname function_decls in
+    let builder = L.builder_at_end context (L.entry_block the_function) in 
+    
+    let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder in 
 
+    (* Construct local variables, TODO later 
+      this is hard because we have mixed decl of bindings and exprs *)
 
+  ()
+  in
+  (* End of build_function_body *)
+
+  List.iter build_function_body functions;
   the_module
