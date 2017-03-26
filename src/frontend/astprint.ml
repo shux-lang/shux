@@ -4,8 +4,7 @@ open Ast
 let nop x = x
 
 (* for option types *)
-let string_of_opt f x =
-	match x with
+let string_of_opt f = function
 	| None -> ""  
 	| Some y -> f y
 
@@ -61,7 +60,7 @@ let string_of_unop = function
 
 let string_of_mut = function
 	| Immutable -> ""
-	| Mutable -> "var"
+	| Mutable -> "var "
 
 
 let string_of_list f l s = String.concat s (List.map f l)
@@ -87,9 +86,8 @@ and string_of_expr = function
  | Uniop(u, e) -> string_of_unop u ^ string_of_expr e
  | Cond(e1, e2, e3) -> string_of_expr e1 ^ "?" ^ string_of_expr e2 ^ ":" ^ string_of_expr e3 (*ternary op *)
 
-let string_of_bind bind =
-	match bind with Bind(mut, typ, id) ->
-	string_of_mut mut ^ _string_of_typ typ ^ id
+let string_of_bind = function
+  | Bind(mut, typ, id) -> string_of_mut mut ^ _string_of_typ typ ^ " " ^ id
 
 let string_of_vdecl bind expr = 
 	string_of_bind bind ^ string_of_expr expr
@@ -99,18 +97,19 @@ let string_of_stmt = function
   | Expr(expr) -> string_of_expr expr ^ ";\n"
 
 let string_of_fdecl fdecl =
-	string_of_fn_typ fdecl.fn_typ ^ " " ^ fdecl.fname ^ " " ^
-	"(" ^ String.concat ", " (List.map (fun b -> _string_of_typ (match b with Bind(mut, typ, id) -> typ)) fdecl.formals) ^ ")  " ^ 
+	string_of_fn_typ fdecl.fn_typ ^ " " ^ fdecl.fname ^
+	"(" ^ String.concat ", " (List.map string_of_bind fdecl.formals) ^ ") " ^
 	string_of_typ fdecl.ret_typ ^ "\n{\n" ^ 
 	String.concat "" (List.map string_of_stmt fdecl.body) ^ 
 	string_of_opt string_of_expr fdecl.ret_expr ^
 	"\n}\n"
 
 let string_of_let = function
-	| LetDecl(bind, expr) -> string_of_bind bind ^ " " ^ string_of_expr expr
+  | LetDecl(bind, expr) -> string_of_bind bind ^ " " ^ string_of_expr expr ^ ";"
 	| StructDef(s) -> "" (*TODO*) 
-	| ExternDecl(s) -> s.exfname ^ " " ^ string_of_typ s.exret_typ ^ " (" ^
-		String.concat ", " (List.map (fun b-> match b with Bind(mut, typ, id) -> id) s.exformals) ^ ") "
+	| ExternDecl(s) -> "extern " ^ s.exfname ^ "(" ^
+                      String.concat ", " (List.map string_of_bind s.exformals) ^ ") " ^ 
+                      string_of_typ s.exret_typ ^ ";"
 
 let string_of_program (ns_list, let_list, fn_list) =
 	(*TODO: ns_list *) 
