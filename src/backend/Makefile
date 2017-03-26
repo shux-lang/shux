@@ -1,6 +1,8 @@
 OCAML=ocamlfind ocamlc -linkpkg -package llvm -package llvm.analysis
 INCLUDE=-I ../include
-OCAML_FLAGS=$(INCLUDE)
+OCAML_FLAGS=$(INCLUDE) $(EXT_OBJS)
+FRONTEND=../frontend
+EXT_OBJS=$(FRONTEND)/ast.cmo
 HEADERS=
 OBJS=semant.cmo codegen.cmo
 TARGETS=$(HEADERS) $(OBJS)
