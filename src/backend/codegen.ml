@@ -6,14 +6,13 @@ module StringMap = Map.Make(String)
 let translate (namespaces, globals, functions) =
 	let context = L.global_context () in (* we only need a global data container *)
 	let the_module = L.create_module context "shux" (* Container *)
+  
   and i32_t  = L.i32_type  context
   and i8_t   = L.i8_type   context
   and i1_t = L.i1_type context 
   and void_t = L.void_type context in
 
-  (* All placeholders *)
-
-
+  (* TODO: Other than Int all are placeholders *)
   let ltype_of_typ = function
       A.Int -> i32_t
     | A.Float -> i32_t
@@ -21,8 +20,8 @@ let translate (namespaces, globals, functions) =
     | A.Bool -> i32_t
     | A.Struct struct_name -> i32_t
     | A.Array  element_type -> i32_t
-    | A.Vector count -> i32_t in
-
+    | A.Vector count -> i32_t
+  in
   let ltype_of_typ_opt = function 
       None -> void_t
     | Some y -> ltype_of_typ y in 
@@ -31,14 +30,13 @@ let translate (namespaces, globals, functions) =
   let printf_t = L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
   let printf_func = L.declare_function "printf" printf_t the_module in
 
-
   (* Define each function, including args and ret type *)
   let function_decls = 
     let function_decl map fdecl = 
       let function_name = fdecl.A.fname
       (* and function_type = fdecl.A.fn_typ *)
       and formal_types = 
-        Array.of_list []  (* empty formals for now *)
+        Array.of_list []  (* TODO: empty formals for now *)
       and return_type_opt = function
             None -> void_t (* whether void or optional, revising ast.mli, astprint.ml *)
           | Some y -> y in
@@ -62,7 +60,7 @@ let translate (namespaces, globals, functions) =
 
     (* Construct expr builders, only implementing Call now, Lit using placeholders *)
     let rec construct_expr builder = function
-        A.Lit i ->  (match i with 
+      | A.Lit i ->  (match i with 
                         A.LitInt j -> L.const_int i32_t j
                       | A.LitFloat j -> L.const_int i32_t 0
                       | A.LitBool b -> L.const_int i32_t 0
@@ -81,13 +79,27 @@ let translate (namespaces, globals, functions) =
                                                 | _ -> L.const_int i32_t 0
                                               )
                                  )
-      | A.Call (_, _) -> L.const_int i32_t 0 (* oh my gosh horrible *)
+      | A.Call (_, l) -> L.const_int i32_t 0 (* oh my gosh horrible *)
       | A.Uniop (unop, expr) -> L.const_int i32_t 0
       | A.Cond (expr_if, expr_val, expr_else) -> L.const_int i32_t 0
     in
     
     (* define the terminal adder for each basic block *)
-    
+    let add_terminal builder f = 
+      match L.block_terminator (L.insertion_block builder) with
+          Some _ -> ()
+        | None -> ignore (f builder) in
+
+    (* Construct stmt builders *)
+    let rec construct_stmt builder = function 
+      A.Block sl -> List.fold_left construct_stmt builder sl
+    | A.VDecl (binding, expr_opt) -> builder; (* TODO: implement variable bindings here *)
+    | A.Expr e -> ignore (construct_expr builder e); builder in
+
+    (* Build the code for each statement in the function *)
+    let builder = construct_stmt builder (A.Block fdecl.A.body) in
+
+
   ()
   in
   (* End of build_function_body *)

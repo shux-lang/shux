@@ -59,6 +59,7 @@ and expr =
   | Cond of expr * expr * expr (* technically Ternop *)
 
 and stmt =
+    Block of stmt list
   | VDecl of bind * expr option
   | Expr of expr
 
