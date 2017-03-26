@@ -51,9 +51,9 @@ let translate (namespaces, globals, functions) =
   let build_function_body fdecl = 
     (* Prep work *)
     let (the_function, _) = StringMap.find fdecl.A.fname function_decls in
-    let builder = L.builder_at_end context (L.entry_block the_function) in 
+    let builder_global = L.builder_at_end context (L.entry_block the_function) in 
     
-    let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder in 
+    let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder_global in 
 
     (* Construct local variables, TODO later 
       this is hard because we have mixed decl of bindings and exprs *)
@@ -92,15 +92,17 @@ let translate (namespaces, globals, functions) =
 
     (* Construct stmt builders *)
     let rec construct_stmt builder = function 
-      A.Block sl -> List.fold_left construct_stmt builder sl
-    | A.VDecl (binding, expr_opt) -> builder; (* TODO: implement variable bindings here *)
+      A.VDecl (binding, expr_opt) -> builder; (* TODO: implement variable bindings here *)
     | A.Expr e -> ignore (construct_expr builder e); builder in
 
-    (* Build the code for each statement in the function *)
+    (* Build the code for each statement in the function 
     let builder = construct_stmt builder (A.Block fdecl.A.body) in
-
-
-  ()
+    *)
+    let builder_global = List.fold_left construct_stmt builder_global fdecl.A.body in 
+    
+    (* Add a dummy return in builder here, TODO: make it take the value from fdecl.A.ret_expr*)
+    
+    add_terminal builder_global (L.build_ret (L.const_int (ltype_of_typ A.Int)0))
   in
   (* End of build_function_body *)
 
