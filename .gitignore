@@ -9,6 +9,7 @@ scanner.ml
 parser.output
 parser.ml
 parser.mli
+shuxc
 
 #nhc
 /src/version.ml
