@@ -71,7 +71,7 @@ fn_decls:
 fn_decl:
   | fn_type ID LPAREN formals RPAREN ret_typ 
     LBRACE statements ret_expr RBRACE       { {fname = $2; fn_typ = $1; ret_typ = $6;
-                                              formals = $4; body = $8; ret_expr = $9} } 
+                                              formals = $4; body = List.rev $8; ret_expr = $9} } 
 ret_typ:
   | typ                                     { Some($1) }
   | /* void return type */                  { None }
