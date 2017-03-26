@@ -70,7 +70,7 @@ and string_of_lit = function
 	| LitInt(l) -> string_of_int l
 	| LitFloat(l) -> string_of_float l
 	| LitBool(l) -> string_of_bool l
-	| LitStr(l) -> l
+	| LitStr(l) -> "\"" ^ l ^ "\""
   | LitKn(l) -> ""
   | LitVector(l) -> "<" ^ string_of_list nop l ^ ">"
   | LitArray(l) -> "[" ^ string_of_list nop l ^ "]"
