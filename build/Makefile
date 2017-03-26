@@ -12,7 +12,8 @@ SYMLINK=ln -s -f
 all: clean symlink $(OBJS) $(TARGETS)
 
 hello: $(COMPILER) $(EXAMPLES)/hello_world.shux
-	./shuxc $(EXAMPLES)/hello_world.shux
+	./shuxc $(EXAMPLES)/hello_world.shux > hello_world.ll
+	lli hello_world.ll
 
 shuxc: 
 
