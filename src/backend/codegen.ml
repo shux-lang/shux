@@ -26,6 +26,8 @@ let translate (namespaces, globals, functions) =
       None -> void_t
     | Some y -> ltype_of_typ y in 
 
+  let global_var_count = 0 in
+
   (* Declare printf(), which later we will change from built-in to linked extern function *)
   let printf_t = L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
   let printf_func = L.declare_function "printf" printf_t the_module in
@@ -53,7 +55,10 @@ let translate (namespaces, globals, functions) =
     let (the_function, _) = StringMap.find fdecl.A.fname function_decls in
     let builder_global = L.builder_at_end context (L.entry_block the_function) in 
     
+    (*
     let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder_global in 
+    *)
+    let format_str = L.build_global_stringptr "%s\n" "fmt" builder_global in 
 
     (* Construct local variables, TODO later 
       this is hard because we have mixed decl of bindings and exprs *)
@@ -68,14 +73,14 @@ let translate (namespaces, globals, functions) =
                       | A.LitVector elist -> L.const_int i32_t 0
                       | A.LitArray elist -> L.const_int i32_t 0
                       | A.LitStruct sflist -> L.const_int i32_t 0
-                      | A.LitStr str -> L.const_int i32_t 0
+                      | A.LitStr str -> ignore(global_var_count = global_var_count+1); L.build_global_stringptr str ("mystring"^(string_of_int global_var_count)) builder
                     )
       | A.Id str -> L.const_int i32_t 0
       | A.Binop (expr, binop, expr2) -> L.const_int i32_t 0
       | A.Call (func, [expr]) -> (match func with
                                     None -> L.const_int i32_t 0
                                   | Some y -> (match y with 
-                                                "print" -> L.build_call printf_func [| int_format_str; (construct_expr builder expr) |] "printf" builder
+                                                "print" -> L.build_call printf_func [| format_str; (construct_expr builder expr) |] "printf" builder
                                                 | _ -> L.const_int i32_t 0
                                               )
                                  )
