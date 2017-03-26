@@ -1,6 +1,6 @@
 extern print(string s);
 
-kn ain() int {
+kn main() int {
 	print("hello world!\n");
 	0
 }
