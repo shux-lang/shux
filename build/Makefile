@@ -1,7 +1,7 @@
 CAMLC=ocamlc
 OCAML=ocamlfind $(CAMLC) -linkpkg -thread -package core -package llvm -package llvm.analysis
 OBJS=exceptions.cmo scanner.cmo parser.cmo semant.cmo codegen.cmo
-INCLUDE=-I ../include -I $(BACKEND) -g
+INCLUDE=-I ../include -g
 TARGETS=$(COMPILER)
 OCAML_FLAGS=$(INCLUDE) $(OBJS)
 COMPILER=shuxc

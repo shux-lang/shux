@@ -1,1 +1,1 @@
-../src/frontend/shuxc.ml
+../src/shuxc.ml
