@@ -307,7 +307,7 @@ array_lit:
   | LBRACK RBRACK                           { LitArray([]) }
 
 vector_lit:
-  | LPAREN lit_elements COMMA expr RPAREN   { LitVector($4 :: List.rev $2) }
+  | LPAREN lit_elements COMMA expr RPAREN   { LitVector(List.rev ($4 :: $2)) }
 
 lit_elements:
   | lit_elements COMMA expr                 { $3::$1 }
