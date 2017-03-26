@@ -13,8 +13,8 @@ let _ =
 		else 
 			stdin
 		in
-	let lexbuf = Lexing.from_channel cin in
-	let ast = Parser.program Scanner.token lexbuf in
+		let lexbuf = Lexing.from_channel cin in
+		let ast = Parser.program Scanner.token lexbuf in
     let sast = Semant.check ast in 
     let code = Codegen.translate sast in
     Llvm_analysis.assert_valid_module code; (* we can do these outside *) 
