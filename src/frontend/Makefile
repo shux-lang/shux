@@ -1,6 +1,7 @@
 CAMLC=ocamlc
 OCAML=ocamlfind $(CAMLC) -linkpkg -thread -package core -package llvm -package llvm.analysis
 BACKEND=../backend
+EXAMPLES=../../examples
 OBJS=exceptions.cmo scanner.cmo parser.cmo
 EXT_OBJS=$(BACKEND)/semant.cmo $(BACKEND)/codegen.cmo
 INCLUDE=-I ../include -I $(BACKEND) -g
@@ -12,6 +13,9 @@ all: $(OBJS) $(TARGETS)
 
 %: %.ml $(OBJS) $(EXT_OBJS)
 	$(OCAML) $(OCAML_FLAGS) -o $@ $(LIBS) $<
+
+hello: $(COMPILER) $(EXAMPLES)/hello_world.shux
+	./shuxc $(EXAMPLES)/hello_world.shux
 
 shuxc:
 
