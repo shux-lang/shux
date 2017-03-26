@@ -77,9 +77,9 @@ type struct_def = {
 }
 
 type extern_decl = {
-  fname     : string;
-  ret_typ   : typ option;
-  formals   : bind list;
+  exfname     : string;
+  exret_typ   : typ option;
+  exformals   : bind list;
 }
 
 
