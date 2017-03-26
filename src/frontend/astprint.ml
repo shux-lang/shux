@@ -86,8 +86,8 @@ let string_of_vdecl bind expr =
 	string_of_bind bind ^ string_of_expr expr
 
 let string_of_stmt = function 
-	| VDecl (bind, expr) -> string_of_opt (string_of_vdecl bind) expr
-	| Expr(expr) -> string_of_expr expr
+  | VDecl (bind, expr) -> string_of_opt (string_of_vdecl bind) expr ^ ";\n"
+  | Expr(expr) -> string_of_expr expr ^ ";\n"
 
 (* TODO: Lambda *) 
 (* TODO: Struct field *)
