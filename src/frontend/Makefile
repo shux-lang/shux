@@ -3,7 +3,7 @@ OCAML=ocamlfind $(CAMLC) -linkpkg -thread -package core -package llvm -package l
 BACKEND=../backend
 OBJS=exceptions.cmo scanner.cmo parser.cmo
 EXT_OBJS=$(BACKEND)/semant.cmo $(BACKEND)/codegen.cmo
-INCLUDE=-I ../include -I $(BACKEND)
+INCLUDE=-I ../include -I $(BACKEND) -g
 TARGETS=$(COMPILER)
 OCAML_FLAGS=$(INCLUDE) $(OBJS) $(EXT_OBJS)
 COMPILER=shuxc
@@ -13,7 +13,7 @@ all: $(OBJS) $(TARGETS)
 %: %.ml $(OBJS) $(EXT_OBJS)
 	$(OCAML) $(OCAML_FLAGS) -o $@ $(LIBS) $<
 
-shuxc: $(COMPILER)
+shuxc:
 
 scanner.ml: scanner.mll exceptions.cmo
 	ocamllex scanner.mll
