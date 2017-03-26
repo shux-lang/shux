@@ -1,7 +1,7 @@
 open Ast
 
 (* Pretty printing *)
-let nop = fun x -> x
+let nop x = x
 
 (* for option types *)
 let string_of_opt f x =
@@ -98,10 +98,6 @@ let string_of_stmt = function
   | VDecl (bind, expr) -> string_of_opt (string_of_vdecl bind) expr ^ ";\n"
   | Expr(expr) -> string_of_expr expr ^ ";\n"
 
-(* TODO: Lambda *) 
-(* TODO: Struct field *)
-
-
 let string_of_fdecl fdecl =
 	string_of_fn_typ fdecl.fn_typ ^ " " ^ fdecl.fname ^ " " ^
 	"(" ^ String.concat ", " (List.map (fun b -> _string_of_typ (match b with Bind(mut, typ, id) -> typ)) fdecl.formals) ^ ")  " ^ 
@@ -118,5 +114,5 @@ let string_of_let = function
 
 let string_of_program (ns_list, let_list, fn_list) =
 	(*TODO: ns_list *) 
-	String.concat "" (List.map string_of_let let_list) ^ "\n" ^
+	String.concat "\n" (List.map string_of_let let_list) ^ "\n" ^
 	String.concat "\n" (List.map string_of_fdecl fn_list) 
