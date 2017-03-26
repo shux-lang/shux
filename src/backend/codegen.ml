@@ -14,7 +14,7 @@ let translate (namespaces, globals, functions) =
 
   (* TODO: Other than Int all are placeholders *)
   let ltype_of_typ = function
-      A.Int -> i32_t
+    | A.Int -> i32_t
     | A.Float -> i32_t
     | A.String -> i32_t
     | A.Bool -> i32_t
@@ -23,7 +23,7 @@ let translate (namespaces, globals, functions) =
     | A.Vector count -> i32_t
   in
   let ltype_of_typ_opt = function 
-      None -> void_t
+    | None -> void_t
     | Some y -> ltype_of_typ y in 
 
   let global_var_count = 0 in
@@ -66,7 +66,7 @@ let translate (namespaces, globals, functions) =
     (* Construct expr builders, only implementing Call now, Lit using placeholders *)
     let rec construct_expr builder = function
       | A.Lit i ->  (match i with 
-                        A.LitInt j -> L.const_int i32_t j
+                      | A.LitInt j -> L.const_int i32_t j
                       | A.LitFloat j -> L.const_int i32_t 0
                       | A.LitBool b -> L.const_int i32_t 0
                       | A.LitKn l-> L.const_int i32_t 0
@@ -78,9 +78,9 @@ let translate (namespaces, globals, functions) =
       | A.Id str -> L.const_int i32_t 0
       | A.Binop (expr, binop, expr2) -> L.const_int i32_t 0
       | A.Call (func, [expr]) -> (match func with
-                                    None -> L.const_int i32_t 0
+                                  | None -> L.const_int i32_t 0
                                   | Some y -> (match y with 
-                                                "print" -> L.build_call printf_func [| format_str; (construct_expr builder expr) |] "printf" builder
+                                                | "print" -> L.build_call printf_func [| format_str; (construct_expr builder expr) |] "printf" builder
                                                 | _ -> L.const_int i32_t 0
                                               )
                                  )
@@ -92,12 +92,12 @@ let translate (namespaces, globals, functions) =
     (* define the terminal adder for each basic block *)
     let add_terminal builder f = 
       match L.block_terminator (L.insertion_block builder) with
-          Some _ -> ()
+        | Some _ -> ()
         | None -> ignore (f builder) in
 
     (* Construct stmt builders *)
     let rec construct_stmt builder = function 
-      A.VDecl (binding, expr_opt) -> builder; (* TODO: implement variable bindings here *)
+    | A.VDecl (binding, expr_opt) -> builder; (* TODO: implement variable bindings here *)
     | A.Expr e -> ignore (construct_expr builder e); builder in
 
     (* Build the code for each statement in the function 
