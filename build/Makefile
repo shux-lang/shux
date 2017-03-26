@@ -1,6 +1,7 @@
 CAMLC=ocamlc
 OCAML=ocamlfind $(CAMLC) -linkpkg -thread -package core -package llvm -package llvm.analysis
-OBJS=exceptions.cmo scanner.cmo parser.cmo semant.cmo codegen.cmo
+OBJS=exceptions.cmo astprint.cmo scanner.cmo parser.cmo semant.cmo codegen.cmo
+EXAMPLES=../examples
 INCLUDE=-I ../src/include -g
 TARGETS=$(COMPILER)
 OCAML_FLAGS=$(INCLUDE) $(OBJS)
@@ -41,6 +42,7 @@ symlink:
 	$(SYMLINK) ../src/frontend/scanner.mll   	scanner.mll
 	$(SYMLINK) ../src/backend/semant.ml     	semant.ml
 	$(SYMLINK) ../src/shuxc.ml 								shuxc.ml
+	$(SYMLINK) ../src/frontend/astprint.ml		astprint.ml
 
 clean:
 	rm -rf *.* shuxc
@@ -60,4 +62,4 @@ codegen.cmo:
 codegen.cmx:
 shuxc.cmo:
 shuxc.cmx:
-
+astprint.cmo:
