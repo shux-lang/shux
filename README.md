@@ -15,7 +15,7 @@ Smoothed Particle Hydrodynamics will henceforth be the bane of our existence.
 
 Run the `install_deps.sh` script to set up submodules, install OCaml, and install third-party libraries.
 
-This script is maintained on macOS 10.12 Sierra, although it will probably work on Ubuntu 14/16.x,
+This script is maintained on Ubuntu 15.04, although it will probably work on Ubuntu 14/16.x,
 macOS 10.10+, and Debian as well.
 
 Once you have the dependencies, just `cd` into the directory you want and `make`.
