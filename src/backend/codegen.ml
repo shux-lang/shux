@@ -4,8 +4,8 @@ module A = Ast
 module StringMap = Map.Make(String)
 
 let translate (namespaces, globals, functions) =
-	let context = L.global_context () in
-	let the_module = L.create_module context "shux"
+	let context = L.global_context () in (* we only need a global data container *)
+	let the_module = L.create_module context "shux" (* Container *)
   and i32_t  = L.i32_type  context
   and i8_t   = L.i8_type   context
   and i1_t = L.i1_type context 
@@ -22,6 +22,7 @@ let translate (namespaces, globals, functions) =
     | A.Struct struct_name -> i32_t
     | A.Array  element_type -> i32_t
     | A.Vector count -> i32_t in
+
   let ltype_of_typ_opt = function 
       None -> void_t
     | Some y -> ltype_of_typ y in 
@@ -59,13 +60,34 @@ let translate (namespaces, globals, functions) =
     (* Construct local variables, TODO later 
       this is hard because we have mixed decl of bindings and exprs *)
 
-    (*
+    (* Construct expr builders, only implementing Call now, Lit using placeholders *)
     let rec construct_expr builder = function
-      A.Lit i -> (match i with
-                    A.LitInt -> L.const_int i32_t i
-                    A.LitFlaot -> L.const_float 
-                 )
-    *)
+        A.Lit i ->  (match i with 
+                        A.LitInt j -> L.const_int i32_t j
+                      | A.LitFloat j -> L.const_int i32_t 0
+                      | A.LitBool b -> L.const_int i32_t 0
+                      | A.LitKn l-> L.const_int i32_t 0
+                      | A.LitVector elist -> L.const_int i32_t 0
+                      | A.LitArray elist -> L.const_int i32_t 0
+                      | A.LitStruct sflist -> L.const_int i32_t 0
+                      | A.LitStr str -> L.const_int i32_t 0
+                    )
+      | A.Id str -> L.const_int i32_t 0
+      | A.Binop (expr, binop, expr2) -> L.const_int i32_t 0
+      | A.Call (func, [expr]) -> (match func with
+                                    None -> L.const_int i32_t 0
+                                  | Some y -> (match y with 
+                                                "print" -> L.build_call printf_func [| int_format_str; (construct_expr builder expr) |] "printf" builder
+                                                | _ -> L.const_int i32_t 0
+                                              )
+                                 )
+      | A.Call (_, _) -> L.const_int i32_t 0 (* oh my gosh horrible *)
+      | A.Uniop (unop, expr) -> L.const_int i32_t 0
+      | A.Cond (expr_if, expr_val, expr_else) -> L.const_int i32_t 0
+    in
+    
+    (* define the terminal adder for each basic block *)
+    
   ()
   in
   (* End of build_function_body *)
