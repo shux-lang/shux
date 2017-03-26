@@ -62,17 +62,17 @@ let string_of_mut = function
 	| Immutable -> ""
 	| Mutable -> "var"
 
-let string_of_lit = function
+let rec string_of_lit = function
 	| LitInt(l) -> string_of_int l
 	| LitFloat(l) -> string_of_float l
 	| LitBool(l) -> string_of_bool l
 	| LitStr(l) -> l
   | LitKn(l) -> ""
   | LitVector(l) -> ""
-  | LitArray(l) -> ""
+  | LitArray(l) -> "[" ^ String.concat ", " (List.map string_of_expr l) ^ "]"
   | LitStruct(l) -> ""
 
-let rec string_of_expr = function
+and string_of_expr = function
  | Lit(l) -> string_of_lit l
  | Id(s) -> s
  | Binop(e1, o, e2) -> string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
