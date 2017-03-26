@@ -67,7 +67,10 @@ let string_of_lit = function
 	| LitFloat(l) -> string_of_float l
 	| LitBool(l) -> string_of_bool l
 	| LitStr(l) -> l
-	| _ -> "" (* for now not going to go crazy on literals. TODO: other lits 🔥 *) 
+  | LitKn(l) -> ""
+  | LitVector(l) -> ""
+  | LitArray(l) -> ""
+  | LitStruct(l) -> ""
 
 let rec string_of_expr = function
  | Lit(l) -> string_of_lit l
