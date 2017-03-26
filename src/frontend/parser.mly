@@ -72,6 +72,9 @@ fn_decl:
   | fn_type ID LPAREN formals RPAREN ret_typ 
     LBRACE statements ret_expr RBRACE       { {fname = $2; fn_typ = $1; ret_typ = $6;
                                               formals = $4; body = List.rev $8; ret_expr = $9} } 
+  | fn_type ID LPAREN formals RPAREN ret_typ 
+    LBRACE ret_expr RBRACE                  { {fname = $2; fn_typ = $1; ret_typ = $6;
+                                              formals = $4; body = []; ret_expr = $8} } 
 ret_typ:
   | typ                                     { Some($1) }
   | /* void return type */                  { None }
@@ -85,7 +88,6 @@ ret_expr:
 statements:                 
   | statements statement SEMI               { $2::$1 }
   | statement SEMI                          { [$1] } 
-	| /* nothing */														{ [] }
 
 statement:
   | decl                                    { $1 }
@@ -122,7 +124,9 @@ kn:
 
 lambda:
   | LPAREN formals RPAREN FUNC 
-    LBRACE statements ret_expr RBRACE       { LitKn({formals = $2; body = $6; ret_expr = $7}) } 
+    LBRACE statements ret_expr RBRACE       { LitKn({formals = $2; body = List.rev $6; ret_expr = $7}) } 
+  | LPAREN formals RPAREN FUNC 
+    LBRACE ret_expr RBRACE                  { LitKn({formals = $2; body = []; ret_expr = $6}) } 
 
 iter_expr:
   | iter_type unit_expr gn_call             { Binop($2, $1, $3) }
