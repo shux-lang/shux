@@ -28,7 +28,7 @@ program:
 
 /* namespace declaration rules */
 ns_section:
-  | ns_decls                                { $1 }
+  | ns_decls                                { List.rev $1 }
   | /* nothing */                           { [] }
 
 ns_decls:
@@ -41,7 +41,7 @@ ns_decl:
 
 /* let declaration rules */
 let_section:
-  | let_decls                               { $1 }
+  | let_decls                               { List.rev $1 }
   | /* nothing */                           { [] }
 
 let_decls:
@@ -50,7 +50,7 @@ let_decls:
 
 let_decl:
   | LET typ ID ASSIGN expr SEMI             { LetDecl((Bind(Immutable, $2, $3), $5)) }
-  | STRUCT ID LBRACE struct_def RBRACE      { StructDef({sname = $2; fields = $4}) }
+  | STRUCT ID LBRACE struct_def RBRACE      { StructDef({sname = $2; fields = List.rev $4}) }
   | EXTERN ID LPAREN formals RPAREN 
     ret_typ SEMI                            { ExternDecl({exfname = $2; exret_typ = $6;
                                               exformals = $4;}) }
@@ -62,7 +62,7 @@ struct_def:
 
 /* function declaration rules */
 fn_section:
-  | fn_decls                                { $1 }
+  | fn_decls                                { List.rev $1 }
 
 fn_decls: 
   | fn_decls fn_decl                        { $2::$1 }
@@ -85,6 +85,7 @@ ret_expr:
 statements:                 
   | statements statement SEMI               { $2::$1 }
   | statement SEMI                          { [$1] } 
+	| /* nothing */														{ [] }
 
 statement:
   | decl                                    { $1 }
@@ -303,11 +304,11 @@ struct_lit_field:
   | DOT ID ASSIGN expr                      { StructField($2, $4) }
 
 array_lit:
-  | LBRACK lit_elements RBRACK              { LitArray($2) }
+  | LBRACK lit_elements RBRACK              { LitArray(List.rev $2) }
   | LBRACK RBRACK                           { LitArray([]) }
 
 vector_lit:
-  | LPAREN lit_elements COMMA expr RPAREN   { LitVector($4::$2) }
+  | LPAREN lit_elements COMMA expr RPAREN   { LitVector(List.rev ($4 :: $2)) }
 
 lit_elements:
   | lit_elements COMMA expr                 { $3::$1 }

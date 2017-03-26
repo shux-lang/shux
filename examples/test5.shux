@@ -1,0 +1,4 @@
+/* technically this should compile fine but there's something wrong with it */ 
+kn main() int {
+	0
+}
