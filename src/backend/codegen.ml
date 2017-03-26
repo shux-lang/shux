@@ -13,6 +13,7 @@ let translate (namespaces, globals, functions) =
 
   (* All placeholders *)
 
+
   let ltype_of_typ = function
       A.Int -> i32_t
     | A.Float -> i32_t
@@ -20,8 +21,10 @@ let translate (namespaces, globals, functions) =
     | A.Bool -> i32_t
     | A.Struct struct_name -> i32_t
     | A.Array  element_type -> i32_t
-    | A.Vector count -> i32_t
-    | A.Void -> void_t in
+    | A.Vector count -> i32_t in
+  let ltype_of_typ_opt = function 
+      None -> void_t
+    | Some y -> ltype_of_typ y in 
 
   (* Declare printf(), which later we will change from built-in to linked extern function *)
   let printf_t = L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
@@ -36,10 +39,10 @@ let translate (namespaces, globals, functions) =
       and formal_types = 
         Array.of_list []  (* empty formals for now *)
       and return_type_opt = function
-            None -> A.Void (* whether void or optional, revising ast.mli, astprint.ml *)
+            None -> void_t (* whether void or optional, revising ast.mli, astprint.ml *)
           | Some y -> y in
       let function_sign_type = 
-        L.function_type (ltype_of_typ (return_type_opt fdecl.A.ret_typ)) formal_types in 
+        L.function_type (ltype_of_typ_opt fdecl.A.ret_typ) formal_types in 
       StringMap.add function_name (L.define_function function_name function_sign_type the_module, fdecl) map
     in
   List.fold_left function_decl StringMap.empty functions
@@ -56,6 +59,13 @@ let translate (namespaces, globals, functions) =
     (* Construct local variables, TODO later 
       this is hard because we have mixed decl of bindings and exprs *)
 
+    (*
+    let rec construct_expr builder = function
+      A.Lit i -> (match i with
+                    A.LitInt -> L.const_int i32_t i
+                    A.LitFlaot -> L.const_float 
+                 )
+    *)
   ()
   in
   (* End of build_function_body *)

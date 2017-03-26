@@ -8,7 +8,6 @@ type typ =
   | Struct of string (* struct identifier *)
   | Array of typ
   | Vector of int (* number of elements in vector *)
-  | Void (* ANDYTODO: review this *)
 
 type mut =
   | Mutable
