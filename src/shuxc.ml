@@ -5,6 +5,7 @@ open Semant
 open Llvm
 open Codegen
 open Printf 
+open Astprint
 
 let _ = 
 	let cin  = 
@@ -15,7 +16,8 @@ let _ =
 		in
 		let lexbuf = Lexing.from_channel cin in
 		let ast = Parser.program Scanner.token lexbuf in
-    let sast = Semant.check ast in 
+    let sast = Semant.check ast in
+			print_string (Astprint.string_of_program sast);  
     let code = Codegen.translate sast in
     Llvm_analysis.assert_valid_module code; (* we can do these outside *) 
     print_string (Llvm.string_of_llmodule code)

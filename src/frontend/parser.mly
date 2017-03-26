@@ -273,8 +273,8 @@ vector_t:
   | VECTOR_T LT INT_LIT GT                  { Vector($3) }
 
 fn_type:
-  | GN                                      { Kn }
-  | KN                                      { Gn }
+  | GN                                      { Gn }
+  | KN                                      { Kn }
 
 decl_mod:
   | VAR                                     { Mutable }
