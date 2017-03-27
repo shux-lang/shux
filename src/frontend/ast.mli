@@ -82,7 +82,6 @@ type extern_decl = {
   exformals   : bind list;
 }
 
-
 type let_decl =
   | LetDecl of bind * expr
   | StructDef of struct_def
