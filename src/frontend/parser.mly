@@ -124,9 +124,9 @@ kn:
 
 lambda:
   | LPAREN formals RPAREN FUNC 
-    LBRACE statements ret_expr RBRACE       { LitKn({formals = $2; body = List.rev $6; ret_expr = $7}) } 
+    LBRACE statements ret_expr RBRACE       { LitKn({lformals = $2; lbody = List.rev $6; lret_expr = $7}) } 
   | LPAREN formals RPAREN FUNC 
-    LBRACE ret_expr RBRACE                  { LitKn({formals = $2; body = []; ret_expr = $6}) } 
+    LBRACE ret_expr RBRACE                  { LitKn({lformals = $2; lbody = []; lret_expr = $6}) } 
 
 iter_expr:
   | iter_type unit_expr gn_call             { Binop($2, $1, $3) }
