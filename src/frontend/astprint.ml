@@ -93,13 +93,18 @@ let string_of_mut = function
   | Immutable -> ""
   | Mutable -> "var "
 
+let string_of_bind = function
+  | Bind(mut, typ, id) -> string_of_mut mut ^ _string_of_typ typ ^ " " ^ id
+
 let string_of_list f l o s c e =
   match (List.map f l) with
   | [] -> if e then o ^ c else ""
   | l -> o ^ String.concat s l ^ c
 
 let string_of_struct_field f = function
-  | StructField(n, e) -> "\t" ^ n ^ " = " ^ f e
+  | StructField(n, e) -> "\t." ^ n ^ " = " ^ f e
+
+
 
 let rec string_of_lit = function
   | LitInt(l) -> string_of_int l
@@ -119,9 +124,6 @@ and string_of_expr = function
  | Call(s, el) -> string_of_opt_default "_" nop s ^ 
                   string_of_list string_of_expr el "(" ", " ")" (is_some s)
  | Cond(i, t, e) -> string_of_cond_expr string_of_expr i t e
-
-let string_of_bind = function
-  | Bind(mut, typ, id) -> string_of_mut mut ^ _string_of_typ typ ^ " " ^ id
 
 let string_of_vdecl bind expr = 
   string_of_bind bind ^ " " ^ string_of_expr expr
