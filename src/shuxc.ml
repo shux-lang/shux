@@ -7,17 +7,23 @@ open Codegen
 open Printf 
 open Astprint
 
+type action = Ast | LLVM
+
 let _ = 
-	let cin  = 
-		if Array.length Sys.argv > 1
-			then open_in Sys.argv.(1)
-		else 
-			stdin
-		in
-		let lexbuf = Lexing.from_channel cin in
-		let ast = Parser.program Scanner.token lexbuf in
-    let sast = Semant.check ast in
-			print_string (Astprint.string_of_program sast);  
-    let code = Codegen.translate sast in
-    Llvm_analysis.assert_valid_module code; (* we can do these outside *) 
-    print_string (Llvm.string_of_llmodule code)
+	let (cin, action) = 
+		if Array.length Sys.argv = 3 then
+			let a = match Sys.argv.(1) with
+				| ("-a") -> Ast
+				| ("-l") -> LLVM 
+				| _ -> LLVM in
+			let c = open_in Sys.argv.(2) in
+			(c, a)
+		else (open_in Sys.argv.(1), LLVM) in
+	let lexbuf = Lexing.from_channel cin in
+	let ast = Parser.program Scanner.token lexbuf in
+  let sast = Semant.check ast in
+	match action with
+		| Ast -> print_string (Astprint.string_of_program sast)
+		| LLVM -> 
+				let code = Codegen.translate sast in
+    		print_string (Llvm.string_of_llmodule code)

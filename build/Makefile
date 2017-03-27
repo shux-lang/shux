@@ -8,7 +8,7 @@ EXAMPLES=../examples
 SYMLINK=ln -s -f
 COMPILER=shuxc
 
-.PHONY: default symlink
+.PHONY: default symlink hello
 default: symlink shuxc
 
 symlink:
@@ -55,7 +55,7 @@ shuxc.cmx : semant.cmx scanner.cmx parser.cmx codegen.cmx astprint.cmx
 parser.cmi : ast.cmo
 
 
-.PHONY: all clean cleanall test
+.PHONY: all clean cleanall hello
 
 all: cleanall symlink $(OBJS) $(TARGETS)
 
@@ -66,4 +66,5 @@ clean:
 	rm -rf *.cmx *.cmi *.cmo *.cmx *.o parser.ml parser.mli scanner.ml shuxc
 
 hello: $(COMPILER) $(EXAMPLES)/hello_world.shux
-	./shuxc $(EXAMPLES)/hello_world.shux
+	./shuxc $(EXAMPLES)/hello_world.shux > hello_world.ll
+	lli hello_world.ll
