@@ -33,9 +33,9 @@ type un_op =
   | LogNot | Neg | Pos
 
 type lambda = {
-  formals   : bind list;
-  body      : stmt list;
-  ret_expr  : expr option;
+  lformals   : bind list;
+  lbody      : stmt list;
+  lret_expr  : expr option;
 }
 
 and lit =

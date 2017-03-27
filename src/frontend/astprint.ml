@@ -101,20 +101,23 @@ let string_of_list f l o s c e =
   | [] -> if e then o ^ c else ""
   | l -> o ^ String.concat s l ^ c
 
-let string_of_struct_field f = function
-  | StructField(n, e) -> "\t." ^ n ^ " = " ^ f e
+let rec string_of_struct_field = function
+  | StructField(n, e) -> "\t." ^ n ^ " = " ^ string_of_expr e
 
+and string_of_lambda l = 
+  string_of_list string_of_bind l.lformals "(" ", " ")" false ^
+  string_of_list string_of_stmt l.lbody "{\n" "" "" true ^
+  string_of_opt string_of_expr l.lret_expr
 
-
-let rec string_of_lit = function
+and string_of_lit = function
   | LitInt(l) -> string_of_int l
   | LitFloat(l) -> string_of_float l
   | LitBool(l) -> string_of_bool l
   | LitStr(l) -> "\"" ^ l ^ "\""
-  | LitKn(l) -> "" (* TODO: lambdas *)
+  | LitKn(l) -> string_of_lambda l
   | LitVector(l) -> string_of_list string_of_expr l "<" ", " ">" true
   | LitArray(l) -> string_of_list string_of_expr l "[" ", " "]" true
-  | LitStruct(l) -> string_of_list (string_of_struct_field string_of_expr) l "{" ";\n" "}" true
+  | LitStruct(l) -> string_of_list string_of_struct_field l "{" ";\n" "}" true
 
 and string_of_expr = function
  | Lit l -> string_of_lit l
@@ -125,10 +128,10 @@ and string_of_expr = function
                   string_of_list string_of_expr el "(" ", " ")" (is_some s)
  | Cond(i, t, e) -> string_of_cond_expr string_of_expr i t e
 
-let string_of_vdecl bind expr = 
+and string_of_vdecl bind expr = 
   string_of_bind bind ^ " " ^ string_of_expr expr
 
-let string_of_stmt = function 
+and string_of_stmt = function 
   | VDecl (bind, expr) -> string_of_opt (string_of_vdecl bind) expr ^ ";\n"
   | Expr(expr) -> string_of_expr expr ^ ";\n"
 
