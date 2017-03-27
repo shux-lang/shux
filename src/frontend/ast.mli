@@ -33,9 +33,9 @@ type un_op =
   | LogNot | Neg | Pos
 
 type lambda = {
-  formals   : bind list;
-  body      : stmt list;
-  ret_expr  : expr option;
+  lformals  : bind list;
+  lbody     : stmt list;
+  lret_expr : expr option;
 }
 
 and lit =
@@ -82,7 +82,6 @@ type extern_decl = {
   exformals   : bind list;
 }
 
-
 type let_decl =
   | LetDecl of bind * expr
   | StructDef of struct_def
@@ -90,7 +89,7 @@ type let_decl =
 
 type ns_decl = {
   nname     : string;
-  body      : program;
+  nbody     : program;
 }
 
 and program = ns_decl list * let_decl list * fn_decl list
