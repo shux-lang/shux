@@ -9,7 +9,7 @@ let translate (namespaces, globals, functions) =
   
   and i32_t  = L.i32_type  context
   and i8_t   = L.i8_type   context
-  and i1_t = L.i1_type context 
+  (* and i1_t = L.i1_type context *) (* reserved for bool *)
   and void_t = L.void_type context in
 
   (* TODO: Other than Int all are placeholders *)
@@ -38,10 +38,7 @@ let translate (namespaces, globals, functions) =
       let function_name = fdecl.A.fname
       (* and function_type = fdecl.A.fn_typ *)
       and formal_types = 
-        Array.of_list []  (* TODO: empty formals for now *)
-      and return_type_opt = function
-            None -> void_t (* whether void or optional, revising ast.mli, astprint.ml *)
-          | Some y -> y in
+        Array.of_list []  (* TODO: empty formals for now *) in 
       let function_sign_type = 
         L.function_type (ltype_of_typ_opt fdecl.A.ret_typ) formal_types in 
       StringMap.add function_name (L.define_function function_name function_sign_type the_module, fdecl) map

@@ -2,14 +2,15 @@ CAMLC=ocamlc
 OCAML=ocamlfind $(CAMLC) -linkpkg -thread -package core -package llvm -package llvm.analysis
 OBJS=exceptions.cmo ast.cmo astprint.cmo scanner.cmo parser.cmo semant.cmo codegen.cmo
 INCLUDE=-I ../src/include -g
-TARGETS=$(COMPILER)
 OCAML_FLAGS=$(INCLUDE) $(OBJS)
 EXAMPLES=../examples
 SYMLINK=ln -s -f
+PREREQS=symlink
 COMPILER=shuxc
+TARGETS=$(PREREQS) $(COMPILER)
 
 .PHONY: default symlink hello
-default: symlink shuxc
+default: $(TARGETS)
 
 symlink:
 	$(SYMLINK) ../src/frontend/exceptions.ml 	exceptions.ml
