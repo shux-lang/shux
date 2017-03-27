@@ -13,14 +13,14 @@ TARGETS=$(PREREQS) $(COMPILER)
 default: $(TARGETS)
 
 symlink:
-	$(SYMLINK) ../src/frontend/exceptions.ml 	exceptions.ml
-	$(SYMLINK) ../src/frontend/ast.mli 				ast.ml
-	$(SYMLINK) ../src/backend/codegen.ml 			codegen.ml
-	$(SYMLINK) ../src/frontend/parser.mly			parser.mly
-	$(SYMLINK) ../src/frontend/scanner.mll   	scanner.mll
-	$(SYMLINK) ../src/backend/semant.ml     	semant.ml
-	$(SYMLINK) ../src/shuxc.ml 								shuxc.ml
-	$(SYMLINK) ../src/frontend/astprint.ml		astprint.ml
+	$(SYMLINK) ../src/frontend/exceptions.ml exceptions.ml
+	$(SYMLINK) ../src/frontend/ast.mli ast.ml
+	$(SYMLINK) ../src/backend/codegen.ml codegen.ml
+	$(SYMLINK) ../src/frontend/parser.mly parser.mly
+	$(SYMLINK) ../src/frontend/scanner.mll scanner.mll
+	$(SYMLINK) ../src/backend/semant.ml semant.ml
+	$(SYMLINK) ../src/shuxc.ml shuxc.ml
+	$(SYMLINK) ../src/frontend/astprint.ml astprint.ml
 
 scanner.ml: scanner.mll exceptions.ml
 	ocamllex scanner.mll
