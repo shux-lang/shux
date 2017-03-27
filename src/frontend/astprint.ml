@@ -143,9 +143,12 @@ let string_of_fdecl fdecl =
   string_of_opt string_of_expr fdecl.ret_expr ^
   "\n}\n"
 
+let string_of_struct_def s =
+  "struct " ^ s.sname ^ string_of_list string_of_bind s.fields "{\n\t" ";\n\t" "}" true
+
 let string_of_let = function
   | LetDecl(bind, expr) -> string_of_bind bind ^ " " ^ string_of_expr expr ^ ";"
-  | StructDef(s) -> "" (* TODO *) 
+  | StructDef(s) -> string_of_struct_def s 
   | ExternDecl(s) -> "extern " ^ s.exfname ^ "(" ^
                       String.concat ", " (List.map string_of_bind s.exformals) ^ ") " ^ 
                       string_of_typ s.exret_typ ^ ";"
