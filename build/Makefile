@@ -13,14 +13,17 @@ TARGETS=$(PREREQS) $(COMPILER)
 default: $(TARGETS)
 
 symlink:
-	$(SYMLINK) ../src/frontend/exceptions.ml 	exceptions.ml
-	$(SYMLINK) ../src/frontend/ast.mli 				ast.ml
-	$(SYMLINK) ../src/backend/codegen.ml 			codegen.ml
-	$(SYMLINK) ../src/frontend/parser.mly			parser.mly
-	$(SYMLINK) ../src/frontend/scanner.mll   	scanner.mll
-	$(SYMLINK) ../src/backend/semant.ml     	semant.ml
-	$(SYMLINK) ../src/shuxc.ml 								shuxc.ml
-	$(SYMLINK) ../src/frontend/astprint.ml		astprint.ml
+	$(SYMLINK) ../src/frontend/exceptions.ml exceptions.ml
+	$(SYMLINK) ../src/frontend/ast.mli ast.ml
+	$(SYMLINK) ../src/backend/codegen.ml codegen.ml
+	$(SYMLINK) ../src/frontend/parser.mly parser.mly
+	$(SYMLINK) ../src/frontend/scanner.mll scanner.mll
+	$(SYMLINK) ../src/backend/semant.ml semant.ml
+	$(SYMLINK) ../src/shuxc.ml shuxc.ml
+	$(SYMLINK) ../src/frontend/astprint.ml astprint.ml
+
+shuxc.native:
+	ocamlbuild -use-ocamlfind -tag thread -pkgs llvm,llvm.analysis,core -cflags -w,+a-4 shuxc.native
 
 scanner.ml: scanner.mll exceptions.ml
 	ocamllex scanner.mll
@@ -56,7 +59,7 @@ shuxc.cmx : semant.cmx scanner.cmx parser.cmx codegen.cmx astprint.cmx
 parser.cmi : ast.cmo
 
 
-.PHONY: all clean cleanall hello
+.PHONY: all clean cleanall autoclean hello
 
 all: cleanall symlink $(OBJS) $(TARGETS)
 
@@ -65,6 +68,9 @@ cleanall:
 
 clean:
 	rm -rf *.cmx *.cmi *.cmo *.cmx *.o parser.ml parser.mli scanner.ml shuxc
+
+autoclean:
+	ocamlbuild -clean
 
 hello: $(COMPILER) $(EXAMPLES)/hello_world.shux
 	./shuxc $(EXAMPLES)/hello_world.shux > hello_world.ll
