@@ -36,7 +36,7 @@ ns_decls:
   | ns_decl                                 { [$1] }
 
 ns_decl:
-  | NS ID ASSIGN LBRACE program RBRACE      { {nname = $2; body = $5} }
+  | NS ID ASSIGN LBRACE program RBRACE      { {nname = $2; nbody = $5} }
 
 
 /* let declaration rules */

@@ -153,7 +153,10 @@ let string_of_let = function
                       String.concat ", " (List.map string_of_bind s.exformals) ^ ") " ^ 
                       string_of_typ s.exret_typ ^ ";"
 
-let string_of_program (ns_list, let_list, fn_list) =
-  (*TODO: ns_list *) 
+let rec string_of_ns ns =
+  "ns " ^ ns.nname ^ string_of_program ns.nbody
+
+and string_of_program (ns_list, let_list, fn_list) =
+  String.concat "\n" (List.map string_of_ns ns_list) ^ "\n" ^
   String.concat "\n" (List.map string_of_let let_list) ^ "\n" ^
   String.concat "\n" (List.map string_of_fdecl fn_list) 
