@@ -26,8 +26,8 @@ let rec _string_of_typ = function
 let string_of_typ x = string_of_opt _string_of_typ x
 
 let string_of_fn_typ = function
-	| Kn -> "kn"
-	| Gn -> "gn"
+  | Kn -> "kn"
+  | Gn -> "gn"
 
 type op_typ = Infix | Prefix | PostfixPair
 
@@ -40,34 +40,34 @@ let _fix = function
   | Index -> PostfixPair
 
 let string_of_binop = function
-	| Add -> " + "
-	| Sub -> " - "
-	| Mul -> " * "
-	| Div -> " / "
-	| Mod -> " %"
-	| Exp	-> " ^ "
-	| Eq -> " == "
-	| Lt -> " < "
-	| Gt -> " >"
-	| Neq -> " != "
-	| Leq -> " <= "
-	| Geq -> " >= "
-	| LogAnd -> " && "
-	| LogOr -> " || "
-	| Filter -> " :: "
-	| Map -> " @ "
-	| For -> "for "
-	| Do -> "do "
-	|	Asn -> " = "
-	|	AddAsn -> " += "
-	|	SubAsn -> " -= "
-	|	MulAsn -> " *= "
-	|	DivAsn -> " /= "
-	|	ModAsn -> " %= "
-	|	ExpAsn -> " ^= "
-	|	Lookback -> ".."
-	|	Access -> "."
-	| _ -> "" (* should raise error *)
+  | Add -> " + "
+  | Sub -> " - "
+  | Mul -> " * "
+  | Div -> " / "
+  | Mod -> " %"
+  | Exp  -> " ^ "
+  | Eq -> " == "
+  | Lt -> " < "
+  | Gt -> " >"
+  | Neq -> " != "
+  | Leq -> " <= "
+  | Geq -> " >= "
+  | LogAnd -> " && "
+  | LogOr -> " || "
+  | Filter -> " :: "
+  | Map -> " @ "
+  | For -> "for "
+  | Do -> "do "
+  |  Asn -> " = "
+  |  AddAsn -> " += "
+  |  SubAsn -> " -= "
+  |  MulAsn -> " *= "
+  |  DivAsn -> " /= "
+  |  ModAsn -> " %= "
+  |  ExpAsn -> " ^= "
+  |  Lookback -> ".."
+  |  Access -> "."
+  | _ -> "" (* should raise error *)
 
 let string_of_binop_match = function
   | Index -> ("[", "]")
@@ -80,9 +80,9 @@ let string_of_binop_expr f l o r =
   | PostfixPair -> match string_of_binop_match o with (o, c) -> f l ^ o ^ f r ^ c
 
 let string_of_unop = function
-	| LogNot -> "!"
-	| Neg -> "-"
-	| Pos -> "+"
+  | LogNot -> "!"
+  | Neg -> "-"
+  | Pos -> "+"
 
 let string_of_uniop_expr f o e = string_of_unop o ^ f e
 
@@ -90,8 +90,8 @@ let string_of_cond_expr f i t e =
   f i ^ " ? " ^ f t ^ " : " ^ f e
 
 let string_of_mut = function
-	| Immutable -> ""
-	| Mutable -> "var "
+  | Immutable -> ""
+  | Mutable -> "var "
 
 let string_of_list f l o s c e =
   match (List.map f l) with
@@ -102,10 +102,10 @@ let string_of_struct_field f = function
   | StructField(n, e) -> "\t" ^ n ^ " = " ^ f e
 
 let rec string_of_lit = function
-	| LitInt(l) -> string_of_int l
-	| LitFloat(l) -> string_of_float l
-	| LitBool(l) -> string_of_bool l
-	| LitStr(l) -> "\"" ^ l ^ "\""
+  | LitInt(l) -> string_of_int l
+  | LitFloat(l) -> string_of_float l
+  | LitBool(l) -> string_of_bool l
+  | LitStr(l) -> "\"" ^ l ^ "\""
   | LitKn(l) -> "" (* TODO: lambdas *)
   | LitVector(l) -> string_of_list string_of_expr l "<" ", " ">" true
   | LitArray(l) -> string_of_list string_of_expr l "[" ", " "]" true
@@ -124,28 +124,28 @@ let string_of_bind = function
   | Bind(mut, typ, id) -> string_of_mut mut ^ _string_of_typ typ ^ " " ^ id
 
 let string_of_vdecl bind expr = 
-	string_of_bind bind ^ " " ^ string_of_expr expr
+  string_of_bind bind ^ " " ^ string_of_expr expr
 
 let string_of_stmt = function 
   | VDecl (bind, expr) -> string_of_opt (string_of_vdecl bind) expr ^ ";\n"
   | Expr(expr) -> string_of_expr expr ^ ";\n"
 
 let string_of_fdecl fdecl =
-	string_of_fn_typ fdecl.fn_typ ^ " " ^ fdecl.fname ^
-	"(" ^ String.concat ", " (List.map string_of_bind fdecl.formals) ^ ") " ^
-	string_of_typ fdecl.ret_typ ^ "\n{\n" ^ 
-	String.concat "\n" (List.map string_of_stmt fdecl.body) ^ 
-	string_of_opt string_of_expr fdecl.ret_expr ^
-	"\n}\n"
+  string_of_fn_typ fdecl.fn_typ ^ " " ^ fdecl.fname ^
+  "(" ^ String.concat ", " (List.map string_of_bind fdecl.formals) ^ ") " ^
+  string_of_typ fdecl.ret_typ ^ "\n{\n" ^ 
+  String.concat "\n" (List.map string_of_stmt fdecl.body) ^ 
+  string_of_opt string_of_expr fdecl.ret_expr ^
+  "\n}\n"
 
 let string_of_let = function
   | LetDecl(bind, expr) -> string_of_bind bind ^ " " ^ string_of_expr expr ^ ";"
-	| StructDef(s) -> "" (* TODO *) 
-	| ExternDecl(s) -> "extern " ^ s.exfname ^ "(" ^
+  | StructDef(s) -> "" (* TODO *) 
+  | ExternDecl(s) -> "extern " ^ s.exfname ^ "(" ^
                       String.concat ", " (List.map string_of_bind s.exformals) ^ ") " ^ 
                       string_of_typ s.exret_typ ^ ";"
 
 let string_of_program (ns_list, let_list, fn_list) =
-	(*TODO: ns_list *) 
-	String.concat "\n" (List.map string_of_let let_list) ^ "\n" ^
-	String.concat "\n" (List.map string_of_fdecl fn_list) 
+  (*TODO: ns_list *) 
+  String.concat "\n" (List.map string_of_let let_list) ^ "\n" ^
+  String.concat "\n" (List.map string_of_fdecl fn_list) 
