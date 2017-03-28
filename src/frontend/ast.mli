@@ -21,7 +21,7 @@ type fn_typ =
 
 type bin_op =
   | Add | Sub | Mul | Div | Mod | Exp
-  | Asn | AddAsn | SubAsn | MulAsn | DivAsn | ModAsn | ExpAsn
+  | Asn
   | Eq | Lt | Gt | Neq | Leq | Geq
   | LogAnd | LogOr
   | Filter | Map
