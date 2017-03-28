@@ -54,6 +54,7 @@ and expr =
   | Lit of lit
   | Id of string
   | Binop of expr * bin_op * expr
+  | Assign of expr * expr
   | Call of string option * expr list
   | Uniop of un_op * expr
   | Cond of expr * expr * expr (* technically Ternop *)

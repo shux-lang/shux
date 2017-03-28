@@ -101,7 +101,8 @@ expr:
   | asn_expr                                { $1 } 
 
 asn_expr:
-  | unary_expr asn_op asn_expr              { Binop ($1, $2, $3) }
+  | unary_expr ASSIGN asn_expr              { Assign($1, $3) }
+  | unary_expr asn_op asn_expr              { Assign($1, Binop ($1, $2, $3)) }
   | if_expr                                 { $1 } 
 
 if_expr:
@@ -213,13 +214,12 @@ actual_list:
 
 /* operator rules */
 asn_op:
-  | ASSIGN                                  { Asn } 
-  | ADD_ASN                                 { AddAsn }
-  | SUB_ASN                                 { SubAsn }
-  | MUL_ASN                                 { MulAsn }
-  | DIV_ASN                                 { DivAsn }
-  | MOD_ASN                                 { ModAsn }
-  | EXP_ASN                                 { ExpAsn }
+  | ADD_ASN                                 { Add }
+  | SUB_ASN                                 { Sub }
+  | MUL_ASN                                 { Mul }
+  | DIV_ASN                                 { Div }
+  | MOD_ASN                                 { Mod }
+  | EXP_ASN                                 { Exp }
 
 eq_op:
   | EQ                                      { Eq }
