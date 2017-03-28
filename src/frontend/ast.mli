@@ -21,7 +21,7 @@ type fn_typ =
 
 type bin_op =
   | Add | Sub | Mul | Div | Mod | Exp
-  | Asn | AddAsn | SubAsn | MulAsn | DivAsn | ModAsn | ExpAsn
+  | Asn
   | Eq | Lt | Gt | Neq | Leq | Geq
   | LogAnd | LogOr
   | Filter | Map
@@ -54,6 +54,7 @@ and expr =
   | Lit of lit
   | Id of string
   | Binop of expr * bin_op * expr
+  | Assign of expr * expr
   | Call of string option * expr list
   | Uniop of un_op * expr
   | Cond of expr * expr * expr (* technically Ternop *)
