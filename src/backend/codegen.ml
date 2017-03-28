@@ -74,6 +74,7 @@ let translate (namespaces, globals, functions) =
                     )
       | A.Id str -> L.const_int i32_t 0
       | A.Binop (expr, binop, expr2) -> L.const_int i32_t 0
+      | A.Assign (expr, expr2) -> L.const_int i32_t 0 (* Create a local var if not string *)
       | A.Call (func, [expr]) -> (match func with
                                   | None -> L.const_int i32_t 0
                                   | Some y -> (match y with 
