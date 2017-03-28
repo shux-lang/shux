@@ -32,9 +32,9 @@ let string_of_fn_typ = function
 type op_typ = Infix | Prefix | PostfixPair
 
 let _fix = function
+  | Asn
   | Add | Sub | Mul | Div | Mod | Exp 
   | Eq | Lt | Gt | Neq | Leq | Geq | LogAnd | LogOr
-  | Asn | AddAsn | SubAsn | MulAsn | DivAsn | ModAsn | ExpAsn
   | Filter | Map | Lookback | Access -> Infix
   | For | Do -> Prefix
   | Index -> PostfixPair
@@ -48,7 +48,7 @@ let string_of_binop = function
   | Exp  -> " ^ "
   | Eq -> " == "
   | Lt -> " < "
-  | Gt -> " >"
+  | Gt -> " > "
   | Neq -> " != "
   | Leq -> " <= "
   | Geq -> " >= "
@@ -59,12 +59,6 @@ let string_of_binop = function
   | For -> "for "
   | Do -> "do "
   | Asn -> " = "
-  | AddAsn -> " += "
-  | SubAsn -> " -= "
-  | MulAsn -> " *= "
-  | DivAsn -> " /= "
-  | ModAsn -> " %= "
-  | ExpAsn -> " ^= "
   | Lookback -> ".."
   | Access -> "."
   | _ -> "" (* should raise error *)
@@ -123,6 +117,7 @@ and string_of_expr = function
  | Lit l -> string_of_lit l
  | Id s -> s
  | Uniop(o, e) -> string_of_uniop_expr string_of_expr o e
+ | Assign(l, r) -> string_of_binop_expr string_of_expr l Asn r
  | Binop(e1, o, e2) -> string_of_binop_expr string_of_expr e1 o e2
  | Call(s, el) -> string_of_opt_default "_" nop s ^ 
                   string_of_list string_of_expr el "(" ", " ")" (is_some s)
