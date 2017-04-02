@@ -46,7 +46,7 @@ _LLAST denotes an LLVM-like AST_
 	* arrays: will become generators that produce those values if chained with kernel operators
 	* vectors: implemented as float arrays 
 	because `vector` actually means something else in LLVM land
-6. [TR CAST -> LLAST] Unwrap 
+6. [TR CAST -> LLAST] Unwrap C abstractions to make lower level
 	* unfold chained expressions into a flat series of statements
 	* unfold ternery conditional to emulate if/then/else
-	* any other things that make's codegen not look like Medusa on meth
+	* any other things that makes codegen not look like Medusa on meth
