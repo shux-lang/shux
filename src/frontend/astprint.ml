@@ -139,8 +139,8 @@ let string_of_fdecl = function { fn_typ = fn; fname = id; formals = fs;
 let string_of_struct_def = function { sname = n; fields = f } ->
   "struct " ^ n ^ string_of_list string_of_bind f "{\n\t" ";\n\t" "}" true
 
-let string_of_extern = function { exfname = n; exformals = f; exret_typ = r } ->
-  "extern " ^ n ^ string_of_list string_of_bind f "(" ", " ")" true ^ string_of_typ r ^ ";"
+let string_of_extern = function { xalias = a; xfname = n; xformals = f; xret_typ = r } ->
+  "extern " ^ a ^ string_of_list string_of_bind f "(" ", " ")" true ^ string_of_typ r ^ ";"
 
 let string_of_let = function
   | LetDecl(bind, expr) -> string_of_bind bind ^ " " ^ string_of_expr expr ^ ";"

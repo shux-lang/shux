@@ -52,8 +52,8 @@ let_decl:
   | LET typ ID ASSIGN expr SEMI             { LetDecl((Bind(Immutable, $2, $3), $5)) }
   | STRUCT ID LBRACE struct_def RBRACE      { StructDef({sname = $2; fields = List.rev $4}) }
   | EXTERN ID LPAREN formals RPAREN 
-    ret_typ SEMI                            { ExternDecl({exfname = $2; exret_typ = $6;
-                                              exformals = $4;}) }
+    ret_typ SEMI                            { ExternDecl({xalias = $2; xfname = $2; 
+                                              xret_typ = $6; xformals = $4;}) }
 
 struct_def:
   | struct_def val_decl SEMI                { $2::$1 }
