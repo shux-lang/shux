@@ -15,7 +15,7 @@ let translate (namespaces, globals, functions) =
   and g_float_t = L.double_type context
   and g_void_t = L.void_type context in
 
-  (* TODO: Other than Int all are placeholders *)
+  (* TODO: placeholders: struct, array and vector *)
   let ltype_of_typ = function
     | A.Int -> g_i32_t
     | A.Float -> g_float_t
@@ -69,7 +69,7 @@ let translate (namespaces, globals, functions) =
       | A.Lit i ->  (match i with 
                       | A.LitInt j -> L.const_int g_i32_t j
                       | A.LitFloat j -> L.const_float g_float_t j
-                      | A.LitBool b -> L.const_int g_i32_t 0
+                      | A.LitBool b -> L.const_int g_i1_t (if b then 1 else 0)
                       | A.LitKn l-> L.const_int g_i32_t 0
                       | A.LitVector elist -> L.const_int g_i32_t 0
                       | A.LitArray elist -> L.const_int g_i32_t 0
