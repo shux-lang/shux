@@ -3,32 +3,35 @@ module A = Ast
 
 module StringMap = Map.Make(String)
 
+(* Convention: functions and types declared in codegen.ml are named with prefix g_ *)
+
 let translate (namespaces, globals, functions) =
 	let context = L.global_context () in (* we only need a global data container *)
 	let the_module = L.create_module context "shux" (* Container *)
   
-  and i32_t  = L.i32_type  context
-  and i8_t   = L.i8_type   context
-  and i1_t = L.i1_type context
-  and void_t = L.void_type context in
+  and g_i32_t  = L.i32_type  context
+  and g_i8_t   = L.i8_type   context
+  and g_i1_t = L.i1_type context
+  and g_float_t = L.double_type context
+  and g_void_t = L.void_type context in
 
   (* TODO: Other than Int all are placeholders *)
   let ltype_of_typ = function
-    | A.Int -> i32_t
-    | A.Float -> i32_t
-    | A.String -> i32_t
-    | A.Bool -> i1_t
-    | A.Struct struct_name -> i32_t
-    | A.Array  element_type -> i32_t
-    | A.Vector count -> i32_t
-  in
+    | A.Int -> g_i32_t
+    | A.Float -> g_float_t
+    | A.String -> g_i32_t
+    | A.Bool -> g_i1_t
+    | A.Struct struct_name -> g_i32_t
+    | A.Array  element_type -> g_i32_t
+    | A.Vector count -> g_i32_t in
+
   let ltype_of_typ_opt = function 
-    | None -> void_t
+    | None -> g_void_t
     | Some y -> ltype_of_typ y in 
 
 
   (* Declare printf(), which later we will change from built-in to linked extern function *)
-  let printf_t = L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
+  let printf_t = L.var_arg_function_type g_i32_t [| L.pointer_type g_i8_t |] in
   let printf_func = L.declare_function "printf" printf_t the_module in
 
   (* Define each function, including args and ret type *)
@@ -53,7 +56,9 @@ let translate (namespaces, globals, functions) =
     
 
     let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder_global in 
+    let float_format_str = L.build_global_stringptr "%.5f\n" "fmt" builder_global in (* TODO make the precision configurable*)
     let format_str = L.build_global_stringptr "%s\n" "fmt" builder_global in 
+
 
 
     (* Construct local variables, TODO later 
@@ -62,29 +67,30 @@ let translate (namespaces, globals, functions) =
     (* Construct expr builders, only implementing Call now, Lit using placeholders *)
     let rec construct_expr builder = function
       | A.Lit i ->  (match i with 
-                      | A.LitInt j -> L.const_int i32_t j
-                      | A.LitFloat j -> L.const_int i32_t 0
-                      | A.LitBool b -> L.const_int i32_t 0
-                      | A.LitKn l-> L.const_int i32_t 0
-                      | A.LitVector elist -> L.const_int i32_t 0
-                      | A.LitArray elist -> L.const_int i32_t 0
-                      | A.LitStruct sflist -> L.const_int i32_t 0
+                      | A.LitInt j -> L.const_int g_i32_t j
+                      | A.LitFloat j -> L.const_float g_float_t j
+                      | A.LitBool b -> L.const_int g_i32_t 0
+                      | A.LitKn l-> L.const_int g_i32_t 0
+                      | A.LitVector elist -> L.const_int g_i32_t 0
+                      | A.LitArray elist -> L.const_int g_i32_t 0
+                      | A.LitStruct sflist -> L.const_int g_i32_t 0
                       | A.LitStr str -> L.build_global_stringptr str "mystring" builder
                     )
-      | A.Id str -> L.const_int i32_t 0
-      | A.Binop (expr, binop, expr2) -> L.const_int i32_t 0
-      | A.Assign (expr, expr2) -> L.const_int i32_t 0 (* Create a local var if not string *)
+      | A.Id str -> L.const_int g_i32_t 0
+      | A.Binop (expr, binop, expr2) -> L.const_int g_i32_t 0
+      | A.Assign (expr, expr2) -> L.const_int g_i32_t 0 (* Create a local var if not string *)
       | A.Call (func, [expr]) -> (match func with
-                                  | None -> L.const_int i32_t 0
+                                  | None -> L.const_int g_i32_t 0
                                   | Some y -> (match y with 
                                                 | "print" -> L.build_call printf_func [| format_str; (construct_expr builder expr) |] "printf" builder
                                                 | "print_int" -> L.build_call printf_func [| int_format_str; (construct_expr builder expr) |] "printf" builder
-                                                | _ -> L.const_int i32_t 0
+                                                | "print_float" -> L.build_call printf_func [| float_format_str; (construct_expr builder expr) |] "printf" builder
+                                                | _ -> L.const_int g_i32_t 0
                                               )
                                  )
-      | A.Call (_, l) -> L.const_int i32_t 0 (* oh my gosh horrible *)
-      | A.Uniop (unop, expr) -> L.const_int i32_t 0
-      | A.Cond (expr_if, expr_val, expr_else) -> L.const_int i32_t 0
+      | A.Call (_, l) -> L.const_int g_i32_t 0 (* oh my gosh horrible *)
+      | A.Uniop (unop, expr) -> L.const_int g_i32_t 0
+      | A.Cond (expr_if, expr_val, expr_else) -> L.const_int g_i32_t 0
     in
     
     (* define the terminal adder for each basic block *)
