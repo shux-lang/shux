@@ -9,7 +9,7 @@ let translate (namespaces, globals, functions) =
   
   and i32_t  = L.i32_type  context
   and i8_t   = L.i8_type   context
-  (* and i1_t = L.i1_type context *) (* reserved for bool *)
+  and i1_t = L.i1_type context
   and void_t = L.void_type context in
 
   (* TODO: Other than Int all are placeholders *)
@@ -17,7 +17,7 @@ let translate (namespaces, globals, functions) =
     | A.Int -> i32_t
     | A.Float -> i32_t
     | A.String -> i32_t
-    | A.Bool -> i32_t
+    | A.Bool -> i1_t
     | A.Struct struct_name -> i32_t
     | A.Array  element_type -> i32_t
     | A.Vector count -> i32_t
@@ -26,7 +26,6 @@ let translate (namespaces, globals, functions) =
     | None -> void_t
     | Some y -> ltype_of_typ y in 
 
-  let global_var_count = 0 in
 
   (* Declare printf(), which later we will change from built-in to linked extern function *)
   let printf_t = L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
@@ -52,10 +51,10 @@ let translate (namespaces, globals, functions) =
     let (the_function, _) = StringMap.find fdecl.A.fname function_decls in
     let builder_global = L.builder_at_end context (L.entry_block the_function) in 
     
-    (*
+
     let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder_global in 
-    *)
     let format_str = L.build_global_stringptr "%s\n" "fmt" builder_global in 
+
 
     (* Construct local variables, TODO later 
       this is hard because we have mixed decl of bindings and exprs *)
@@ -70,7 +69,7 @@ let translate (namespaces, globals, functions) =
                       | A.LitVector elist -> L.const_int i32_t 0
                       | A.LitArray elist -> L.const_int i32_t 0
                       | A.LitStruct sflist -> L.const_int i32_t 0
-                      | A.LitStr str -> ignore(global_var_count = global_var_count+1); L.build_global_stringptr str ("mystring"^(string_of_int global_var_count)) builder
+                      | A.LitStr str -> L.build_global_stringptr str "mystring" builder
                     )
       | A.Id str -> L.const_int i32_t 0
       | A.Binop (expr, binop, expr2) -> L.const_int i32_t 0
@@ -79,6 +78,7 @@ let translate (namespaces, globals, functions) =
                                   | None -> L.const_int i32_t 0
                                   | Some y -> (match y with 
                                                 | "print" -> L.build_call printf_func [| format_str; (construct_expr builder expr) |] "printf" builder
+                                                | "print_int" -> L.build_call printf_func [| int_format_str; (construct_expr builder expr) |] "printf" builder
                                                 | _ -> L.const_int i32_t 0
                                               )
                                  )
