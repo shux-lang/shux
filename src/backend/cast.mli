@@ -18,8 +18,10 @@ type ctyp = Sast.styp
 type cbind = Sast.sbind
 
 type cbin_op =
-  | CBinopArith of Sast.sbin_op_arith
-  | CBinopPtr of Sast.sbin_op_ptr
+  | CBinopInt of Sast.sbin_op_i
+  | CBinopFloat of Sast.sbin_op_f
+  | CBinopBool of Sast.sbin_op_b
+  | CBinopPtr of Sast.sbin_op_p
 
 type cun_op = Sast.sun_op
 

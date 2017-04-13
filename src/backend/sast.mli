@@ -13,15 +13,18 @@ type sbind = SBind of styp * string
 type sfn_typ = 
   | SKn | SGn
 
-(* should we group these into different types of operators, for better code reuse? *)
-type sbin_op_arith =
+type sbin_op_i =
   | SAddi | SSubi | SMuli | SDivi | SMod | SExpi
-  | SAddf | SSubf | SMulf | SDivf | SExpf
   | SEqi | SLti | SNeqi | SLeqi | SGeqi
+
+type sbin_op_f =
+  | SAddf | SSubf | SMulf | SDivf | SExpf
   | SEqf | SLtf | SNeqf | SLeqf | SGeqf
+
+type sbin_op_b =
   | SLogAnd | SLogOr
 
-type sbin_op_ptr =
+type sbin_op_p =
   | SIndex | SAccess
   | SAsn (* this is redundant because of the thing below *)
 
@@ -31,8 +34,10 @@ type sbin_op_fn =
   | SLookback
 
 type sbin_op = 
-  | SBinopArith of sbin_op_arith
-  | SBinopPtr of sbin_op_ptr
+  | SBinopInt of sbin_op_i
+  | SBinopFloat of sbin_op_f
+  | SBinopBool of sbin_op_b
+  | SBinopPtr of sbin_op_p
   | SBinopFn of sbin_op_fn
 
 type sun_op = 
