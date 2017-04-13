@@ -14,10 +14,11 @@ type sfn_typ =
  | SKn
  | SGn
 
+(* should we group these into different types of operators, for better code reuse? *)
 type sbin_op = 
  | SAddi | SSubi | SMuli | SDivi | SMod | SExpi
  | SAddf | SSubf | SMulf | SDivf | SExpf
- | SAsn
+ | SAsn (* this is redundant because of the thing below *)
  | SEqi | SLti | SNeqi | SLeqi | SGeqi
  | SEqf | SLtf | SNeqf | SLeqf | SGeqf
  | SLogAnd | SLogOr
