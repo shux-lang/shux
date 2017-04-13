@@ -30,6 +30,7 @@ and sexpr =
   | SBinop of styp * expr * bin_op * expr
   | SAssign of styp * expr * expr
   | SCall of styp * string * expr list (*I removed option here. What is "_" as a call? *)
+  | SLookbackDefault of styp * expr * expr
   | SUniop of styp * un_op * expr
   | SCond of styp * expr * expr * expr
 
@@ -65,4 +66,4 @@ type slet_decl =
   | SStructDef of StructDef
   | SExternDecl of sextern_decl
 
-and program = ns_decl list * slet_decl list * sfn_decl list * vfn_decl list 
+and sprogram = ns_decl list * slet_decl list * sfn_decl list * vfn_decl list 
