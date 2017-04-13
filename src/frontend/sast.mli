@@ -38,13 +38,6 @@ and sstmt =
   | VDecl of bind * sexpr
   | SExpr of sexpr
 
-(* void (* kernel *) functions *)
-type vfn_decl = {
-  fname     : string;
-  formals   : bind list;
-  body      : stmt list;
-  }
-
 type sfn_decl = {
   fname     : string;
   fn_typ    : fn_typ;
@@ -65,4 +58,4 @@ type slet_decl =
   | SStructDef of StructDef
   | SExternDecl of sextern_decl
 
-and sprogram = ns_decl list * slet_decl list * sfn_decl list * vfn_decl list 
+and sprogram = ns_decl list * slet_decl list * sfn_decl list 
