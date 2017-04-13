@@ -38,10 +38,9 @@ and sstmt =
   | VDecl of bind * sexpr
   | SExpr of sexpr
 
-(* void functions *)
+(* void (* kernel *) functions *)
 type vfn_decl = {
   fname     : string;
-  fn_typ    : fn_typ;
   formals   : bind list;
   body      : stmt list;
   }
