@@ -56,7 +56,7 @@ and sexpr =
   | SAssign of styp * sexpr * sexpr
   | SCall of styp * string * sexpr list
   | SLookbackDefault of styp * sexpr * sexpr
-  | SUniop of styp * sun_op * sexpr
+  | SUnop of styp * sun_op * sexpr
   | SCond of styp * sexpr * sexpr * sexpr
 
 and sstmt =
