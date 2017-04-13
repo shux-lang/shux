@@ -57,6 +57,7 @@ and expr =
   | Assign of expr * expr
   | Call of string option * expr list
   | Uniop of un_op * expr
+  | LookbackDefault of expr * expr
   | Cond of expr * expr * expr (* technically Ternop *)
 
 and stmt =
