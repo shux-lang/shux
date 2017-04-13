@@ -54,4 +54,3 @@ I propose the following sequence of steps
 
 	* dump into OCaml LLVM binding
 
-
