@@ -1,68 +1,89 @@
-open Ast
-
 (* we can just expand typ to include void natively *)
 type styp =
- | typ
+ | SInt
+ | SFloat
+ | SString
+ | SBool
+ | SStruct of string
+ | SArray of styp
  | Void 
 
+type sbind  = SBind of styp * string
+
+type sfn_typ = 
+ | SKn
+ | SGn
+
+type sbin_op = 
+ | SAdd | SSub | SMul | SDiv | SMod | SExp
+ | SAsn
+ | SEq | SLt | SNeq | SLeq | SGeq
+ | SLogAnd | SLogOr
+ | SFilter | SMap
+ | SIndex | SLookback
+ | SFor | SDo
+ | SAccess
+
+type sun_op = 
+ | SLogNot | SNeg | SPos
+
 type slambda = {
-  lformals  : lformals;
-  lbody     : lbody;
-  lret_expr : sexpr;
+  slformals  : sbind list;
+  slbody     : sstmt list;
+  slret_expr : sexpr;
 }
 
 and slit =
-  | SLitInt of LitInt
-  | SLitFloat of SLitFloat
-  | SLitBool of LitBool
-  | SLitStr of LitStr
+  | SLitInt of int
+  | SLitFloat of float
+  | SLitBool of bool
+  | SLitStr of string
   | SLitKn of slambda
   | SLitVector of sexpr list
   | SLitArray of sexpr list 
-  | SLitStruct of SStruct_field list (* should this be more sophisticated? *)
+  | SLitStruct of sstruct_field list
 
-and SStruct_field = SStructField of string * sexpr
+and sstruct_field = SStructField of string * sexpr
 
 (* still refer back expr, but expose types *)
 and sexpr =
-  | SLit of styp * lit
+  | SLit of styp * slit
   | SId of styp * string
-  | SBinop of styp * expr * bin_op * expr
-  | SAssign of styp * expr * expr
-  | SCall of styp * string * expr list (*I removed option here. What is "_" as a call? *)
-  | SLookbackDefault of styp * expr * expr
-  | SUniop of styp * un_op * expr
-  | SCond of styp * expr * expr * expr
+  | SBinop of styp * sexpr * sbin_op * sexpr
+  | SAssign of styp * sexpr * sexpr
+  | SCall of styp * string * sexpr list
+  | SLookbackDefault of styp * sexpr * sexpr
+  | SUniop of styp * sun_op * sexpr
+  | SCond of styp * sexpr * sexpr * sexpr
 
 and sstmt =
-  | VDecl of bind * sexpr
+  | SVDecl of sbind * sexpr
   | SExpr of sexpr
 
-(* void (* kernel *) functions *)
-type vfn_decl = {
-  fname     : string;
-  formals   : bind list;
-  body      : stmt list;
-  }
-
 type sfn_decl = {
-  fname     : string;
-  fn_typ    : fn_typ;
-  ret_typ   : styp;
-  formals   : bind list;
-  body      : stmt list;
-  ret_expr  : sexpr;
+  sfname     : string;
+  sfn_typ    : sfn_typ;
+  sret_typ   : styp;
+  sformals   : sbind list;
+  sbody      : sstmt list;
+  sret_expr  : sexpr;
+}
+
+type sstruct_def = {
+	sname			:	string;
+	sfields		: sbind list;
 }
 
 type sextern_decl = {
-  exfname     : string;
-  exret_typ   : styp;
-  exformals   : bind list;
+	sxalias			: string;
+  sxfname     : string;
+  sxret_typ   : styp;
+  sxformals   : sbind list;
 }
 
 type slet_decl =
-  | SLetDecl of LetDecl
-  | SStructDef of StructDef
+  | SLetDecl of sbind * sexpr
+  | SStructDef of sstruct_def
   | SExternDecl of sextern_decl
 
-and sprogram = ns_decl list * slet_decl list * sfn_decl list * vfn_decl list 
+and sprogram = slet_decl list * sfn_decl list 
