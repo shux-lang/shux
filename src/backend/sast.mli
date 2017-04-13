@@ -15,9 +15,11 @@ type sfn_typ =
  | SGn
 
 type sbin_op = 
- | SAdd | SSub | SMul | SDiv | SMod | SExp
+ | SAddi | SSubi | SMuli | SDivi | SMod | SExpi
+ | SAddf | SSubf | SMulf | SDivf | SExpf
  | SAsn
- | SEq | SLt | SNeq | SLeq | SGeq
+ | SEqi | SLti | SNeqi | SLeqi | SGeqi
+ | SEqf | SLtf | SNeqf | SLeqf | SGeqf
  | SLogAnd | SLogOr
  | SFilter | SMap
  | SIndex | SLookback
@@ -25,7 +27,7 @@ type sbin_op =
  | SAccess
 
 type sun_op = 
- | SLogNot | SNeg | SPos
+ | SLogNot | SNegi | SNegf | SPosi | SPosf
 
 type slambda = {
   slformals  : sbind list;
