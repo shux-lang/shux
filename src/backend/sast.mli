@@ -1,31 +1,47 @@
 (* we can just expand typ to include void natively *)
 type styp =
- | SInt
- | SFloat
- | SString
- | SBool
- | SStruct of string
- | SArray of styp
- | Void 
+  | SInt
+  | SFloat
+  | SString
+  | SBool
+  | SStruct of string
+  | SArray of styp
+  | Void 
 
-type sbind  = SBind of styp * string
+type sbind = SBind of styp * string
 
 type sfn_typ = 
- | SKn
- | SGn
+  | SKn | SGn
+
+type sbin_op_i =
+  | SAddi | SSubi | SMuli | SDivi | SMod | SExpi
+  | SEqi | SLti | SNeqi | SLeqi | SGeqi
+
+type sbin_op_f =
+  | SAddf | SSubf | SMulf | SDivf | SExpf
+  | SEqf | SLtf | SNeqf | SLeqf | SGeqf
+
+type sbin_op_b =
+  | SLogAnd | SLogOr
+
+type sbin_op_p =
+  | SIndex | SAccess
+  | SAsn (* this is redundant because of the thing below *)
+
+type sbin_op_fn =
+  | SFilter | SMap
+  | SFor | SDo
+  | SLookback
 
 type sbin_op = 
- | SAdd | SSub | SMul | SDiv | SMod | SExp
- | SAsn
- | SEq | SLt | SNeq | SLeq | SGeq
- | SLogAnd | SLogOr
- | SFilter | SMap
- | SIndex | SLookback
- | SFor | SDo
- | SAccess
+  | SBinopInt of sbin_op_i
+  | SBinopFloat of sbin_op_f
+  | SBinopBool of sbin_op_b
+  | SBinopPtr of sbin_op_p
+  | SBinopFn of sbin_op_fn
 
 type sun_op = 
- | SLogNot | SNeg | SPos
+  | SLogNot | SNegi | SNegf
 
 type slambda = {
   slformals  : sbind list;
@@ -53,7 +69,7 @@ and sexpr =
   | SAssign of styp * sexpr * sexpr
   | SCall of styp * string * sexpr list
   | SLookbackDefault of styp * sexpr * sexpr
-  | SUniop of styp * sun_op * sexpr
+  | SUnop of styp * sun_op * sexpr
   | SCond of styp * sexpr * sexpr * sexpr
 
 and sstmt =
@@ -70,8 +86,8 @@ type sfn_decl = {
 }
 
 type sstruct_def = {
-	sname			:	string;
-	sfields		: sbind list;
+  ssname      : string;
+  ssfields    : sbind list;
 }
 
 type sextern_decl = {
