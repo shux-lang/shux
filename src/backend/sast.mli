@@ -1,34 +1,42 @@
 (* we can just expand typ to include void natively *)
 type styp =
- | SInt
- | SFloat
- | SString
- | SBool
- | SStruct of string
- | SArray of styp
- | Void 
+  | SInt
+  | SFloat
+  | SString
+  | SBool
+  | SStruct of string
+  | SArray of styp
+  | Void 
 
-type sbind  = SBind of styp * string
+type sbind = SBind of styp * string
 
 type sfn_typ = 
- | SKn
- | SGn
+  | SKn | SGn
 
 (* should we group these into different types of operators, for better code reuse? *)
+type sbin_op_arith =
+  | SAddi | SSubi | SMuli | SDivi | SMod | SExpi
+  | SAddf | SSubf | SMulf | SDivf | SExpf
+  | SEqi | SLti | SNeqi | SLeqi | SGeqi
+  | SEqf | SLtf | SNeqf | SLeqf | SGeqf
+  | SLogAnd | SLogOr
+
+type sbin_op_ptr =
+  | SIndex | SAccess
+  | SAsn (* this is redundant because of the thing below *)
+
+type sbin_op_fn =
+  | SFilter | SMap
+  | SFor | SDo
+  | SLookback
+
 type sbin_op = 
- | SAddi | SSubi | SMuli | SDivi | SMod | SExpi
- | SAddf | SSubf | SMulf | SDivf | SExpf
- | SAsn (* this is redundant because of the thing below *)
- | SEqi | SLti | SNeqi | SLeqi | SGeqi
- | SEqf | SLtf | SNeqf | SLeqf | SGeqf
- | SLogAnd | SLogOr
- | SFilter | SMap
- | SIndex | SLookback
- | SFor | SDo
- | SAccess
+  | SBinopArith of sbin_op_arith
+  | SBinopPtr of sbin_op_ptr
+  | SBinopFn of sbin_op_fn
 
 type sun_op = 
- | SLogNot | SNegi | SNegf
+  | SLogNot | SNegi | SNegf
 
 type slambda = {
   slformals  : sbind list;
