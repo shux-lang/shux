@@ -83,6 +83,9 @@ let string_of_uniop_expr f o e = string_of_unop o ^ f e
 let string_of_cond_expr f i t e =
   f i ^ " ? " ^ f t ^ " : " ^ f e
 
+let string_of_lookback_default_expr f l e =
+  f l ^ " : " ^ f e
+
 let string_of_mut = function
   | Immutable -> ""
   | Mutable -> "var "
@@ -121,6 +124,7 @@ and string_of_expr = function
  | Binop(e1, o, e2) -> string_of_binop_expr string_of_expr e1 o e2
  | Call(s, el) -> string_of_opt_default "_" nop s ^ 
                   string_of_list string_of_expr el "(" ", " ")" (is_some s)
+ | LookbackDefault(l, e) -> string_of_lookback_default_expr string_of_expr l e
  | Cond(i, t, e) -> string_of_cond_expr string_of_expr i t e
 
 and string_of_vdecl bind expr = 
@@ -139,8 +143,8 @@ let string_of_fdecl = function { fn_typ = fn; fname = id; formals = fs;
 let string_of_struct_def = function { sname = n; fields = f } ->
   "struct " ^ n ^ string_of_list string_of_bind f "{\n\t" ";\n\t" "}" true
 
-let string_of_extern = function { exfname = n; exformals = f; exret_typ = r } ->
-  "extern " ^ n ^ string_of_list string_of_bind f "(" ", " ")" true ^ string_of_typ r ^ ";"
+let string_of_extern = function { xalias = a; xfname = n; xformals = f; xret_typ = r } ->
+  "extern " ^ a ^ string_of_list string_of_bind f "(" ", " ")" true ^ string_of_typ r ^ ";"
 
 let string_of_let = function
   | LetDecl(bind, expr) -> string_of_bind bind ^ " " ^ string_of_expr expr ^ ";"

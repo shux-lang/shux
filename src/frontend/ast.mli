@@ -57,6 +57,7 @@ and expr =
   | Assign of expr * expr
   | Call of string option * expr list
   | Uniop of un_op * expr
+  | LookbackDefault of expr * expr
   | Cond of expr * expr * expr (* technically Ternop *)
 
 and stmt =
@@ -78,9 +79,10 @@ type struct_def = {
 }
 
 type extern_decl = {
-  exfname     : string;
-  exret_typ   : typ option;
-  exformals   : bind list;
+  xalias    : string; (* what we call inside shux *)
+  xfname    : string; (* what we link to outside shux *)
+  xret_typ  : typ option;
+  xformals  : bind list;
 }
 
 type let_decl =

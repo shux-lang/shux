@@ -52,8 +52,8 @@ let_decl:
   | LET typ ID ASSIGN expr SEMI             { LetDecl((Bind(Immutable, $2, $3), $5)) }
   | STRUCT ID LBRACE struct_def RBRACE      { StructDef({sname = $2; fields = List.rev $4}) }
   | EXTERN ID LPAREN formals RPAREN 
-    ret_typ SEMI                            { ExternDecl({exfname = $2; exret_typ = $6;
-                                              exformals = $4;}) }
+    ret_typ SEMI                            { ExternDecl({xalias = $2; xfname = $2; 
+                                              xret_typ = $6; xformals = $4;}) }
 
 struct_def:
   | struct_def val_decl SEMI                { $2::$1 }
@@ -106,7 +106,7 @@ asn_expr:
   | if_expr                                 { $1 } 
 
 if_expr:
-  | fn_expr COLON if_expr                   { Cond($1, $1, $3) }
+  | id_expr COLON if_expr                   { LookbackDefault($1, $3) }
   | bool_expr QUES fn_expr COLON if_expr    { Cond($1, $3, $5) }
   | IF bool_expr THEN fn_expr ELSE if_expr  { Cond($2, $4, $6) } 
   | fn_expr                                 { $1 }
@@ -190,6 +190,9 @@ postfix_expr:
 primary_expr:
   | LPAREN expr RPAREN                      { $2 }
   | lit                                     { Lit($1) }
+  | id_expr                                 { $1 }
+
+id_expr:
   | id DOTDOT int_lit                       { Binop($1, Lookback, Lit($3)) }
   | id                                      { $1 }
 
