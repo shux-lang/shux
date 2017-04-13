@@ -86,8 +86,8 @@ type sfn_decl = {
 }
 
 type sstruct_def = {
-	ssname			:	string;
-	ssfields		: sbind list;
+  ssname      : string;
+  ssfields    : sbind list;
 }
 
 type sextern_decl = {
