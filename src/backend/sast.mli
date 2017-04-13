@@ -27,7 +27,7 @@ type sbin_op =
  | SAccess
 
 type sun_op = 
- | SLogNot | SNegi | SNegf | SPosi | SPosf
+ | SLogNot | SNegi | SNegf
 
 type slambda = {
   slformals  : sbind list;
