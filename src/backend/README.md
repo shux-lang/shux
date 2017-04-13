@@ -17,36 +17,41 @@ to make it easier once we hit the codegen stage.
 The Gameplan
 ------------
 
-I propose the following sequence of steps:
+I propose the following sequence of steps
+(delimited by the intermediate tree structures that represent layers of abstraction):
 
-_[SEM] denotes semantic check_
-_[TR x -> y] denotes translation from AST x to AST y_
-_AST denotes the shux AST_
-_CAST denotes a C-like AST_
-_LLAST denotes an LLVM-like AST_
+#### AST (shux Abstract Syntax Tree)
 
-1. [SEM] Scope checker
-2. [TR AST -> AST] Flatten namespaces; this should leave `ns_decls` empty
-3. [TR AST -> AST] Manual creation of unit generator, named `_`
-3. [SEM] `main()` check (it should exist in the global namespcae as `_main()`)
-4. [SEM] Type check
-5. [TR AST -> CAST] Implement/de-abstractify:
-	* generators, which will require the following:
-		* definition of a struct that encompasses the state of a generator
-		* definition of a (stateless) function that takes in such a struct
-	* declarations: hoisted out of mixed statements
-	* lambdas: these will be hoisted as special case of declarations
-	* functional generator operations/loops (`for` and `do`):
-		* evaluate expr to figure out number of iterations
-		* initialise and manage the state struct of the generator
-		* iterate through, passing on each/final yielded value
-	* functional kernel operators/composers (`@`/map and `::`/filter):
-		* go through each element and perform the kernel on it
-		* accumulate another list to return
-	* arrays: will become generators that produce those values if chained with kernel operators
-	* vectors: implemented as float arrays 
-	because `vector` actually means something else in LLVM land
-6. [TR CAST -> LLAST] Unwrap 
-	* unfold chained expressions into a flat series of statements
-	* unfold ternery conditional to emulate if/then/else
-	* any other things that make's codegen not look like Medusa on meth
+* scope checking
+	* namespace flattening
+	* hoise declarations
+* type checking/expose types
+	* insert explicit Void type
+	* vectors -> float arrays
+
+#### SAST (shux Semantically-checked Abstract Syntax Tree)
+
+* defunctionalisation
+	* hoist lambdas with access links
+	* implement maps and filters iteratively
+* lookback
+	* state extracted from generators to yield pure functions
+	* lookback operation implemented
+	* for/do -> C-style loops with blocks of statements
+
+#### CAST (C-like Abstract Syntax Tree)
+
+* control flow
+	* conditionals replaced with conditional jumps
+	* loops replaced with conditional jumps
+* variables
+	* explicitly allocate stack variables
+	* struct access via indexing
+* expressions
+	* unrolling expessions
+
+#### LLAST (Lower Level Abstract Syntax Tree)
+
+	* dump into OCaml LLVM binding
+
+
