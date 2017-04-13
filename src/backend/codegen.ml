@@ -6,15 +6,15 @@ module StringMap = Map.Make(String)
 (* Convention: functions and types declared in codegen.ml are named with prefix g_ *)
 
 let translate (namespaces, globals, functions) =
-  let context = L.global_context () in (* we only need a global data container *)
-  let the_module = L.create_module context "shux" (* Container *)
+  let shux_llcontext = L.global_context () in (* we only need a global data container *)
+  let the_module = L.create_module shux_llcontext "shux" (* Container *)
   
   (* define lltypes *)
-  and g_i32_t  = L.i32_type  context
-  and g_i8_t   = L.i8_type   context
-  and g_i1_t = L.i1_type context
-  and g_float_t = L.double_type context
-  and g_void_t = L.void_type context in 
+  and g_i32_t  = L.i32_type  shux_llcontext
+  and g_i8_t   = L.i8_type   shux_llcontext
+  and g_i1_t = L.i1_type shux_llcontext
+  and g_float_t = L.double_type shux_llcontext
+  and g_void_t = L.void_type shux_llcontext in 
   let g_str_t = L.pointer_type g_i8_t in
 
   (* TODO: placeholders: struct, array and vector *)
@@ -31,36 +31,44 @@ let translate (namespaces, globals, functions) =
     | None -> g_void_t
     | Some y -> ltype_of_typ y in 
 
+  (* TODO: ignore var versus val for now, because this should be done in the semantic checking *)
+  let ltype_of_binding = function
+    | A.Bind (mut_var, typ_var, name_var) -> (ltype_of_typ typ_var) in
+
 
   (* Declare printf(), which later we will change from built-in to linked extern function *)
+
+  (* printf_t is an llvm function type that takes in an array consisting a single element g_str_t, returning g_i32_t *)
   let printf_t = L.var_arg_function_type g_i32_t [| g_str_t |] in
   let printf_func = L.declare_function "printf" printf_t the_module in
 
-  (* Define each function, including args and ret type *)
+   (* function_decls does two things: *)
+  (* 1 - define a function, along with its signature, in the module *)
+  (* 2 - returns a StringMap mapping from its function name to its llvm function type *)
   let function_decls = 
-    let function_decl map fdecl = 
+    (* function_decl takes in a StringMap, add an entry mapping from function_name to its llvm function type *)
+    let function_decl map fdecl =
       let function_name = fdecl.A.fname
       (* and function_type = fdecl.A.fn_typ *)
       and formal_types = 
-        Array.of_list []  (* TODO: empty formals for now *) in 
-      let function_sign_type = 
+        Array.of_list (List.map ltype_of_binding fdecl.A.formals) in 
+      let function_sign_type = (* the function signature is defined by its function formal and its return type *)
         L.function_type (ltype_of_typ_opt fdecl.A.ret_typ) formal_types in 
       StringMap.add function_name (L.define_function function_name function_sign_type the_module, fdecl) map
     in
-  List.fold_left function_decl StringMap.empty functions
+    List.fold_left function_decl StringMap.empty functions
   in
 
   (* Fill in the body of the given function *)
   let build_function_body fdecl = 
     (* Prep work *)
     let (the_function, _) = StringMap.find fdecl.A.fname function_decls in
-    let builder_global = L.builder_at_end context (L.entry_block the_function) in 
-    
+    let builder_global = L.builder_at_end shux_llcontext (L.entry_block the_function) in 
 
+    (* declare formatters as global static variables in the llvm program *)
     let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder_global in 
     let float_format_str = L.build_global_stringptr "%.5f\n" "fmt" builder_global in (* TODO make the precision configurable*)
     let format_str = L.build_global_stringptr "%s\n" "fmt" builder_global in 
-
 
 
     (* Construct local variables, TODO later 
