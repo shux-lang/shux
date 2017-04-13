@@ -13,22 +13,15 @@ type gn_struct = buffer list
 type gn = Gn of gn_struct * kn
 *)
 
-type ctyp = styp
+type ctyp = Sast.styp
 
-type cbind = sbind
+type cbind = Sast.sbind
 
 type cbin_op =
-  | CAddi | CSubi | CMuli | CDivi | CMod | CExpi
-  | CAddf | CSubf | CMulf | CDfvf | CMod | CExpf
-  | CAsn
-  | CEqi | CLti | CGti | CNeqi | CLeqi | Geqi
-  | CEqf | CLtf | CGtf | CNeqf | CLeqf | Geqf
-  | CLogAnd | CLogOr
-  | CIndex
-  | CAccess
+  | CBinopArith of Sast.sbin_op_arith
+  | CBinopPtr of Sast.sbin_op_ptr
 
-type cun_op =
-  | CLogNot | CNegi | CNegf
+type cun_op = Sast.sun_op
 
 type clit =
   | CLitInt of int
@@ -43,13 +36,20 @@ and cstruct_field = CStructField of string * cexpr
 and cexpr =
   | CLit of ctyp * clit
   | CId of ctyp * string
-  | CBinop of ctyp * cexpr * cbin_op * cexper
-  | 
+  | CBinop of ctyp * cexpr * cbin_op * cexpr
+  | CAssign of ctyp * cexpr * cexpr
+  | CCall of ctyp * string * cexpr list
+  | CUnop of ctyp * cun_op * cexpr
+  | CCond of ctyp * cexpr * cexpr * cexpr
+
+type cfn_decl = Sast.sfn_decl
+
+type cstruct_def = Sast.sstruct_def
 
 type cdecl =
   | CFnDecl of cfn_decl
   | CStructDef of cstruct_def
   | CConstDecl of cbind * cexpr
-  | SExternDecl of sextern_decl
+  | CExternDecl of Sast.sextern_decl
 
 type cprogram = cdecl list
