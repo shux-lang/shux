@@ -46,9 +46,7 @@ type slit =
   | SLitKn of slambda
   | SLitVector of sexpr list
   | SLitArray of sexpr list 
-  | SLitStruct of sstruct_field list
-
-and sstruct_field = SStructField of string * sexpr
+  | SLitStruct of (string * sexpr) list
 
 and sexpr =
   | SLit of styp * slit
