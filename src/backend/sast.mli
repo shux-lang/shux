@@ -44,9 +44,10 @@ type sun_op =
   | SLogNot | SNegi | SNegf
 
 type slambda = {
-  slformals  : sbind list;
-  slbody     : sstmt list;
-  slret_expr : sexpr;
+  slformals   : sbind list;
+  slbody      : sexpr list;
+  sllocals    : sbind list; (* no lookback, const-ness not enforced *)
+  slret_expr  : sexpr;
 }
 
 and slit =
@@ -72,17 +73,15 @@ and sexpr =
   | SUnop of styp * sun_op * sexpr
   | SCond of styp * sexpr * sexpr * sexpr
 
-and sstmt =
-  | SVDecl of sbind * sexpr
-  | SExpr of sexpr
-
 type sfn_decl = {
-  sfname     : string;
-  sfn_typ    : sfn_typ;
-  sret_typ   : styp;
-  sformals   : sbind list;
-  sbody      : sstmt list;
-  sret_expr  : sexpr;
+  sfname      : string;
+  sfn_typ     : sfn_typ;
+  sret_typ    : styp;
+  sformals    : sbind list;
+  slocalvars  : sbind list;         (* do not have lookback *)
+  slocalvals  : (sbind * int) list; (* might have lookback *)
+  sbody       : sexpr list;
+  sret_expr   : sexpr;
 }
 
 type sstruct_def = {
@@ -101,5 +100,3 @@ type slet_decl =
   | SLetDecl of sbind * sexpr
   | SStructDef of sstruct_def
   | SExternDecl of sextern_decl
-
-and sprogram = slet_decl list * sfn_decl list 
