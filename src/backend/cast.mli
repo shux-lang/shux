@@ -1,18 +1,3 @@
-(* cast.ml *) 
-(* Makes most sense to implement this ground-up *) 
-
-(* I am also going to use just regular names...
-   unsure how OCaml handles name type conflicts *) 
-
-(* Generator *) 
-(*
-type buffer = typ * int
-
-type gn_struct = buffer list
-
-type gn = Gn of gn_struct * kn
-*)
-
 type ctyp = Sast.styp
 
 type cbind = Sast.sbind
@@ -31,9 +16,7 @@ type clit =
   | CLitBool of bool
   | CLitStr of string
   | CLitArray of cexpr list
-  | CLitStruct of cstruct_field list
-
-and cstruct_field = CStructField of string * cexpr
+  | CLitStruct of (string * cexpr) list
 
 and cexpr =
   | CLit of ctyp * clit
@@ -44,7 +27,18 @@ and cexpr =
   | CUnop of ctyp * cun_op * cexpr
   | CCond of ctyp * cexpr * cexpr * cexpr
 
-type cfn_decl = Sast.sfn_decl
+type cstmt =
+  | CBlock of cexpr list
+  | CLoop of cexpr (* int *) * cstmt
+  | CReturn of cexpr
+
+type cfn_decl = {
+  cfname      : string;
+  cret_typ    : ctyp;
+  cformals    : cbind list;
+  clocals     : cbind list;
+  cbody       : cstmt list;
+}
 
 type cstruct_def = Sast.sstruct_def
 
