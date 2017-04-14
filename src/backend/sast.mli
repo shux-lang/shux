@@ -1,4 +1,3 @@
-(* we can just expand typ to include void natively *)
 type styp =
   | SInt
   | SFloat
@@ -9,9 +8,6 @@ type styp =
   | Void 
 
 type sbind = SBind of styp * string
-
-type sfn_typ = 
-  | SKn | SGn
 
 type sbin_op_i =
   | SAddi | SSubi | SMuli | SDivi | SMod | SExpi
@@ -26,7 +22,6 @@ type sbin_op_b =
 
 type sbin_op_p =
   | SIndex | SAccess
-  | SAsn (* this is redundant because of the thing below *)
 
 type sbin_op_fn =
   | SFilter | SMap
@@ -43,14 +38,7 @@ type sbin_op =
 type sun_op = 
   | SLogNot | SNegi | SNegf
 
-type slambda = {
-  slformals   : sbind list;
-  slbody      : sexpr list;
-  sllocals    : sbind list; (* no lookback, const-ness not enforced *)
-  slret_expr  : sexpr;
-}
-
-and slit =
+type slit =
   | SLitInt of int
   | SLitFloat of float
   | SLitBool of bool
@@ -62,27 +50,47 @@ and slit =
 
 and sstruct_field = SStructField of string * sexpr
 
-(* still refer back expr, but expose types *)
 and sexpr =
   | SLit of styp * slit
   | SId of styp * string
   | SBinop of styp * sexpr * sbin_op * sexpr
   | SAssign of styp * sexpr * sexpr
-  | SCall of styp * string * sexpr list
+  | SKnCall of styp * string * sexpr list
+  | SGnCall of styp * string * sexpr list
   | SLookbackDefault of styp * sexpr * sexpr
   | SUnop of styp * sun_op * sexpr
   | SCond of styp * sexpr * sexpr * sexpr
 
-type sfn_decl = {
-  sfname      : string;
-  sfn_typ     : sfn_typ;
-  sret_typ    : styp;
-  sformals    : sbind list;
-  slocalvars  : sbind list;         (* do not have lookback *)
-  slocalvals  : (sbind * int) list; (* might have lookback *)
-  sbody       : sexpr list;
-  sret_expr   : sexpr;
+and slambda = {
+  slret_typ   : styp;
+  slformals   : sbind list;
+  slbody      : sexpr list;
+  sllocals    : sbind list; (* no lookback, const-ness not enforced *)
+  slret_expr  : sexpr;
 }
+
+type skn_decl = {
+  skname      : string;
+  skret_typ   : styp;
+  skformals   : sbind list;
+  sklocals    : sbind list;         (* do not have lookback *)
+  skbody      : sexpr list;
+  skret_expr  : sexpr;
+}
+
+type sgn_decl = {
+  sgname      : string;
+  sgret_typ   : styp;
+  sgformals   : sbind list;
+  sglocalvars : sbind list;         (* do not have lookback *)
+  sglocalvals : (sbind * int) list; (* might have lookback *)
+  sgbody      : sexpr list;
+  sgret_expr  : sexpr;
+}
+
+type sfn_decl =
+  | SGnDecl of sgn_decl
+  | SKnDecl of skn_decl
 
 type sstruct_def = {
   ssname      : string;
@@ -100,3 +108,5 @@ type slet_decl =
   | SLetDecl of sbind * sexpr
   | SStructDef of sstruct_def
   | SExternDecl of sextern_decl
+
+and sprogram = slet_decl list * sfn_decl list 
