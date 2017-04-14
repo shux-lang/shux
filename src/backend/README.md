@@ -52,5 +52,4 @@ I propose the following sequence of steps
 
 #### LLAST (Lower Level Abstract Syntax Tree)
 
-	* dump into OCaml LLVM binding
-
+* dump into OCaml LLVM binding
