@@ -12,8 +12,10 @@ let sast_to_cast let_decls f_decls =
     SBind(t, n) -> SBind(t, pl ^ n)
 
   in let prefix_id pl = function
-    | SId(t, n, SLocal) -> SId(t, pl ^ n, SLocal)
-    | SId(t, n, SGlobal) -> SId(t, plet ^ n, SGlobal)
+    | SId(t, n, s) -> (match s with
+      | SGlobal -> SId(t, plet ^ n, s)
+      | _ -> SId(t, pl ^ n, s)
+      )
     | d -> d
 
   in let walk_fns f = 
