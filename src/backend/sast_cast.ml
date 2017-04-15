@@ -22,15 +22,15 @@ let sast_to_cast let_decls f_decls =
 
     let walk_stmts p b = 
       let walk_block = function
-        | _ -> [ExprDud]
-      in let walk_loop i = function
-        | _ -> []
+        | e -> CBlock([walk_expr e])
+      in let walk_loop = function
+        | e -> CLoop(walk_expr e, StmtDud)
       in let rec walk = function
         | [] -> []
         | (e, t)::l -> let f = match t with
-          | SArray(t, i) -> walk_loop i
+          | SArray(_, _) -> walk_loop
           | _ -> walk_block
-        in let r = f e in CBlock(r) :: walk l
+        in let r = f e in r :: walk l
             
             (* let r = _walk t e in CBlock(r) :: walk l *)
       in walk b
