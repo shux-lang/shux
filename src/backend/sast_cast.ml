@@ -21,11 +21,18 @@ let sast_to_cast let_decls f_decls =
   in let walk_fns f = 
 
     let walk_stmts p b = 
-      let walk_expr = function
+      let walk_block = function
         | _ -> [ExprDud]
+      in let walk_loop i = function
+        | _ -> []
       in let rec walk = function
         | [] -> []
-        | SBinop(e)::t -> let r = e :: rec t
+        | (e, t)::l -> let f = match t with
+          | SArray(t, i) -> walk_loop i
+          | _ -> walk_block
+        in let r = f e in CBlock(r) :: walk l
+            
+            (* let r = _walk t e in CBlock(r) :: walk l *)
       in walk b
 
     in let walk_gn g = 
@@ -56,13 +63,13 @@ let sast_to_cast let_decls f_decls =
         [ CStructDef(defn_struct n (f @ ll));
           CFnDecl({ cfname = n; cret_typ = t; cformals = get_struct n; 
                     clocals = get_locals f ll lr; 
-                    cbody = get_ctr :: let br = walk_stmts pgnl b in br @ walk_stmts pgnl r})]
+                    cbody = get_ctr :: let br = walk_stmts pgnl b in br @ walk_stmts pgnl [r]})]
       in walk g
 
     in let walk_kn = function { skname = n; skret_typ = t; skformals = f;
                                 sklocals = l; skbody = b; skret_expr = r} ->
       CFnDecl({ cfname = n; cret_typ = t; cformals = f; clocals = l;
-                cbody = let r = walk_stmts "" b in r @ walk_stmts "" r})
+                cbody = let br = walk_stmts "" b in br @ walk_stmts "" [r]})
     in let rec walk = function
     | [] -> []
     | SGnDecl(g)::t -> let r = walk_gn g in r @ walk t
