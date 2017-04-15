@@ -3,16 +3,23 @@ open Cast
 
 let sast_to_cast let_decls f_decls =
 
-  let walk_fns f = 
+  let pgn = "gn_" (* gn prefix *)
+  in let pgns = "gns_" (* gn struct prefix *)
+  in let pkn = "kn_" (* kn prefix *)
+  in let plet = "let_" (* let prefix *)
+
+  in let walk_fns f = 
+
     let walk_stmts p b = 
       let walk_expr = function
         | _ -> [ExprDud]
       in let walk = function
       | _ -> [StmtDud]
       in walk b
+
     in let walk_gn g = 
-      let ps = "gn_"
-      in let pv = "gnv_"
+      let pgnv = "gnl_" (* gn local prefix *)
+
       in let get_locals f l r =
         let prefix = function SBind(t, n, s) -> SBind(t, pv ^ n, s)
         in let collect f l r = List.map fst f @ List.map fst l @ r;
@@ -37,6 +44,7 @@ let sast_to_cast let_decls f_decls =
     | SGnDecl(g)::t -> let r = walk_gn g in r @ walk t
     | SKnDecl(k)::t -> let r = walk_kn k in r :: walk t
     in walk f
+
 
   in let walk_static l = 
     let interp_expr = function (* this needs to be basically an interpreter *)
