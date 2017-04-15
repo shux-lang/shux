@@ -37,7 +37,7 @@ let sast_to_cast let_decls f_decls =
 
       in let rec defn_struct n v =
         let get_val = function
-          (SBind(t, s), i) -> SBind(SArray(t), s) (* TODO: struct def'n needs int *)
+          (SBind(t, s), i) -> SBind(SArray(t, Some(i)), s) (* TODO: struct def'n needs int *)
         in { ssname = pgns ^ n; ssfields = List.map get_val v } 
 
 
