@@ -63,7 +63,7 @@ and slambda = {
   slret_typ   : styp;
   slformals   : sbind list;
   slbody      : sexpr list;
-  sllocals    : sbind list; (* no lookback, const-ness not enforced *)
+  sllocals    : sbind list;         (* no lookback, const-ness not enforced *)
   slret_expr  : sexpr;
 }
 
@@ -80,8 +80,8 @@ type sgn_decl = {
   sgname      : string;
   sgret_typ   : styp;
   sgformals   : (sbind * int) list;
-  sglocalvars : sbind list;         (* do not have lookback *)
   sglocalvals : (sbind * int) list; (* might have lookback *)
+  sglocalvars : sbind list;         (* do not have lookback *)
   sgbody      : sexpr list;
   sgret_expr  : sexpr;
 }
