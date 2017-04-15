@@ -10,7 +10,7 @@ type styp =
 type sscope =
   | Slocal | SGlobal
 
-type sbind = SBind of styp * string * sscope
+type sbind = SBind of styp * string
 
 type sbin_op_i =
   | SAddi | SSubi | SMuli | SDivi | SMod | SExpi
