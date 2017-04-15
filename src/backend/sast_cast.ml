@@ -28,6 +28,7 @@ let sast_to_cast let_decls f_decls =
     in let walk_gn g = 
       let pgnl = "gnl_" (* gn local prefix *)
       in let pgnx = "gnx_" (* gn exeution state local prefix *)
+      in let pgnc = "gnc_" (* gn execution state counter *)
 
       in let get_locals f l r =
         List.map (prefix_bind pgnl) (List.map fst f @ List.map fst l @ r)
@@ -37,9 +38,10 @@ let sast_to_cast let_decls f_decls =
 
       in let rec defn_struct n v =
         let get_val = function
-          (SBind(t, s), i) -> SBind(SArray(t, Some(i)), s) (* TODO: struct def'n needs int *)
-        in { ssname = pgns ^ n; ssfields = List.map get_val v } 
-
+          (SBind(t, s), i) -> SBind(SArray(t, Some(i)), pgnl ^ s)
+        in let decl_ctr =
+          SBind(SInt, pgnc)
+        in { ssname = pgns ^ n; ssfields = decl_ctr :: List.map get_val v } 
 
       in let walk = function { sgname = n; sgret_typ = t; sgformals = f;
                                 sglocalvals = ll; sglocalvars = lr;
