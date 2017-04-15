@@ -32,18 +32,23 @@ let sast_to_cast let_decls f_decls =
       in let pgnx = "gnx_" (* gn exeution state local prefix *)
       in let pgnc = "gnc_" (* gn execution state counter *)
 
-      in let get_locals f l r =
-        List.map (prefix_bind pgnl) (List.map fst f @ List.map fst l @ r)
-
       in let get_struct n = 
         [SBind(SStruct(pgns ^ n), pgnx)]
-
+      in let get_locals f l r =
+        List.map (prefix_bind pgnl) (List.map fst f @ List.map fst l @ r)
       in let rec defn_struct n v =
         let get_val = function
           (SBind(t, s), i) -> SBind(SArray(t, Some(i)), pgnl ^ s)
         in let decl_ctr =
           SBind(SInt, pgnc)
         in { ssname = pgns ^ n; ssfields = decl_ctr :: List.map get_val v } 
+      in let get_ctr =
+        CBlock([CAssign(SInt, 
+          CId(SInt, pgnc),
+          CBinop(SInt, 
+            CId(SInt, pgnc), CBinopInt(SAddi), CLit(SInt, CLitInt(1))
+          )
+        )])
 
       in let walk = function { sgname = n; sgret_typ = t; sgformals = f;
                                 sglocalvals = ll; sglocalvars = lr;
@@ -51,7 +56,7 @@ let sast_to_cast let_decls f_decls =
         [ CStructDef(defn_struct n (f @ ll));
           CFnDecl({ cfname = n; cret_typ = t; cformals = get_struct n; 
                     clocals = get_locals f ll lr; 
-                    cbody = let r = walk_stmts pgnl b in r @ walk_stmts pgnl r})]
+                    cbody = get_ctr :: let br = walk_stmts pgnl b in br @ walk_stmts pgnl r})]
       in walk g
 
     in let walk_kn = function { skname = n; skret_typ = t; skformals = f;
