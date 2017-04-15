@@ -47,7 +47,6 @@ type slit =
   | SLitBool of bool
   | SLitStr of string
   | SLitKn of slambda
-  | SLitVector of sexpr list
   | SLitArray of sexpr list 
   | SLitStruct of (string * sexpr) list
 
@@ -65,9 +64,9 @@ and sexpr =
 and slambda = {
   slret_typ   : styp;
   slformals   : sbind list;
-  slbody      : sexpr list;
   sllocals    : sbind list;         (* no lookback, const-ness not enforced *)
-  slret_expr  : sexpr;
+  slbody      : (sexpr * styp) list;
+  slret_expr  : (sexpr * styp);
 }
 
 type skn_decl = {
@@ -75,8 +74,8 @@ type skn_decl = {
   skret_typ   : styp;
   skformals   : sbind list;
   sklocals    : sbind list;         (* do not have lookback *)
-  skbody      : sexpr list;
-  skret_expr  : sexpr;
+  skbody      : (sexpr * styp) list;
+  skret_expr  : (sexpr * styp);
 }
 
 type sgn_decl = {
@@ -85,8 +84,8 @@ type sgn_decl = {
   sgformals   : (sbind * int) list;
   sglocalvals : (sbind * int) list; (* might have lookback *)
   sglocalvars : sbind list;         (* do not have lookback *)
-  sgbody      : sexpr list;
-  sgret_expr  : sexpr;
+  sgbody      : (sexpr * styp) list;
+  sgret_expr  : (sexpr * styp);
 }
 
 type sfn_decl =
