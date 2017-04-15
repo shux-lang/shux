@@ -7,7 +7,10 @@ type styp =
   | SArray of styp
   | Void 
 
-type sbind = SBind of styp * string
+type sscope =
+  | Slocal | SGlobal
+
+type sbind = SBind of styp * string * sscope
 
 type sbin_op_i =
   | SAddi | SSubi | SMuli | SDivi | SMod | SExpi
@@ -50,7 +53,7 @@ type slit =
 
 and sexpr =
   | SLit of styp * slit
-  | SId of styp * string
+  | SId of styp * string * sscope
   | SBinop of styp * sexpr * sbin_op * sexpr
   | SAssign of styp * sexpr * sexpr
   | SKnCall of styp * string * sexpr list
