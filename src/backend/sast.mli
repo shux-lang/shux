@@ -8,7 +8,7 @@ type styp =
   | Void 
 
 type sscope =
-  | Slocal | SGlobal
+  | SLocal | SGlobal
 
 type sbind = SBind of styp * string
 
