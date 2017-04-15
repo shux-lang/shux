@@ -47,7 +47,6 @@ type slit =
   | SLitBool of bool
   | SLitStr of string
   | SLitKn of slambda
-  | SLitVector of sexpr list
   | SLitArray of sexpr list 
   | SLitStruct of (string * sexpr) list
 
