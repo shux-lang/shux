@@ -1,6 +1,4 @@
 type ctyp = Sast.styp
-    | SLetDecl(b, e) -> CConstDecl(b, walk_expr e)
-    | SLetDecl(b, e) -> CConstDecl(b, walk_expr e)
 
 type cbind = Sast.sbind
 
@@ -51,7 +49,7 @@ type cstruct_def = Sast.sstruct_def
 type cdecl =
   | CFnDecl of cfn_decl
   | CStructDef of cstruct_def
-  | CConstDecl of cbind * cexpr
+  | CConstDecl of cbind * cstmt
   | CExternDecl of Sast.sextern_decl
   | DeclDud
 
