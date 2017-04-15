@@ -4,7 +4,7 @@ type styp =
   | SString
   | SBool
   | SStruct of string
-  | SArray of styp
+  | SArray of styp * int option (* necessary for struct def'ns, not used elsewhere *)
   | Void 
 
 type sscope =
