@@ -14,7 +14,7 @@ let sast_to_cast let_decls f_decls =
       let ps = "gn_"
       in let pv = "gnv_"
       in let get_locals f l r =
-        let prefix = function SBind(t, s) -> SBind(t, pv ^ s)
+        let prefix = function SBind(t, n, s) -> SBind(t, pv ^ n, s)
         in let collect f l r = List.map fst f @ List.map fst l @ r;
         in List.map prefix (collect f l r)
       in let rec gn_struct n = function
@@ -39,10 +39,10 @@ let sast_to_cast let_decls f_decls =
     in walk f
 
   in let walk_static l = 
-    let walk_expr = function (* this needs to be basically an interpreter *)
+    let interp_expr = function (* this needs to be basically an interpreter *)
       | _ -> StmtDud
     in let walk = function
-      | SLetDecl(b, e) -> CConstDecl(b, walk_expr e)
+      | SLetDecl(b, e) -> CConstDecl(b, interp_expr e)
       | SStructDef(s) -> CStructDef(s)
       | SExternDecl(x) -> CExternDecl(x)
     in walk l
