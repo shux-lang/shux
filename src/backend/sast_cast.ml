@@ -23,8 +23,9 @@ let sast_to_cast let_decls f_decls =
     let walk_stmts p b = 
       let walk_expr = function
         | _ -> [ExprDud]
-      in let walk = function
-      | _ -> [StmtDud]
+      in let rec walk = function
+        | [] -> []
+        | SBinop(e)::t -> let r = e :: rec t
       in walk b
 
     in let walk_gn g = 
@@ -43,8 +44,7 @@ let sast_to_cast let_decls f_decls =
           SBind(SInt, pgnc)
         in { ssname = pgns ^ n; ssfields = decl_ctr :: List.map get_val v } 
       in let get_ctr =
-        CBlock([CAssign(SInt, 
-          CId(SInt, pgnc),
+        CBlock([CAssign(SInt, CId(SInt, pgnc),
           CBinop(SInt, 
             CId(SInt, pgnc), CBinopInt(SAddi), CLit(SInt, CLitInt(1))
           )
