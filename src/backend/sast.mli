@@ -79,7 +79,7 @@ type skn_decl = {
 type sgn_decl = {
   sgname      : string;
   sgret_typ   : styp;
-  sgformals   : sbind list;
+  sgformals   : (sbind * int) list;
   sglocalvars : sbind list;         (* do not have lookback *)
   sglocalvals : (sbind * int) list; (* might have lookback *)
   sgbody      : sexpr list;
