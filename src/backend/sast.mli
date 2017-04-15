@@ -64,8 +64,8 @@ and sexpr =
 and slambda = {
   slret_typ   : styp;
   slformals   : sbind list;
-  slbody      : (sexpr * styp) list;
   sllocals    : sbind list;         (* no lookback, const-ness not enforced *)
+  slbody      : (sexpr * styp) list;
   slret_expr  : (sexpr * styp);
 }
 
