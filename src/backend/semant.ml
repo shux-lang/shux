@@ -49,7 +49,15 @@ let fltn_global nsname globs =
 
 	in List.map (fun x -> handle_glob nsname x) globs
 
-let fltn_fn nsname fndecl = fndecl
+let fltn_fn nsname fndecls = 
+	let rec handle_function nsname fndecl = 
+		{ fname = nsname ^ "_" ^ fndecl.fname;
+			fn_typ = fndecl.fn_typ;
+			ret_typ = fndecl.ret_typ;
+			formals = fndecl.formals;
+			body = fndecl.body;
+			ret_expr = fndecl.ret_expr; } in
+	List.map (fun x -> handle_function nsname x) fndecls
 
 let rec flatten_ns ns_list = 
 	let rec handle_ns ns = 
@@ -73,7 +81,7 @@ let check (ns, globals, functions) =
 	let global_env = check_globals (globals @ (fst flat_ns)) in
 	let start_env = create_new_env global_env in 
 	(* check_functions (functions @ (snd flat_ns)) global_env *)
-	(ns, globals, functions)
+	([], globals @ fst flat_ns, functions @ snd flat_ns)
 
 
 (*				(* Checking functions *)
