@@ -1,6 +1,6 @@
 open Ast
-open Sast
 open Astprint
+open Sast
 
 (* map variable to type 
 	or stack of types if overridden *) 
@@ -35,20 +35,21 @@ let create_new_env decls = decls
 
 (*TODO: Flatten namespaces
 	- create new Ast.program of flattened ns and return *)
-let flatten_namespaces ns = ns 
+let flatten_namespaces ns = 
+	(_, letd, funcd) -> (letd, funcd) 
 
 (*TODO: *) 
 let check_globals a = a
 
 (* main type checking goes on here *) 
-let check_functions run_env = run_env
+let check_functions functions run_env = run_env
 
 (* entry point *) 
 let check (ns, globals, functions) = 
 	let flat_ns = flatten_namespaces ns in
-	let global_env = check_globals (globals @ (snd flat_ns)) in
+	let global_env = check_globals (globals @ (fst flat_ns)) in
 	let start_env = create_new_env global_env in 
-	check_functions global_env
+	check_functions (functions @ (snd flat_ns)) global_env
 
 
 (*				(* Checking functions *)
