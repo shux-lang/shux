@@ -23,7 +23,7 @@ let _ =
 	let ast = Parser.program Scanner.token lexbuf in
   let sast = Semant.check ast in
 	match action with
-		| Ast -> print_string (Astprint.string_of_program sast)
+		| Ast -> print_string (Astprint.string_of_program ast)
 		| LLVM -> 
 				let code = Codegen.translate sast in
     		print_string (Llvm.string_of_llmodule code)

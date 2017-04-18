@@ -38,9 +38,8 @@ let create_new_env decls = decls
 
 let fltn_global nsname globs =
 	let handle_glob nsname = function
-		| LetDecl(bnd,e) -> 
-				let newbnd = (fun (m,t,n) -> (m,t,nsname ^ "_" ^ n)) bnd in 
-				LetDecl(bndl,e)
+		| LetDecl(Bind(m,t,n),e) ->		
+				let newn = nsname ^ "_" ^ n in LetDecl(Bind(m,t,newn),e)
 		| StructDef s -> StructDef( { sname = nsname ^ "_" ^ s.sname; 
 																	fields = s.fields} )
 		| ExternDecl e -> ExternDecl( { xalias = nsname ^ "_" ^ e.xalias;
@@ -50,14 +49,17 @@ let fltn_global nsname globs =
 
 	in List.map (fun x -> handle_glob nsname x) globs
 
- (*List.fold_left *) 
 let fltn_fn nsname fndecl = fndecl
 
-let flatten_ns ns = match ns.nbody with
-	| ([], glob, fn) -> (fltn_global ns.nname glob, fltn_fn ns.nname fn)
-	| (nestns, glob, fn) -> let flat_ns = flatten_ns nestns in
-												(fltn_global ns.nname (glob @ (fst flat_ns)),
-												fltn_fn ns.nname (fn @ (snd flat_ns)))
+let rec flatten_ns ns_list = 
+	let rec handle_ns ns = 
+		match ns.nbody with
+		| ([], glob, fn) -> (fltn_global ns.nname glob, fltn_fn ns.nname fn)
+		| (nestns, glob, fn) -> let flat_ns = flatten_ns nestns in
+													(fltn_global ns.nname (glob @ (fst flat_ns)),
+													fltn_fn ns.nname (fn @ (snd flat_ns)))
+	in List.fold_left (fun (a,b) (an, bn) -> (a@an, b@bn)) ([], [])
+	(List.map handle_ns ns_list)
 
 (*TODO: *) 
 let check_globals a = a
@@ -70,7 +72,8 @@ let check (ns, globals, functions) =
 	let flat_ns = flatten_ns ns in
 	let global_env = check_globals (globals @ (fst flat_ns)) in
 	let start_env = create_new_env global_env in 
-	check_functions (functions @ (snd flat_ns)) global_env
+	(* check_functions (functions @ (snd flat_ns)) global_env *)
+	(ns, globals, functions)
 
 
 (*				(* Checking functions *)
