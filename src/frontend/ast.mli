@@ -91,7 +91,7 @@ type let_decl =
 
 type ns_decl = {
   nname     : string;
-  nbody     : program;
+  nbody     : let_decl list * fn_decl list;
 }
 
 and program = ns_decl list * let_decl list * fn_decl list
