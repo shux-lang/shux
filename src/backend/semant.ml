@@ -16,25 +16,47 @@ module VarSet = Set.Make(struct
 		end)
 
 (* represent typed variables with same name *)
+(*TODO: How are we handling nested name declarations of different types?
+ideally we should disallow this *) 
 type var = {
 	id : string; 
-	obj_type : Ast.typ;
+	var_type : Ast.typ;
 }
 
 type trans_env = {
-		(*  a stack of objects mapped to a name *)
+		(*  a stack of variables mapped to a name *)
 		scope: var list VarMap.t;
-	
+			
 		
 		(* return type of block *)
 		ret_type : Sast.styp;
 }
 
+(* check expression 
+tr_env: current translation environment
+expr: expression to be checked 
+
+returns the type of the expression *) 
+
+(*TODO: Return type of literal *) 
+let type_of_lit lit = lit
+
+let check_expr tr_env expr =
+	match expr with
+	 | Lit(a) -> type_of_lit a
+   | Id(var) -> 
+      if VarMap.mem var tr_env.scope 
+			then let x = VarMap.find var tr_env.scope in x.var_type
+			else raise Failure("Variable " ^ var ^ "has not been declared")
+   | Binop(e1, op, e2) -> (*TODO : *) 
+   | Assign(e1, e2) -> (*TODO: *) 
+   | Call(str, elist) -> (*TODO *)
+   | Uniop(unop, e) -> (*TODO: *) 
+   | LookbackDefault(e1, e2) -> (*TODO *) 
+   | Cond(e1, e2, e3) -> (*TODO: )  
+
 (* TODO: take in a list of globals and create a trans_env *) 
 let create_new_env decls = decls
-
-(*TODO: Flatten namespaces
-	- create new Ast.program of flattened ns and return *)
 
 let fltn_global nsname globs =
 	let handle_glob nsname = function
