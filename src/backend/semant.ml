@@ -39,25 +39,59 @@ expr: expression to be checked
 returns the type of the expression *) 
 
 (*TODO: Return type of literal *) 
-let type_of_lit lit = lit
+let type_of_lit tr_env = function
+   | LitInt(l) -> Int
+   | LitFloat(l) -> Float
+   | LitStr(l) -> String
+   | LitBool(l) -> Bool
+   | LitStruct(l) -> Bool (*TODO: Match every expr against the field
+															indicated by the matching string *)  
+   | LitVector(l) -> Vector (List.length l)
+   | LitArray(l) -> 
+			let rec array_check arr typ =
+        if (arr = []) then typ else
+        let nxt_typ = check_expr List.hd arr in
+        if nxt_typ != typ then raise Failure ("Array types not consistent.")
+        else array_check (List.tail arr) (check_expr (List.hd arr)) in
+      array_check (List.tail l) (check_expr (List.hd l))
+   | LitKn(l) -> let x = l.lret_expr in match x with
+      | Some x -> check_expr tr_env x
+      | None -> Int (*TODO: Replace with Void after converting types to Sast.typ *) 
 
 let check_expr tr_env expr =
 	match expr with
-	 | Lit(a) -> type_of_lit a
+	 | Lit(a) -> type_of_lit tr_env a
    | Id(var) -> 
       if VarMap.mem var tr_env.scope 
 			then let x = VarMap.find var tr_env.scope in x.var_type
 			else raise Failure("Variable " ^ var ^ "has not been declared")
-   | Binop(e1, op, e2) -> (*TODO : *) 
+   | Binop(e1, op, e2) -> 
+      let t1 = check_expr e1 in 
+      let t2 = check_expr e1 in
+      match op with
+       | Add | Sub | Mul | Div -> if t1 != t2 
+          then raise Failure("Can't do binop on incompatible types.")
+          else if t1 != Int && t2 != Float then 
+             raise Failure("Binop only defined over integers or scalars.")
+         else t1
+       | Mod -> if t1 = Int && t2 = Int then Int else 
+          raise Failure("Bad types for mod operator")
+       | Exp -> if t1 = Float && t2 = Float then Float else
+          raise Failure("Bad types for exponent operator")
+       | Eq | Lt | Gt | Neq | Leq | Geq -> if t1 != t2 
+          then raise Failure("Can't do binop on incompatible types.") else -> Bool
+       | LogAnd | LogOr -> if t1 != t2 || t1 != Bool
+          then raise Failure("Logical and/or only applies to bools.") else -> Bool
+       | Filter | Map -> t1 (*TODO: How do these work? *)  
    | Assign(e1, e2) -> (*TODO: *) 
    | Call(str, elist) -> (*TODO *)
    | Uniop(unop, e) -> (*TODO: *) 
    | LookbackDefault(e1, e2) -> (*TODO *) 
-   | Cond(e1, e2, e3) -> (*TODO: )  
+   | Cond(e1, e2, e3) -> (*TODO: *)  
 
-(* TODO: take in a list of globals and create a trans_env *) 
+(* TODO: take in a list of globals and create a trans_env *)
+ 
 let create_new_env decls = decls
-
 let fltn_global nsname globs =
 	let handle_glob nsname = function
 		| LetDecl(Bind(m,t,n),e) ->		
