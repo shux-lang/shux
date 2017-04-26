@@ -178,8 +178,8 @@ let rec flatten_ns ns_list =
 		match ns.nbody with
 		| ([], glob, fn) -> (fltn_global ns.nname glob, fltn_fn ns.nname fn)
 		| (nestns, glob, fn) -> let flat_ns = flatten_ns nestns in
-													(fltn_global ns.nname (glob @ (fst flat_ns)),
-													fltn_fn ns.nname (fn @ (snd flat_ns)))
+                          (fltn_global ns.nname (glob @ (fst flat_ns)),
+                           fltn_fn ns.nname (fn @ (snd flat_ns)))
 	in List.fold_left (fun (a,b) (an, bn) -> (a@an, b@bn)) ([], [])
 	(List.map handle_ns ns_list)
 
