@@ -33,15 +33,18 @@ type trans_env = {
 }
 
 
-let get_styp = function
+let rec get_styp = function
  | Int -> SInt
  | Float -> SFloat
  | String -> SString
  | Bool -> SBool
- | Struct -> SStruct
- | Array -> SArray
- | Vector -> SVector
- 
+ | Struct(l) -> SStruct(l)
+ | Array(t) -> SArray(get_styp t)
+ | Vector(l) -> SArray(SFloat)
+
+let get_bind_typ = function
+ | Bind(_, t, _) -> t
+
 (* check expression 
 tr_env: current translation environment
 expr: expression to be checked 
@@ -49,7 +52,7 @@ expr: expression to be checked
 returns the type of the expression *) 
 
 (*TODO: Return type of literal *) 
-let type_of_lit tr_env = function
+let rec type_of_lit tr_env = function
    | LitInt(l) -> Int
    | LitFloat(l) -> Float
    | LitStr(l) -> String
@@ -57,65 +60,92 @@ let type_of_lit tr_env = function
    | LitStruct(l) -> Bool (*TODO: Match every expr against the field
 															indicated by the matching string *)  
    | LitVector(l) -> Vector (List.length l)
-   | LitArray(l) -> 
-			let rec array_check arr typ =
+   | LitArray(l) -> Int
+			(*let rec array_check arr typ =
         if (arr = []) then typ else
-        let nxt_typ = check_expr List.hd arr in
-        if nxt_typ != typ then raise Failure ("Array types not consistent.")
-        else array_check (List.tail arr) (check_expr (List.hd arr)) in
-      array_check (List.tail l) (check_expr (List.hd l))
+        let nxt_typ = check_expr (List.hd arr) in
+        if nxt_typ != typ then raise (Failure ("Array types not consistent."))
+        else array_check (List.tl arr) (check_expr (List.hd arr)) in
+      array_check (List.tl l) (check_expr (List.hd l)) *) 
    | LitKn(l) -> let x = l.lret_expr in match x with
       | Some x -> check_expr tr_env x
       | None -> Int (*TODO: Replace with Void after converting types to Sast.typ *) 
 
-let check_expr tr_env expr =
+and check_expr tr_env expr =
 	match expr with
 	 | Lit(a) -> type_of_lit tr_env a
    | Id(var) -> 
       if VarMap.mem var tr_env.scope 
-			then let x = VarMap.find var tr_env.scope in x.var_type
-			else raise Failure("Variable " ^ var ^ "has not been declared")
+			then let x = List.hd (VarMap.find var tr_env.scope) in x.var_type
+			else raise (Failure ("Variable " ^ var ^ "has not been declared"))
    | Binop(e1, op, e2) -> 
-      let t1 = check_expr e1 in 
-      let t2 = check_expr e2 in
-      match op with
+      let t1 = check_expr tr_env e1 in 
+      let t2 = check_expr tr_env e2 in
+      (match op with
        | Add | Sub | Mul | Div -> if t1 != t2 
-          then raise Failure("Can't do binop on incompatible types.")
+          then raise (Failure "Can't do binop on incompatible types.")
           else if t1 != Int && t2 != Float then 
-             raise Failure("Binop only defined over integers or scalars.")
+             raise (Failure "Binop only defined over integers or scalars.")
          else t1
        | Mod -> if t1 = Int && t2 = Int then Int else 
-          raise Failure("Bad types for mod operator")
+          raise (Failure "Bad types for mod operator")
        | Exp -> if t1 = Float && t2 = Float then Float else
-          raise Failure("Bad types for exponent operator")
+          raise (Failure "Bad types for exponent operator")
        | Eq | Lt | Gt | Neq | Leq | Geq -> if t1 != t2 
-          then raise Failure("Can't do binop on incompatible types.") else Bool
+          then raise (Failure "Can't do binop on incompatible types.") else Bool
        | LogAnd | LogOr -> if t1 != t2 || t1 != Bool
-          then raise Failure("Logical and/or only applies to bools.") else Bool
-       | Filter | Map as l -> let t = match t1 with 
+          then raise (Failure "Logical and/or only applies to bools.") else Bool
+       | Filter | Map as fm -> let t = (match t1 with 
             | Array(v) -> v 
-            | _ -> raise Failure("Left hand needs to be [] for map/filter")
+            | _ -> raise (Failure "Left hand needs to be [] for map/filter"))
        in
-            if match e2 with
-            | Binop(kn, _, _) -> match kn with
+            if (match e2 with
+            | Binop(kn, _, _) -> (match kn with
               | Id(n) -> false (*TODO: Match with formals of the kernel *)
-              | LitKn(n) -> (List.length n.lformals) = 1 && 
-                            (snd (List.hd n.lformals)) = t
-            | LitKn(n) -> (List.length n.lformals) = 1 &&
-                          (snd (List.hd n.lformals)) = t
-            then match l with
+              | Lit(n) -> (match n with
+													| LitKn(l) ->(List.length l.lformals) = 1 && 
+                                    (get_bind_typ (List.hd l.lformals)) = t
+                          | _ -> raise (Failure "Filter not given a lambda"))
+              | _ -> raise (Failure "Filter not given a lambda :((("))
+            | Lit(n) -> (match n with
+                         | LitKn(l) ->(List.length l.lformals) = 1 &&
+                                   (get_bind_typ (List.hd l.lformals)) = t
+                         | _ -> raise (Failure "Filter not given a lambda :("))
+            | _ -> raise (Failure "Filter not given a lambda :((("))
+            then (match fm with
              | Filter -> if t2 = Bool then Array(t) else
-                     raise Failure("Filter kernel needs to return Bool")
+                     raise (Failure "Filter kernel needs to return Bool")
              | Map -> if t = t2 then Array(t) else 
-                     raise Failure("Map kernel return type needs to match
+                     raise (Failure "Map kernel return type needs to match
                                    array")
-            else raise Failure("Map/Filter needs kernel that takes single
+             | _ -> raise (Failure "The OCaml compiler has a strict type system."))
+            else raise (Failure "Map/Filter needs kernel that takes single
             parameter matching the [] to be mapped/filtered")
-   | Assign(e1, e2) -> (*TODO: *) 
-   | Call(str, elist) -> (*TODO *)
-   | Uniop(unop, e) -> (*TODO: *) 
-   | LookbackDefault(e1, e2) -> (*TODO *) 
-   | Cond(e1, e2, e3) -> (*TODO: *)  
+       | Index -> if t2 = Int then match t1 with
+          | Array(v) -> v
+          | Vector(l) -> Float
+          | _ -> raise (Failure "Indexing needs an array/vector to index into")
+         else raise (Failure "Indexing needs to be by integer expression only.")
+      | Lookback -> t1 (* Lookback returns value of the type of the ID *)
+      | For -> Array(t2) (*For returns an array of the return type of gn *)
+      | Do -> t2 (* Do simply returns the final value of the gn *)
+      | Access -> Int) (*TODO: Match with struct in tr_env, error out if struct
+														OR field doesn't exist *) 
+   | Assign(e1, e2) -> let t1 = check_expr tr_env e1 in 
+      if t1 = check_expr tr_env e2 then t1 else 
+			raise (Failure "Assignment types don't match. shux can't autocast types.")  
+   | Call(str, elist) -> Int (*TODO Return type of the caller function,
+			also semantically check against the formals of the function*)
+   | Uniop(unop, e) -> (match unop with
+      | Pos | Neg -> let t = check_expr tr_env e in if t = Int || t = Float then t else
+         raise (Failure "Pos/Neg unioperators only valid for ints or floats")
+      | LogNot -> if check_expr tr_env e = Bool then Bool else 
+         raise (Failure "Logical not only applies to booleans"))
+   | LookbackDefault(e1, e2) -> Int(*TODO *) 
+   | Cond(e1, e2, e3) -> if check_expr tr_env e1 = Bool then
+        let t2 = check_expr tr_env e2 in if t2 = check_expr tr_env e3 then t2
+        else raise (Failure "Ternary operator return type mismatch")
+     else raise (Failure "Ternary operator conditional needs to be a boolean expr")
 
 (* TODO: take in a list of globals and create a trans_env *)
  
