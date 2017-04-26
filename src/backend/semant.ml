@@ -92,8 +92,25 @@ let check_expr tr_env expr =
           then raise Failure("Can't do binop on incompatible types.") else Bool
        | LogAnd | LogOr -> if t1 != t2 || t1 != Bool
           then raise Failure("Logical and/or only applies to bools.") else Bool
-       | Filter | Map -> if t1 = Array(t2) && 
-       
+       | Filter | Map as l -> let t = match t1 with 
+            | Array(v) -> v 
+            | _ -> raise Failure("Left hand needs to be [] for map/filter")
+       in
+            if match e2 with
+            | Binop(kn, _, _) -> match kn with
+              | Id(n) -> false (*TODO: Match with formals of the kernel *)
+              | LitKn(n) -> (List.length n.lformals) = 1 && 
+                            (snd (List.hd n.lformals)) = t
+            | LitKn(n) -> (List.length n.lformals) = 1 &&
+                          (snd (List.hd n.lformals)) = t
+            then match l with
+             | Filter -> if t2 = Bool then Array(t) else
+                     raise Failure("Filter kernel needs to return Bool")
+             | Map -> if t = t2 then Array(t) else 
+                     raise Failure("Map kernel return type needs to match
+                                   array")
+            else raise Failure("Map/Filter needs kernel that takes single
+            parameter matching the [] to be mapped/filtered")
    | Assign(e1, e2) -> (*TODO: *) 
    | Call(str, elist) -> (*TODO *)
    | Uniop(unop, e) -> (*TODO: *) 
