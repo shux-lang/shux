@@ -5,14 +5,14 @@ open Sast
 (* map variable to type 
 	or stack of types if overridden *) 
 module VarMap = Map.Make(struct
-				type t = string
-				let compare x y = Pervasives.compare x y
+        type t = string
+        let compare x y = Pervasives.compare x y
 		end) 
 
 (* Set of var names *) 
 module VarSet = Set.Make(struct
-			type t = string
-			let compare x y = Pervasives.compare x y
+      type t = string
+      let compare x y = Pervasives.compare x y
 		end)
 
 (* represent typed variables with same name *)
@@ -25,11 +25,11 @@ type var = {
 
 type trans_env = {
 		(*  a stack of variables mapped to a name *)
-		scope: var list VarMap.t;
+    scope: var list VarMap.t;
 			
 		
 		(* return type of block *)
-		ret_type : Sast.styp;
+    ret_type : Sast.styp;
 }
 
 
@@ -58,7 +58,7 @@ let rec type_of_lit tr_env = function
    | LitStr(l) -> String
    | LitBool(l) -> Bool
    | LitStruct(l) -> Bool (*TODO: Match every expr against the field
-															indicated by the matching string *)  
+                            indicated by the matching string *)  
    | LitVector(l) -> Vector (List.length l)
    | LitArray(l) -> Int
 			(*let rec array_check arr typ =
@@ -103,7 +103,7 @@ and check_expr tr_env expr =
             | Binop(kn, _, _) -> (match kn with
               | Id(n) -> false (*TODO: Match with formals of the kernel *)
               | Lit(n) -> (match n with
-													| LitKn(l) ->(List.length l.lformals) = 1 && 
+                          | LitKn(l) ->(List.length l.lformals) = 1 && 
                                     (get_bind_typ (List.hd l.lformals)) = t
                           | _ -> raise (Failure "Filter not given a lambda"))
               | _ -> raise (Failure "Filter not given a lambda :((("))
@@ -130,7 +130,7 @@ and check_expr tr_env expr =
       | For -> Array(t2) (*For returns an array of the return type of gn *)
       | Do -> t2 (* Do simply returns the final value of the gn *)
       | Access -> Int) (*TODO: Match with struct in tr_env, error out if struct
-														OR field doesn't exist *) 
+                        OR field doesn't exist *) 
    | Assign(e1, e2) -> let t1 = check_expr tr_env e1 in 
       if t1 = check_expr tr_env e2 then t1 else 
 			raise (Failure "Assignment types don't match. shux can't autocast types.")  
@@ -155,11 +155,11 @@ let fltn_global nsname globs =
 		| LetDecl(Bind(m,t,n),e) ->		
 				let newn = nsname ^ "_" ^ n in LetDecl(Bind(m,t,newn),e)
 		| StructDef s -> StructDef( { sname = nsname ^ "_" ^ s.sname; 
-																	fields = s.fields} )
+                                  fields = s.fields} )
 		| ExternDecl e -> ExternDecl( { xalias = nsname ^ "_" ^ e.xalias;
-																		xfname = e.xfname;
-																		xret_typ = e.xret_typ;
-																		xformals = e.xformals; } )
+                                    xfname = e.xfname;
+                                    xret_typ = e.xret_typ;
+                                    xformals = e.xformals; } )
 
 	in List.map (fun x -> handle_glob nsname x) globs
 
