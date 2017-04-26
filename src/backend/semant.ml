@@ -32,6 +32,16 @@ type trans_env = {
 		ret_type : Sast.styp;
 }
 
+
+let get_styp = function
+ | Int -> SInt
+ | Float -> SFloat
+ | String -> SString
+ | Bool -> SBool
+ | Struct -> SStruct
+ | Array -> SArray
+ | Vector -> SVector
+ 
 (* check expression 
 tr_env: current translation environment
 expr: expression to be checked 
@@ -67,7 +77,7 @@ let check_expr tr_env expr =
 			else raise Failure("Variable " ^ var ^ "has not been declared")
    | Binop(e1, op, e2) -> 
       let t1 = check_expr e1 in 
-      let t2 = check_expr e1 in
+      let t2 = check_expr e2 in
       match op with
        | Add | Sub | Mul | Div -> if t1 != t2 
           then raise Failure("Can't do binop on incompatible types.")
@@ -79,10 +89,11 @@ let check_expr tr_env expr =
        | Exp -> if t1 = Float && t2 = Float then Float else
           raise Failure("Bad types for exponent operator")
        | Eq | Lt | Gt | Neq | Leq | Geq -> if t1 != t2 
-          then raise Failure("Can't do binop on incompatible types.") else -> Bool
+          then raise Failure("Can't do binop on incompatible types.") else Bool
        | LogAnd | LogOr -> if t1 != t2 || t1 != Bool
-          then raise Failure("Logical and/or only applies to bools.") else -> Bool
-       | Filter | Map -> t1 (*TODO: How do these work? *)  
+          then raise Failure("Logical and/or only applies to bools.") else Bool
+       | Filter | Map -> if t1 = Array(t2) && 
+       
    | Assign(e1, e2) -> (*TODO: *) 
    | Call(str, elist) -> (*TODO *)
    | Uniop(unop, e) -> (*TODO: *) 
