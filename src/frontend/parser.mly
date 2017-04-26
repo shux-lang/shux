@@ -23,8 +23,11 @@
 %%
 
 program:
-  | /* nothing */ EOF                       { ([], [], []) }
-  | ns_section let_section fn_section EOF   { ($1, $2, $3) }
+  | ns EOF                                  { $1 }
+
+ns:
+  | ns_section let_section fn_section       { ($1, $2, $3) }
+
 
 /* namespace declaration rules */
 ns_section:
@@ -36,7 +39,7 @@ ns_decls:
   | ns_decl                                 { [$1] }
 
 ns_decl:
-  | NS ID ASSIGN LBRACE program RBRACE      { {nname = $2; nbody = $5} }
+  | NS ID ASSIGN LBRACE ns RBRACE           { {nname = $2; nbody = $5} }
 
 
 /* let declaration rules */
@@ -63,6 +66,7 @@ struct_def:
 /* function declaration rules */
 fn_section:
   | fn_decls                                { List.rev $1 }
+  | /* nothing */                           { [] }
 
 fn_decls: 
   | fn_decls fn_decl                        { $2::$1 }
