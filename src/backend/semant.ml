@@ -23,11 +23,18 @@ type var = {
 	var_type : Ast.typ;
 }
 
+type struct_type = {
+  id : string;
+  field : (string * Ast.typ) list;
+}
+
 type trans_env = {
 		(*  a stack of variables mapped to a name *)
     scope: var list VarMap.t;
-			
-		
+
+    (* list of structs defined in the block *)
+    structs: struct_type list;
+
 		(* return type of block *)
     ret_type : Sast.styp;
 }
@@ -58,15 +65,15 @@ let rec type_of_lit tr_env = function
    | LitStr(l) -> String
    | LitBool(l) -> Bool
    | LitStruct(l) -> Bool (*TODO: Match every expr against the field
-                            indicated by the matching string *)  
+                            indicated by the matching string *)
    | LitVector(l) -> Vector (List.length l)
-   | LitArray(l) -> Int
-			(*let rec array_check arr typ =
+   | LitArray(l) ->
+			let rec array_check arr typ = 
         if (arr = []) then typ else
-        let nxt_typ = check_expr (List.hd arr) in
+        let nxt_typ = check_expr tr_env (List.hd arr) in
         if nxt_typ != typ then raise (Failure ("Array types not consistent."))
-        else array_check (List.tl arr) (check_expr (List.hd arr)) in
-      array_check (List.tl l) (check_expr (List.hd l)) *) 
+        else array_check (List.tl arr) (check_expr tr_env (List.hd arr)) in
+      array_check (List.tl l) (check_expr tr_env (List.hd l)) 
    | LitKn(l) -> let x = l.lret_expr in match x with
       | Some x -> check_expr tr_env x
       | None -> Int (*TODO: Replace with Void after converting types to Sast.typ *) 
@@ -75,7 +82,7 @@ and check_expr tr_env expr =
 	match expr with
 	 | Lit(a) -> type_of_lit tr_env a
    | Id(var) -> 
-      if VarMap.mem var tr_env.scope 
+      if VarMap.mem var tr_env.scope
 			then let x = List.hd (VarMap.find var tr_env.scope) in x.var_type
 			else raise (Failure ("Variable " ^ var ^ "has not been declared"))
    | Binop(e1, op, e2) -> 
@@ -90,6 +97,7 @@ and check_expr tr_env expr =
        | Mod -> if t1 = Int && t2 = Int then Int else 
           raise (Failure "Bad types for mod operator")
        | Exp -> if t1 = Float && t2 = Float then Float else
+
           raise (Failure "Bad types for exponent operator")
        | Eq | Lt | Gt | Neq | Leq | Geq -> if t1 != t2 
           then raise (Failure "Can't do binop on incompatible types.") else Bool
@@ -141,13 +149,15 @@ and check_expr tr_env expr =
          raise (Failure "Pos/Neg unioperators only valid for ints or floats")
       | LogNot -> if check_expr tr_env e = Bool then Bool else 
          raise (Failure "Logical not only applies to booleans"))
-   | LookbackDefault(e1, e2) -> Int(*TODO *) 
+   | LookbackDefault(e1, e2) -> 
+          if (check_expr tr_env e2) == Int then check_expr tr_env e1 else
+          raise (Failure "Lookback indexing needs to be an integer")
    | Cond(e1, e2, e3) -> if check_expr tr_env e1 = Bool then
         let t2 = check_expr tr_env e2 in if t2 = check_expr tr_env e3 then t2
         else raise (Failure "Ternary operator return type mismatch")
      else raise (Failure "Ternary operator conditional needs to be a boolean expr")
 
-(* TODO: take in a list of globals and create a trans_env *)
+(* TODO: take i:n a list of globals and create a trans_env *)
  
 let create_new_env decls = decls
 let fltn_global nsname globs =
