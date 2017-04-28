@@ -304,8 +304,8 @@ lit:
   | INT_LIT                                 { LitInt($1) }
 
 struct_lit:  
-  | LBRACE struct_lit_fields RBRACE         { LitStruct($2) }
-  | LBRACE RBRACE                           { LitStruct([]) }
+  | ID LBRACE struct_lit_fields RBRACE         { LitStruct($1, $3) }
+  | ID LBRACE RBRACE                           { LitStruct($1, []) }
 
 struct_lit_fields:
   | struct_lit_field SEMI struct_lit_fields { $1::$3 }
