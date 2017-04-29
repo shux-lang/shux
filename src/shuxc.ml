@@ -11,6 +11,8 @@ type action = Ast | LLVM
 
 let _ = 
 	let (cin, action) = 
+    if Array.length Sys.argv = 1 then
+       raise (Failure "Argument spec: ./shuxc [-a / -l] [program name]")
 		if Array.length Sys.argv = 3 then
 			let a = match Sys.argv.(1) with
 				| ("-a") -> Ast

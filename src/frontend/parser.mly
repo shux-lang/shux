@@ -7,7 +7,7 @@
 %token ASSIGN ADD_ASN SUB_ASN MUL_ASN DIV_ASN MOD_ASN EXP_ASN
 %token LOG_AND LOG_OR LOG_NOT LT GT EQ NEQ LEQ GEQ
 %token QUES COLON FILTER MAP FUNC IF THEN ELIF ELSE FOR WHILE DO UNDERSCORE
-%token NS GN KN STRUCT LET EXTERN VAR INT_T FLOAT_T STRING_T BOOL_T VECTOR_T
+%token NS GN KN STRUCT LET EXTERN VAR INT_T FLOAT_T STRING_T BOOL_T VECTOR_T PTR_T
 
 %token <bool> BOOL_LIT
 %token <int> INT_LIT
@@ -23,8 +23,11 @@
 %%
 
 program:
-  | /* nothing */ EOF                       { ([], [], []) }
-  | ns_section let_section fn_section EOF   { ($1, $2, $3) }
+  | ns EOF                                  { $1 }
+
+ns:
+  | ns_section let_section fn_section       { ($1, $2, $3) }
+
 
 /* namespace declaration rules */
 ns_section:
@@ -36,7 +39,7 @@ ns_decls:
   | ns_decl                                 { [$1] }
 
 ns_decl:
-  | NS ID ASSIGN LBRACE program RBRACE      { {nname = $2; nbody = $5} }
+  | NS ID ASSIGN LBRACE ns RBRACE           { {nname = $2; nbody = $5} }
 
 
 /* let declaration rules */
@@ -63,6 +66,7 @@ struct_def:
 /* function declaration rules */
 fn_section:
   | fn_decls                                { List.rev $1 }
+  | /* nothing */                           { [] }
 
 fn_decls: 
   | fn_decls fn_decl                        { $2::$1 }
@@ -275,6 +279,7 @@ primitive_t:
   | FLOAT_T                                 { Float }
   | STRING_T                                { String }
   | BOOL_T                                  { Bool }
+  | PTR_T                                   { Ptr }
   | vector_t                                { $1 }
 
 vector_t:
@@ -300,8 +305,8 @@ lit:
   | INT_LIT                                 { LitInt($1) }
 
 struct_lit:  
-  | LBRACE struct_lit_fields RBRACE         { LitStruct($2) }
-  | LBRACE RBRACE                           { LitStruct([]) }
+  | ID LBRACE struct_lit_fields RBRACE         { LitStruct($1, $3) }
+  | ID LBRACE RBRACE                           { LitStruct($1, []) }
 
 struct_lit_fields:
   | struct_lit_field SEMI struct_lit_fields { $1::$3 }

@@ -19,6 +19,7 @@ let rec _string_of_typ = function
   | Float -> "float"
   | String -> "string"
   | Bool -> "bool" 
+  | Ptr -> "_ptr"
   | Struct t -> "struct " ^ t 
   | Array t -> _string_of_typ t ^ "[]"
   | Vector t -> "vector<" ^ string_of_int t ^ ">"
@@ -114,7 +115,7 @@ and string_of_lit = function
   | LitKn(l) -> string_of_lambda l
   | LitVector(l) -> string_of_list string_of_expr l "<" ", " ">" true
   | LitArray(l) -> string_of_list string_of_expr l "[" ", " "]" true
-  | LitStruct(l) -> string_of_list string_of_struct_field l "{" ";\n" "}" true
+  | LitStruct(id, l) -> id ^ string_of_list string_of_struct_field l "{" ";\n" "}" true
 
 and string_of_expr = function
  | Lit l -> string_of_lit l
