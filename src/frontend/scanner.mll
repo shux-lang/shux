@@ -113,6 +113,7 @@ rule token = parse
   | "string"            { STRING_T }
   | "bool"              { BOOL_T }
   | "vector"            { VECTOR_T }
+  | "_ptr"              { PTR_T }
 
 (* literals *)
   | "true" | "false" as tf  { BOOL_LIT(bool_of_string tf) } 
