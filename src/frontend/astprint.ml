@@ -114,7 +114,7 @@ and string_of_lit = function
   | LitKn(l) -> string_of_lambda l
   | LitVector(l) -> string_of_list string_of_expr l "<" ", " ">" true
   | LitArray(l) -> string_of_list string_of_expr l "[" ", " "]" true
-  | LitStruct(l) -> string_of_list string_of_struct_field l "{" ";\n" "}" true
+  | LitStruct(id, l) -> id ^ string_of_list string_of_struct_field l "{" ";\n" "}" true
 
 and string_of_expr = function
  | Lit l -> string_of_lit l
