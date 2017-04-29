@@ -279,6 +279,7 @@ primitive_t:
   | FLOAT_T                                 { Float }
   | STRING_T                                { String }
   | BOOL_T                                  { Bool }
+  | PTR_T                                   { Ptr }
   | vector_t                                { $1 }
 
 vector_t:
