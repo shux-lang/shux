@@ -64,7 +64,7 @@ let rec type_of_lit tr_env = function
    | LitFloat(l) -> Float
    | LitStr(l) -> String
    | LitBool(l) -> Bool
-   | LitStruct(l) -> Bool (*TODO: Match every expr against the field
+   | LitStruct(id, l) -> Bool (*TODO: Match every expr against the field
                             indicated by the matching string *)
    | LitVector(l) -> Vector (List.length l)
    | LitArray(l) ->
