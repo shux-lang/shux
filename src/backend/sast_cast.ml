@@ -9,7 +9,7 @@ let sast_to_cast let_decls f_decls =
   in let plet = "let_" (* let prefix *)
 
   in let prefix_bind pl = function
-    SBind(t, n) -> SBind(t, pl ^ n)
+    SBind(t, n) -> SBind(t, pl ^ n )
 
   in let prefix_id pl = function
     | SId(t, n, s) -> (match s with
@@ -19,21 +19,21 @@ let sast_to_cast let_decls f_decls =
     | d -> d
 
   in let walk_fns f = 
+    let walk_block = function
+      | e -> CBlock([walk_expr e])
+    in let walk_loop = function
+      | e -> CLoop(walk_expr e, StmtDud)
 
-    let walk_stmts p b = 
-      let walk_block = function
-        | e -> CBlock([walk_expr e])
-      in let walk_loop = function
-        | e -> CLoop(walk_expr e, StmtDud)
-      in let rec walk = function
-        | [] -> []
-        | (e, t)::l -> let f = match t with
-          | SArray(_, _) -> walk_loop
-          | _ -> walk_block
-        in let r = f e in r :: walk l
-            
+
+    in let walk_stmts p b =
+      let rec walk = function
+      | [] -> []
+      | (e, t)::l -> let f = match t with
+        | SArray(_, _) -> walk_loop
+        | _ -> walk_block
+      in let r = f e in r :: walk l
             (* let r = _walk t e in CBlock(r) :: walk l *)
-      in walk b
+    (* in let walk_ret p = function TODO: write a function just for return *)
 
     in let walk_gn g = 
       let pgnl = "gnl_" (* gn local prefix *)
@@ -75,7 +75,6 @@ let sast_to_cast let_decls f_decls =
     | SGnDecl(g)::t -> let r = walk_gn g in r @ walk t
     | SKnDecl(k)::t -> let r = walk_kn k in r :: walk t
     in walk f
-
 
   in let walk_static l = 
     let interp_expr = function (* this needs to be basically an interpreter *)
