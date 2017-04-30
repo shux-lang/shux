@@ -3,10 +3,19 @@ open Cast
 
 let sast_to_cast let_decls f_decls =
   let walk_gn gn = 
-    let walk = function { sgname = n; sgret_typ = t; sgmax_iter = m;
-                          sgformals = f; sglocalvals = ll; sglocalvars = lr;
-                          sgbody = b; sgret_expr = r} ->
-                            []
+    let gn_struct_id = "gns_" (* gn struct prefix *)
+    in let pgnc = "gnc_" (* gn execution state counter prefix *)
+    in let defn_struct name val_binds max_iter =
+      let val_to_array_decl = function SBind(t, s)
+        -> SBind(SArray(t, Some(max_iter)), "" ^ s)
+      in let ctr_decl =
+        SBind(SInt, pgnc)
+      in SStructDef({ ssname = ""; ssfields = ctr_decl :: List.map val_to_array_decl val_binds })
+
+    in let walk = function { sgname = n; sgret_typ = t; sgmax_iter = m;
+                              sgformals = f; sglocalvals = ll; sglocalvars = lr;
+                              sgbody = b; sgret_expr = r}
+      -> [ ]
                             (*
       [ CStructDef(defn_struct n (f @ ll));
         CFnDecl({ cfname = n; cret_typ = t; cformals = get_struct n;
