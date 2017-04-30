@@ -25,15 +25,15 @@ type var = {
 
 type struct_type = {
   id : string;
-  field : (string * Ast.typ) list;
+  fields : (string * Ast.typ) list;
 }
 
 type trans_env = {
 		(*  a stack of variables mapped to a name *)
-    scope: var list VarMap.t;
+    scope : var list VarMap.t;
 
     (* list of structs defined in the block *)
-    structs: struct_type list;
+    structs : struct_type VarMap.t;
 
 		(* return type of block *)
     ret_type : Sast.styp;
@@ -52,6 +52,9 @@ let rec get_styp = function
 let get_bind_typ = function
  | Bind(_, t, _) -> t
 
+let get_sfield_name = function
+ | StructField(id, _ ) -> id
+
 (* check expression 
 tr_env: current translation environment
 expr: expression to be checked 
@@ -59,13 +62,44 @@ expr: expression to be checked
 returns the type of the expression *) 
 
 (*TODO: Return type of literal *) 
-let rec type_of_lit tr_env = function
+let rec  type_of_lit tr_env = function
    | LitInt(l) -> Int
    | LitFloat(l) -> Float
    | LitStr(l) -> String
    | LitBool(l) -> Bool
-   | LitStruct(id, l) -> Bool (*TODO: Match every expr against the field
-                            indicated by the matching string *)
+   | LitStruct(id, l) -> 
+    if VarMap.mem id tr_env.structs then
+        let s = VarMap.find id tr_env.structs in
+        if List.length s.fields != List.length l
+        then let err_msg = "Wrong number of fields in struct
+                " ^ id ^ "Expected: " ^ string_of_int
+                (List.length s.fields) ^ " Got: " ^ string_of_int
+                (List.length l) in raise(Failure err_msg)
+        else    let match_lits struct_field = 
+                   let match_lit b lit strct = 
+                           if b then
+                                   if get_sfield_name lit = (fst struct_field) then
+                                           let err_msg = "Struct field " ^ (fst
+                                           struct_field) ^ " takes place more
+                                           than once in struct literal." in 
+                                           raise (Failure err_msg)
+                                   else b
+                           else 
+                             if get_sfield_name lit = (fst struct_field) then
+                               if get_sfield_typ tr_env lit = (snd struct_field) then
+                                    true
+                                 else raise (Failure "Type mismatch")
+                               else
+                                    false
+                   in 
+                   List.fold_left (fun b x -> match_lit b x struct_field) true l
+                in 
+                let match_fields b sfield  = b && match_lits sfield in
+                if (List.fold_left match_fields true s.fields) then Struct(id)
+                else let err_msg = "Struct literal doesn't match struct defined
+                as" ^ id in raise(Failure err_msg)
+        else let err_msg = "Struct " ^ id ^ "is not defined"
+        in raise (Failure err_msg)        
    | LitVector(l) -> Vector (List.length l)
    | LitArray(l) ->
 			let rec array_check arr typ = 
@@ -86,7 +120,7 @@ and check_expr tr_env expr =
 			then let x = List.hd (VarMap.find var tr_env.scope) in x.var_type
 			else raise (Failure ("Variable " ^ var ^ "has not been declared"))
    | Binop(e1, op, e2) -> 
-      let t1 = check_expr tr_env e1 in 
+      let t1 = check_expr tr_env e1 in
       let t2 = check_expr tr_env e2 in
       (match op with
        | Add | Sub | Mul | Div -> if t1 != t2 
@@ -137,8 +171,32 @@ and check_expr tr_env expr =
       | Lookback -> t1 (* Lookback returns value of the type of the ID *)
       | For -> Array(t2) (*For returns an array of the return type of gn *)
       | Do -> t2 (* Do simply returns the final value of the gn *)
-      | Access -> Int) (*TODO: Match with struct in tr_env, error out if struct
-                        OR field doesn't exist *) 
+      | Access -> let fname = (match e2 with
+                                | Id(l) -> l
+                                | _ -> raise (Failure "Access needs to be to an
+                                                      ID")) 
+         (*TODO: BUG WARNING. ATTEMPTING TO FIND ID LIKE THIS IS GONNA SUX BALLS
+          * SINCE NO SUCH VARIABLE WILL BE DEFINED *)
+          in
+          let t1 = check_expr tr_env e1 in
+          (match t1 with
+             | Struct(id) -> if VarMap.mem id tr_env.structs
+                then 
+                        let s = VarMap.find id tr_env.structs in
+                        let find_field str field = if (fst str)="NONE" then
+                                if (fst field)=fname then field else str
+                                else str in 
+                       let matched = List.fold_left find_field ("NONE", Int)
+                       s.fields in 
+                       if (fst matched)="NONE" then
+                               let err_msg = "Struct field named " ^ fname ^ " is
+                               not defined." in raise (Failure err_msg) 
+                        else (snd matched)
+                else let err_msg = "Struct named " ^ id ^ " not defined." in 
+                         raise (Failure err_msg)
+             | _ -> raise (Failure "Can't acess field of a type that's not a
+                           struct")))
+
    | Assign(e1, e2) -> let t1 = check_expr tr_env e1 in 
       if t1 = check_expr tr_env e2 then t1 else 
 			raise (Failure "Assignment types don't match. shux can't autocast types.")  
@@ -156,6 +214,10 @@ and check_expr tr_env expr =
         let t2 = check_expr tr_env e2 in if t2 = check_expr tr_env e3 then t2
         else raise (Failure "Ternary operator return type mismatch")
      else raise (Failure "Ternary operator conditional needs to be a boolean expr")
+
+and get_sfield_typ tr_env = function
+ | StructField(_, expr) -> check_expr tr_env expr
+
 
 (* TODO: take i:n a list of globals and create a trans_env *)
  
