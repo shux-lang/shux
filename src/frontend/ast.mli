@@ -8,6 +8,7 @@ type typ =
   | Struct of string (* struct identifier *)
   | Array of typ
   | Vector of int (* number of elements in vector *)
+  | Ptr
 
 type mut =
   | Mutable
@@ -45,7 +46,7 @@ and lit =
   | LitKn of lambda
   | LitVector of expr list
   | LitArray of expr list (* include optional type annotation here? *)
-  | LitStruct of struct_field list (* should this be more sophisticated? *)
+  | LitStruct of string * struct_field list (* should this be more sophisticated? *)
 
 and struct_field = StructField of string * expr
 
