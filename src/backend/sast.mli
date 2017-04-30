@@ -85,7 +85,7 @@ type sgn_decl = {
   sgret_typ   : styp;
   sgmax_iter  : int;
   sgformals   : sbind list;
-  sglocalvals : sbind list
+  sglocalvals : sbind list;
   sglocalvars : sbind list;
   sgbody      : (sexpr * styp) list;
   sgret_expr  : (sexpr * styp);
