@@ -188,7 +188,7 @@ unary_expr:
 postfix_expr:
   | postfix_expr LBRACK expr RBRACK         { Binop($1, Index, $3) }
   | ID LPAREN actuals RPAREN                { Call(Some($1), $3) }
-  | postfix_expr DOT id                     { Binop($1, Access, $3) }
+  | postfix_expr DOT ID                     { Access($1, $3) }
   | primary_expr                            { $1 }
 
 primary_expr:
@@ -197,7 +197,7 @@ primary_expr:
   | id_expr                                 { $1 }
 
 id_expr:
-  | id DOTDOT int_lit                       { Binop($1, Lookback, Lit($3)) }
+  | id DOTDOT INT_LIT                       { Lookback($1, $3) }
   | id                                      { $1 }
 
 
