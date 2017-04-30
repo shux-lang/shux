@@ -21,7 +21,7 @@ let rec _string_of_typ = function
   | Bool -> "bool" 
   | Ptr -> "_ptr"
   | Struct t -> "struct " ^ t 
-  | Array t -> _string_of_typ t ^ "[]"
+  | Array(t, i) -> _string_of_typ t ^ "[" ^ (match i with Some(n) -> string_of_int n | None -> "") ^ "]"
   | Vector t -> "vector<" ^ string_of_int t ^ ">"
   | Void -> "__void__" (* should not be used *)
 
