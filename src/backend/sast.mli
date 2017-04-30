@@ -4,13 +4,14 @@ type styp =
   | SString
   | SBool
   | SStruct of string
-  | SArray of styp * int option (* necessary for struct def'ns, not used elsewhere *)
+  | SArray of styp * int option
+  | Ptr
   | Void 
 
-type sscope =
+type sscope = (* replacing Mutable vs Immutable *)
   | SLocalVal | SLocalVar | SGlobal
 
-type sbind = SBind of styp * string
+type sbind = SBind of styp * string * sscope
 
 type sbin_op_i =
   | SAddi | SSubi | SMuli | SDivi | SMod | SExpi
@@ -24,12 +25,11 @@ type sbin_op_b =
   | SLogAnd | SLogOr
 
 type sbin_op_p =
-  | SIndex | SAccess
+  | SIndex
 
 type sbin_op_fn =
   | SFilter | SMap
   | SFor | SDo
-  | SLookback
 
 type sbin_op = 
   | SBinopInt of sbin_op_i
@@ -53,6 +53,8 @@ type slit =
 and sexpr =
   | SLit of styp * slit
   | SId of styp * string * sscope
+  | SLookback of styp * string * int
+  | SAccess of styp * expr * string
   | SBinop of styp * sexpr * sbin_op * sexpr
   | SAssign of styp * sexpr * sexpr
   | SKnCall of styp * string * sexpr list
@@ -81,9 +83,10 @@ type skn_decl = {
 type sgn_decl = {
   sgname      : string;
   sgret_typ   : styp;
-  sgformals   : (sbind * int) list;
-  sglocalvals : (sbind * int) list; (* might have lookback *)
-  sglocalvars : sbind list;         (* do not have lookback *)
+  sgmax_iter  : int;
+  sgformals   : sbind list;
+  sglocalvals : sbind list
+  sglocalvars : sbind list;
   sgbody      : (sexpr * styp) list;
   sgret_expr  : (sexpr * styp);
 }
