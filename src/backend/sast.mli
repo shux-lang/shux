@@ -5,8 +5,8 @@ type styp =
   | SBool
   | SStruct of string
   | SArray of styp * int option
-  | Ptr
-  | Void 
+  | SPtr
+  | SVoid 
 
 type sscope = (* replacing Mutable vs Immutable *)
   | SLocalVal | SLocalVar | SGlobal
