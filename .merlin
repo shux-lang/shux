@@ -1,0 +1,5 @@
+S src
+
+B build
+
+PKG llvm ast

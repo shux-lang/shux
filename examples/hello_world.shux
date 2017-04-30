@@ -1,6 +1,8 @@
 extern print(string s);
 
 kn main() int {
-	print("hello world!");
+	print("shit");
+	print_int(1223);
+	print_float(25.32112);
 	0
 }
