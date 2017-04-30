@@ -6,10 +6,10 @@ let sast_to_cast let_decls f_decls =
     let gn_struct_id = "gns_" (* gn struct prefix *)
     in let pgnc = "gnc_" (* gn execution state counter prefix *)
     in let defn_struct name val_binds max_iter =
-      let val_to_array_decl = function SBind(t, s)
-        -> SBind(SArray(t, Some(max_iter)), "" ^ s)
+      let val_to_array_decl = function SBind(t, s, _)
+        -> SBind(SArray(t, Some(max_iter)), "" ^ s, SLocalVar)
       in let ctr_decl =
-        SBind(SInt, pgnc)
+        SBind(SInt, pgnc, SLocalVar)
       in SStructDef({ ssname = ""; ssfields = ctr_decl :: List.map val_to_array_decl val_binds })
 
     in let walk = function { sgname = n; sgret_typ = t; sgmax_iter = m;
