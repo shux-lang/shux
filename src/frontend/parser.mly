@@ -7,7 +7,7 @@
 %token ASSIGN ADD_ASN SUB_ASN MUL_ASN DIV_ASN MOD_ASN EXP_ASN
 %token LOG_AND LOG_OR LOG_NOT LT GT EQ NEQ LEQ GEQ
 %token QUES COLON FILTER MAP FUNC IF THEN ELIF ELSE FOR WHILE DO UNDERSCORE
-%token NS GN KN STRUCT LET EXTERN VAR INT_T FLOAT_T STRING_T BOOL_T VECTOR_T
+%token NS GN KN STRUCT LET EXTERN VAR INT_T FLOAT_T STRING_T BOOL_T VECTOR_T PTR_T
 
 %token <bool> BOOL_LIT
 %token <int> INT_LIT
@@ -279,6 +279,7 @@ primitive_t:
   | FLOAT_T                                 { Float }
   | STRING_T                                { String }
   | BOOL_T                                  { Bool }
+  | PTR_T                                   { Ptr }
   | vector_t                                { $1 }
 
 vector_t:

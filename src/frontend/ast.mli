@@ -8,6 +8,7 @@ type typ =
   | Struct of string (* struct identifier *)
   | Array of typ
   | Vector of int (* number of elements in vector *)
+  | Ptr
 
 type mut =
   | Mutable

@@ -19,6 +19,7 @@ let rec _string_of_typ = function
   | Float -> "float"
   | String -> "string"
   | Bool -> "bool" 
+  | Ptr -> "_ptr"
   | Struct t -> "struct " ^ t 
   | Array t -> _string_of_typ t ^ "[]"
   | Vector t -> "vector<" ^ string_of_int t ^ ">"
