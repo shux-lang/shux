@@ -21,8 +21,9 @@ let rec _string_of_typ = function
   | Bool -> "bool" 
   | Ptr -> "_ptr"
   | Struct t -> "struct " ^ t 
-  | Array t -> _string_of_typ t ^ "[]"
+  | Array(t, i) -> _string_of_typ t ^ "[" ^ (match i with Some(n) -> string_of_int n | None -> "") ^ "]"
   | Vector t -> "vector<" ^ string_of_int t ^ ">"
+  | Void -> "__void__" (* should not be used *)
 
 let string_of_typ x = string_of_opt _string_of_typ x
 
@@ -35,7 +36,7 @@ type op_typ = Infix | Prefix | PostfixPair
 let _fix = function
   | Add | Sub | Mul | Div | Mod | Exp 
   | Eq | Lt | Gt | Neq | Leq | Geq | LogAnd | LogOr
-  | Filter | Map | Lookback | Access -> Infix
+  | Filter | Map -> Infix
   | For | Do -> Prefix
   | Index -> PostfixPair
 
@@ -58,8 +59,6 @@ let string_of_binop = function
   | Map -> " @ "
   | For -> "for "
   | Do -> "do "
-  | Lookback -> ".."
-  | Access -> "."
   | _ -> "" (* should raise error *)
 
 let string_of_binop_match = function
@@ -120,6 +119,8 @@ and string_of_lit = function
 and string_of_expr = function
  | Lit l -> string_of_lit l
  | Id s -> s
+ | Lookback(s, i) -> s ^ ".." ^ string_of_int i
+ | Access(e, i) -> string_of_expr e ^ "." ^ i
  | Uniop(o, e) -> string_of_uniop_expr string_of_expr o e
  | Assign(l, r) -> string_of_asn_expr string_of_expr l r
  | Binop(e1, o, e2) -> string_of_binop_expr string_of_expr e1 o e2

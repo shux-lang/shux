@@ -6,7 +6,8 @@ module StringMap = Map.Make(String)
 let translate (namespaces, globals, functions) =
 	let context = L.global_context () in (* we only need a global data container *)
 	let the_module = L.create_module context "shux" (* Container *)
-  
+  in the_module
+  (*
   and i32_t  = L.i32_type  context
   and i8_t   = L.i8_type   context
   (* and i1_t = L.i1_type context *) (* reserved for bool *)
@@ -112,3 +113,4 @@ let translate (namespaces, globals, functions) =
   List.iter build_function_body functions;
   Llvm_analysis.assert_valid_module the_module; (* check correctness *) 
   the_module
+  *)
