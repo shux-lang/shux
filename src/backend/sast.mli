@@ -57,7 +57,7 @@ and sexpr =
   | SAssign of styp * sexpr * sexpr
   | SKnCall of styp * string * sexpr list
   | SGnCall of styp * string * sexpr list
-  | SLookbackDefault of styp * sexpr * sexpr
+  | SLookbackDefault of styp * int * sexpr * sexpr
   | SUnop of styp * sun_op * sexpr
   | SCond of styp * sexpr * sexpr * sexpr
 
@@ -81,8 +81,9 @@ type skn_decl = {
 type sgn_decl = {
   sgname      : string;
   sgret_typ   : styp;
-  sgformals   : (sbind * int) list;
-  sglocalvals : (sbind * int) list; (* might have lookback *)
+  sgmax_iter  : int;
+  sgformals   : sbind list;
+  sglocalvals : sbind list; (* might have lookback *)
   sglocalvars : sbind list;         (* do not have lookback *)
   sgbody      : (sexpr * styp) list;
   sgret_expr  : (sexpr * styp);
