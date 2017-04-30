@@ -23,6 +23,7 @@ let rec _string_of_typ = function
   | Struct t -> "struct " ^ t 
   | Array t -> _string_of_typ t ^ "[]"
   | Vector t -> "vector<" ^ string_of_int t ^ ">"
+  | Void -> "__void__" (* should not be used *)
 
 let string_of_typ x = string_of_opt _string_of_typ x
 

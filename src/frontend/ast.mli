@@ -9,6 +9,7 @@ type typ =
   | Array of typ
   | Vector of int (* number of elements in vector *)
   | Ptr
+  | Void
 
 type mut =
   | Mutable
@@ -52,6 +53,7 @@ and struct_field = StructField of string * expr
 and expr =
   | Lit of lit
   | Id of string
+  | Lookback of string * int
   | Binop of expr * bin_op * expr
   | Assign of expr * expr
   | Call of string option * expr list
@@ -59,7 +61,6 @@ and expr =
   | LookbackDefault of expr * expr
   | Cond of expr * expr * expr (* technically Ternop *)
   | Access of expr * string
-  | Lookback of expr * int
 
 and stmt =
   | VDecl of bind * expr option
