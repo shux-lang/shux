@@ -25,9 +25,8 @@ type bin_op =
   | Eq | Lt | Gt | Neq | Leq | Geq
   | LogAnd | LogOr
   | Filter | Map
-  | Index | Lookback
+  | Index
   | For | Do
-  | Access
 
 type un_op =
   | LogNot | Neg | Pos
@@ -59,6 +58,8 @@ and expr =
   | Uniop of un_op * expr
   | LookbackDefault of expr * expr
   | Cond of expr * expr * expr (* technically Ternop *)
+  | Access of expr * string
+  | Lookback of expr * int
 
 and stmt =
   | VDecl of bind * expr option
