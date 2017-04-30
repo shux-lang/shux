@@ -267,7 +267,8 @@ val_decl:
   | typ ID                                  { Bind(Immutable, $1, $2) }
 
 typ:
-  | typ LBRACK RBRACK                       { Array($1) }
+  | typ LBRACK RBRACK                       { Array($1, None) }
+  | typ LBRACK INT_LIT RBRACK               { Array($1, Some($3)) }
   | unit_t                                  { $1 }
 
 unit_t:

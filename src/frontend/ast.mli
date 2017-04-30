@@ -6,7 +6,7 @@ type typ =
   | String
   | Bool
   | Struct of string (* struct identifier *)
-  | Array of typ
+  | Array of typ * int option
   | Vector of int (* number of elements in vector *)
   | Ptr
   | Void
