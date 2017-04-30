@@ -54,7 +54,7 @@ and sexpr =
   | SLit of styp * slit
   | SId of styp * string * sscope
   | SLookback of styp * string * int
-  | SAccess of styp * expr * string
+  | SAccess of styp * sexpr * string
   | SBinop of styp * sexpr * sbin_op * sexpr
   | SAssign of styp * sexpr * sexpr
   | SKnCall of styp * string * sexpr list
