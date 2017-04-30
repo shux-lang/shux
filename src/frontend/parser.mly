@@ -197,7 +197,7 @@ primary_expr:
   | id_expr                                 { $1 }
 
 id_expr:
-  | id DOTDOT INT_LIT                       { Lookback($1, $3) }
+  | ID DOTDOT INT_LIT                       { Lookback($1, $3) }
   | id                                      { $1 }
 
 
@@ -328,8 +328,5 @@ lit_elements:
 
 
 /* Type wrappers */
-int_lit:
-  | INT_LIT                                 { LitInt($1) }
-
 id:
   | ID                                      { Id($1) }
