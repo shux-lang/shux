@@ -2,11 +2,22 @@ open Sast
 open Cast
 
 let sast_to_cast let_decls f_decls =
-
-  let walk_fns f_decls =
+  let walk_gn gn = 
+    let walk = function { sgname = n; sgret_typ = t; sgmax_iter = m;
+                          sgformals = f; sglocalvals = ll; sglocalvars = lr;
+                          sgbody = b; sgret_expr = r} ->
+                            []
+                            (*
+      [ CStructDef(defn_struct n (f @ ll));
+        CFnDecl({ cfname = n; cret_typ = t; cformals = get_struct n;
+        clocals = get_locals f ll lr;
+        cbody = get_ctr :: let br = walk_gn_stmts b m in br @ walk_gn_stmt r})]
+        *)
+    in walk gn
+  in let walk_fns f_decls =
     let rec walk = function
       | [] -> []
-      | SGnDecl(g)::t -> []
+      | SGnDecl(g)::t -> let r = walk_gn g in r @ walk t
       | SKnDecl(k)::t -> []
     in walk f_decls
   in let walk_static let_decls =
