@@ -4,10 +4,14 @@ type styp =
   | SString
   | SBool
   | SStruct of string
-  | SArray of styp
-  | Void 
+  | SArray of styp * int option
+  | SPtr
+  | SVoid 
 
-type sbind = SBind of styp * string
+type sscope = (* replacing Mutable vs Immutable *)
+  | SLocalVal | SLocalVar | SGlobal
+
+type sbind = SBind of styp * string * sscope
 
 type sbin_op_i =
   | SAddi | SSubi | SMuli | SDivi | SMod | SExpi
@@ -21,12 +25,11 @@ type sbin_op_b =
   | SLogAnd | SLogOr
 
 type sbin_op_p =
-  | SIndex | SAccess
+  | SIndex
 
 type sbin_op_fn =
   | SFilter | SMap
   | SFor | SDo
-  | SLookback
 
 type sbin_op = 
   | SBinopInt of sbin_op_i
@@ -44,13 +47,14 @@ type slit =
   | SLitBool of bool
   | SLitStr of string
   | SLitKn of slambda
-  | SLitVector of sexpr list
   | SLitArray of sexpr list 
   | SLitStruct of (string * sexpr) list
 
 and sexpr =
   | SLit of styp * slit
-  | SId of styp * string
+  | SId of styp * string * sscope
+  | SLookback of styp * string * int
+  | SAccess of styp * sexpr * string
   | SBinop of styp * sexpr * sbin_op * sexpr
   | SAssign of styp * sexpr * sexpr
   | SKnCall of styp * string * sexpr list
@@ -62,9 +66,9 @@ and sexpr =
 and slambda = {
   slret_typ   : styp;
   slformals   : sbind list;
-  slbody      : sexpr list;
   sllocals    : sbind list;         (* no lookback, const-ness not enforced *)
-  slret_expr  : sexpr;
+  slbody      : (sexpr * styp) list;
+  slret_expr  : (sexpr * styp);
 }
 
 type skn_decl = {
@@ -72,18 +76,19 @@ type skn_decl = {
   skret_typ   : styp;
   skformals   : sbind list;
   sklocals    : sbind list;         (* do not have lookback *)
-  skbody      : sexpr list;
-  skret_expr  : sexpr;
+  skbody      : (sexpr * styp) list;
+  skret_expr  : (sexpr * styp);
 }
 
 type sgn_decl = {
   sgname      : string;
   sgret_typ   : styp;
-  sgformals   : (sbind * int) list;
-  sglocalvals : (sbind * int) list; (* might have lookback *)
-  sglocalvars : sbind list;         (* do not have lookback *)
-  sgbody      : sexpr list;
-  sgret_expr  : sexpr;
+  sgmax_iter  : int;
+  sgformals   : sbind list;
+  sglocalvals : sbind list;
+  sglocalvars : sbind list;
+  sgbody      : (sexpr * styp) list;
+  sgret_expr  : (sexpr * styp);
 }
 
 type sfn_decl =
