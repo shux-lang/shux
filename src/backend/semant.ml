@@ -28,12 +28,16 @@ type struct_type = {
   fields : (string * Ast.typ) list;
 }
 
+
 type trans_env = {
 		(*  a stack of variables mapped to a name *)
     scope : var list VarMap.t;
 
     (* list of structs defined in the block *)
     structs : struct_type VarMap.t;
+
+    (* list of already defined kernels/generators *)
+    fn_map : fn_decl VarMap.t;
 
 		(* return type of block *)
     ret_type : Sast.styp;
@@ -46,9 +50,21 @@ let rec get_styp = function
  | String -> SString
  | Bool -> SBool
  | Struct(l) -> SStruct(l)
- | Array(t) -> SArray(get_styp t)
- | Vector(l) -> SArray(SFloat)
+ | Array(t, n) -> SArray(get_styp t, n)
+ | Vector(l) -> SArray(SFloat, Some(l))
+ | Ptr -> SPtr
+ | Void -> SVoid
 
+let rec get_typ = function
+ | SInt -> Int
+ | SFloat -> Float
+ | SString -> String
+ | SBool -> Bool
+ | SStruct(l) -> Struct(l)
+ | SArray(t, n) -> Array(get_typ t, n)
+ | SPtr -> Ptr
+ | SVoid -> Void
+ 
 let get_bind_typ = function
  | Bind(_, t, _) -> t
 
@@ -110,7 +126,7 @@ let rec  type_of_lit tr_env = function
       array_check (List.tl l) (check_expr tr_env (List.hd l)) 
    | LitKn(l) -> let x = l.lret_expr in match x with
       | Some x -> check_expr tr_env x
-      | None -> Int (*TODO: Replace with Void after converting types to Sast.typ *) 
+      | None -> Void
 
 and check_expr tr_env expr =
 	match expr with
@@ -138,7 +154,7 @@ and check_expr tr_env expr =
        | LogAnd | LogOr -> if t1 != t2 || t1 != Bool
           then raise (Failure "Logical and/or only applies to bools.") else Bool
        | Filter | Map as fm -> let t = (match t1 with 
-            | Array(v) -> v 
+            | Array(v, i) -> v 
             | _ -> raise (Failure "Left hand needs to be [] for map/filter"))
        in
             if (match e2 with
@@ -155,30 +171,65 @@ and check_expr tr_env expr =
                          | _ -> raise (Failure "Filter not given a lambda :("))
             | _ -> raise (Failure "Filter not given a lambda :((("))
             then (match fm with
-             | Filter -> if t2 = Bool then Array(t) else
+             | Filter -> if t2 = Bool then Array(t, None) else
                      raise (Failure "Filter kernel needs to return Bool")
-             | Map -> if t = t2 then Array(t) else 
+             | Map -> if t = t2 then Array(t, None) else 
                      raise (Failure "Map kernel return type needs to match
                                    array")
              | _ -> raise (Failure "The OCaml compiler has a strict type system."))
             else raise (Failure "Map/Filter needs kernel that takes single
             parameter matching the [] to be mapped/filtered")
        | Index -> if t2 = Int then match t1 with
-          | Array(v) -> v
+          | Array(v, i) -> v
           | Vector(l) -> Float
           | _ -> raise (Failure "Indexing needs an array/vector to index into")
          else raise (Failure "Indexing needs to be by integer expression only.")
-      | Lookback -> t1 (* Lookback returns value of the type of the ID *)
-      | For -> Array(t2) (*For returns an array of the return type of gn *)
-      | Do -> t2 (* Do simply returns the final value of the gn *)
-      | Access -> let fname = (match e2 with
+      | For -> Array(t2, None) (*For returns an array of the return type of gn *)
+      | Do -> t2 (* Do simply returns the final value of the gn *))
+   | Assign(e1, e2) -> let t1 = check_expr tr_env e1 in 
+          if t1 = check_expr tr_env e2 then t1 else 
+		    	raise (Failure "Assignment types don't match. shux can't autocast types.")  
+   | Call(str, elist) -> (match(str) with
+       | Some s -> if VarMap.mem s tr_env.fn_map then
+                      let fn = VarMap.find s tr_env.fn_map and
+                      tlist = List.map (check_expr tr_env) elist
+                      in
+                      if(fn.fn_typ = Gn) then raise (Failure "Cannot call
+                      generator without an iterator") else 
+                         let match_formal b fform cform = 
+                             if b then get_bind_typ fform = cform
+                             else b 
+                         in
+                         if (List.fold_left2 match_formal true fn.formals tlist)
+                         then (match fn.ret_expr with 
+                            | Some x -> check_expr tr_env x
+                            | None -> Void)
+                         else let err_msg = "Formals dont match for function
+                                 call " ^ s in raise (Failure err_msg)
+          else let err_msg = "Kernel " ^ s ^ "is not defined in call." in 
+          raise (Failure err_msg)
+       | None -> Int)
+           
+   | Uniop(unop, e) -> (match unop with
+      | Pos | Neg -> let t = check_expr tr_env e in if t = Int || t = Float then t else
+         raise (Failure "Pos/Neg unioperators only valid for ints or floats")
+      | LogNot -> if check_expr tr_env e = Bool then Bool else 
+         raise (Failure "Logical not only applies to booleans"))
+   | LookbackDefault(e1, e2) -> 
+          if (check_expr tr_env e2) == Int then check_expr tr_env e1 else
+          raise (Failure "Lookback indexing needs to be an integer")
+   | Cond(e1, e2, e3) -> if check_expr tr_env e1 = Bool then
+        let t2 = check_expr tr_env e2 in if t2 = check_expr tr_env e3 then t2
+        else raise (Failure "Ternary operator return type mismatch")
+     else raise (Failure "Ternary operator conditional needs to be a boolean
+     expr")
+   | Lookback(str, i) -> check_expr tr_env (Id str)  
+   | Access(id, str) -> let fname = (match id with
                                 | Id(l) -> l
                                 | _ -> raise (Failure "Access needs to be to an
                                                       ID")) 
-         (*TODO: BUG WARNING. ATTEMPTING TO FIND ID LIKE THIS IS GONNA SUX BALLS
-          * SINCE NO SUCH VARIABLE WILL BE DEFINED *)
           in
-          let t1 = check_expr tr_env e1 in
+          let t1 = check_expr tr_env id in
           (match t1 with
              | Struct(id) -> if VarMap.mem id tr_env.structs
                 then 
@@ -194,26 +245,8 @@ and check_expr tr_env expr =
                         else (snd matched)
                 else let err_msg = "Struct named " ^ id ^ " not defined." in 
                          raise (Failure err_msg)
-             | _ -> raise (Failure "Can't acess field of a type that's not a
-                           struct")))
-
-   | Assign(e1, e2) -> let t1 = check_expr tr_env e1 in 
-      if t1 = check_expr tr_env e2 then t1 else 
-			raise (Failure "Assignment types don't match. shux can't autocast types.")  
-   | Call(str, elist) -> Int (*TODO Return type of the caller function,
-			also semantically check against the formals of the function*)
-   | Uniop(unop, e) -> (match unop with
-      | Pos | Neg -> let t = check_expr tr_env e in if t = Int || t = Float then t else
-         raise (Failure "Pos/Neg unioperators only valid for ints or floats")
-      | LogNot -> if check_expr tr_env e = Bool then Bool else 
-         raise (Failure "Logical not only applies to booleans"))
-   | LookbackDefault(e1, e2) -> 
-          if (check_expr tr_env e2) == Int then check_expr tr_env e1 else
-          raise (Failure "Lookback indexing needs to be an integer")
-   | Cond(e1, e2, e3) -> if check_expr tr_env e1 = Bool then
-        let t2 = check_expr tr_env e2 in if t2 = check_expr tr_env e3 then t2
-        else raise (Failure "Ternary operator return type mismatch")
-     else raise (Failure "Ternary operator conditional needs to be a boolean expr")
+             | _ -> raise (Failure "Can't access field of a type that's not a
+                           struct"))
 
 and get_sfield_typ tr_env = function
  | StructField(_, expr) -> check_expr tr_env expr
