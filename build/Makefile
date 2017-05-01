@@ -7,6 +7,8 @@ EXAMPLES=../examples
 SYMLINK=ln -s -f
 PREREQS=symlink
 COMPILER=shuxc
+TEST_DIR=../tests
+TEST=run_tests.sh
 TARGETS=$(PREREQS) $(COMPILER)
 
 .PHONY: default symlink hello
@@ -59,7 +61,7 @@ shuxc.cmx : semant.cmx scanner.cmx parser.cmx codegen.cmx astprint.cmx
 parser.cmi : ast.cmo
 
 
-.PHONY: all clean cleanall autoclean hello
+.PHONY: all clean cleanall autoclean hello test
 
 all: cleanall symlink $(OBJS) $(TARGETS)
 
@@ -75,3 +77,7 @@ autoclean:
 hello: $(COMPILER) $(EXAMPLES)/hello_world.shux
 	./shuxc $(EXAMPLES)/hello_world.shux > hello_world.ll
 	lli hello_world.ll
+
+test:
+	cp shuxc ../tests/shuxc
+	@cd $(TEST_DIR) && ./$(TEST)
