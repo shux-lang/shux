@@ -10,12 +10,24 @@ let sast_to_cast let_decls f_decls =
   in let prefix_gns s = "gns_" ^ s  (* gn struct *)
 
   in let walk_kn kn =
-    let rec walk es = []
-    in let walk_ret e = []
+    let rec walk = function (* TODO: this is gonna be fed a tuple of typ * expr *)
+      | SLit(t, l)::ll -> []
+      | SId(t, id, s)::ll -> []
+      | SAccess(t, e, id)::ll -> []
+      | SBinop(t, l, o, r)::ll -> []
+      | SAssign(t, l, r)::ll -> []
+      | SKnCall(t, id, e)::ll -> []
+      | SGnCall(t, id, e)::ll -> []
+      | SUnop(t, o, e)::ll -> []
+      | SCond(t, i, f, e)::ll -> []
+      | SLookbackDefault(_)::ll -> raise (Failure ("Tried to lookback default in kn: " ^ kn.skname))
+      | SLookback(_, id, _)::ll -> raise (Failure ("Tried to lookback " ^ id ^ " in kn: " ^ kn.skname))
+    in let walk_ret = function
+      | _ -> []
     in CFnDecl { cfname = kn.skname; cret_typ = kn.skret_typ;
                   cformals = kn.skformals;
                   clocals = kn.sklocals;
-                  cbody = walk kn.skbody @ walk_ret kn.skret_expr; }
+                  cbody = walk kn.skbody @ walk_ret kn.skret_expr }
 
   in let walk_gn gn = 
     let prefix_gnv s = "gnv_" ^ s         (* for local vars *)
