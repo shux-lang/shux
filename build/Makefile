@@ -1,4 +1,4 @@
-qqCAMLC=ocamlc
+CAMLC=ocamlc
 OCAML=ocamlfind $(CAMLC) -linkpkg -thread -package core -package llvm -package llvm.analysis
 OBJS=exceptions.cmo ast.cmo astprint.cmo scanner.cmo parser.cmo semant.cmo codegen.cmo
 INCLUDE=-I ../src/include -g
