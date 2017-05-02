@@ -13,21 +13,18 @@ let sast_to_cast let_decls f_decls =
     let gn_struct_id = "gns_" (* gn struct prefix *)
     in let pgnc = "gnc_" (* gn execution state counter prefix *)
 
-    in
-    let defn_struct val_binds max_iter =
+    in let defn_struct val_binds max_iter =
       let val_to_a_decl = function 
         | SBind(t, s, SLocalVal) -> SBind(SArray(t, Some(max_iter)), s, SLocalVar)
         | _ -> raise (Failure "shit")
-      in
-      let ctr_decl =
+      in let ctr_decl =
         SBind(SInt, pgnc, SLocalVar)
-      in SStructDef({ ssname = prefix_gns gn.sgname; 
+      in CStructDef({ ssname = prefix_gns gn.sgname; 
                       ssfields = ctr_decl :: List.map val_to_a_decl val_binds })
-    in
-    let walk { sgname; sgret_typ; sgmax_iter; 
+    in let walk { sgname; sgret_typ; sgmax_iter; 
                   sgformals; sglocalvals; sglocalvars;
                   sgbody; sgret_expr } =
-      [ ]
+      [ defn_struct (sgformals @ sglocalvals) sgmax_iter ]
                             (*
       [ CStructDef(defn_struct n (f @ ll));
         CFnDecl({ cfname = n; cret_typ = t; cformals = get_struct n;
