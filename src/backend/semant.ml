@@ -39,8 +39,9 @@ type trans_env = {
     (* list of already defined kernels/generators *)
     fn_map : fn_decl VarMap.t;
 
-		(* return type of block *)
-    ret_type : Sast.styp;
+    (*TODO: externs : extern_decl VarMap.t; *)
+		(* return type of block 
+    ret_type : Sast.styp;*) 
 }
 
 
@@ -297,7 +298,28 @@ let rec flatten_ns ns_list =
 	(List.map handle_ns ns_list)
 
 (*TODO: *) 
-let check_globals a = a
+let check_globals g =
+   let rec check_global_inner tr_env = function
+        | [] -> tr_env
+        | hd::tl -> (match hd with
+           | LetDecl(bind, expr) -> (match bind with
+              | Bind(mut, typ, s) -> 
+               let t2 = check_expr tr_env expr in
+               if typ = t2 then
+                      let v = { id = s; var_type = typ } in
+                      let vlist = if VarMap.mem s tr_env.scope then
+                              v :: VarMap.find s tr_env.scope else [v] in 
+                      { scope = VarMap.add s vlist tr_env.scope; 
+                        structs = tr_env.structs;
+                        fn_map = tr_env.fn_map }
+              else let err_msg = "Type mismatch in glob" in raise(Failure
+              err_msg))
+           | StructDef(s) -> check_global_inner tr_env tl
+           | ExternDecl(e) -> check_global_inner tr_env tl) (*TODO: externs *) 
+   in 
+   let env_default = { scope = VarMap.empty; structs = VarMap.empty; 
+                       fn_map = VarMap.empty; } in
+   check_global_inner env_default g
 
 (* main type checking goes on here *) 
 let check_functions functions run_env = run_env
