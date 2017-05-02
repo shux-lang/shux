@@ -21,10 +21,12 @@ let sast_to_cast let_decls f_decls =
     in let gnc = "gnx_ctr"                (* gn execution state counter name *)
 
     in let gn_to_kn =
-      { skname = prefix_gn gn.sgname; skret_typ = gn.sgret_typ;
+      let lookback expr = (SLit(SInt, SLitInt(42)), SInt)
+
+      in { skname = prefix_gn gn.sgname; skret_typ = gn.sgret_typ;
         skformals = [SBind(SStruct(gns_typ), gns_arg, SLocalVar)];
-        sklocals = gn.sglocalvars; skbody = []; 
-        skret_expr = gn.sgret_expr; }
+        sklocals = gn.sglocalvars; skbody = List.map lookback gn.sgbody; 
+        skret_expr = lookback gn.sgret_expr; }
 
     in let defn_struct val_binds =
       let val_to_a_decl = function 
