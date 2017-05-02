@@ -44,10 +44,6 @@ type trans_env = {
     ret_type : Sast.styp;*) 
 }
 
-let compare_ast_typ l r = match(l,r) with
-   | (Array(t1, None), Array(t2, Some i)) -> t1=t2
-   | (l,r) -> l=r
-
 let rec get_styp = function
  | Int -> SInt
  | Float -> SFloat
@@ -300,6 +296,11 @@ let rec flatten_ns ns_list =
                            fltn_fn ns.nname (fn @ (snd flat_ns)))
 	in List.fold_left (fun (a,b) (an, bn) -> (a@an, b@bn)) ([], [])
 	(List.map handle_ns ns_list)
+
+let compare_ast_typ l r = match(l,r) with
+   | (Array(t1, None), Array(t2, Some i)) -> t1=t2
+   | (l,r) -> l=r
+
 
 let check_globals g =
    let rec check_global_inner tr_env = function
