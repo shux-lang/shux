@@ -1,0 +1,7 @@
+kn main() int {
+    scalar a = 2;
+    scalar b = 2.89248725;
+    scalar c = 12.37e-17;
+    scalar d = 1e3;
+    0
+}

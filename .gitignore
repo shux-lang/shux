@@ -5,11 +5,15 @@ _build
 *.cmo
 *.native
 *.byte
+*.out
+*.ll
+*.error
 scanner.ml
 parser.output
 parser.ml
 parser.mli
 shuxc
+build/
 
 #nhc
 /src/version.ml
