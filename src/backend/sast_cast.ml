@@ -2,20 +2,32 @@ open Sast
 open Cast
 
 let sast_to_cast let_decls f_decls =
-  let walk_gn gn = 
+  let prefix_x s = "extern_" ^ s
+  in let prefix_s s = "struct_" ^ s 
+  in let prefix_l s = "let_" ^ s
+  in let prefix_kn s = "kn_" ^ s
+  in let prefix_gn s = "gn_" ^ s
+  in let prefix_gns s = "gns_" ^ s (* gn struct *)
+
+  in let walk_gn gn = 
     let gn_struct_id = "gns_" (* gn struct prefix *)
     in let pgnc = "gnc_" (* gn execution state counter prefix *)
-    in let defn_struct name val_binds max_iter =
-      let val_to_array_decl = function SBind(t, s, _)
-        -> SBind(SArray(t, Some(max_iter)), "" ^ s, SLocalVar)
-      in let ctr_decl =
-        SBind(SInt, pgnc, SLocalVar)
-      in SStructDef({ ssname = ""; ssfields = ctr_decl :: List.map val_to_array_decl val_binds })
 
-    in let walk = function { sgname = n; sgret_typ = t; sgmax_iter = m;
-                              sgformals = f; sglocalvals = ll; sglocalvars = lr;
-                              sgbody = b; sgret_expr = r}
-      -> [ ]
+    in
+    let defn_struct val_binds max_iter =
+      let val_to_a_decl = function 
+        | SBind(t, s, SLocalVal) -> SBind(SArray(t, Some(max_iter)), s, SLocalVar)
+        | _ -> raise (Failure "shit")
+      in
+      let ctr_decl =
+        SBind(SInt, pgnc, SLocalVar)
+      in SStructDef({ ssname = prefix_gns gn.sgname; 
+                      ssfields = ctr_decl :: List.map val_to_a_decl val_binds })
+    in
+    let walk { sgname; sgret_typ; sgmax_iter; 
+                  sgformals; sglocalvals; sglocalvars;
+                  sgbody; sgret_expr } =
+      [ ]
                             (*
       [ CStructDef(defn_struct n (f @ ll));
         CFnDecl({ cfname = n; cret_typ = t; cformals = get_struct n;
@@ -32,12 +44,14 @@ let sast_to_cast let_decls f_decls =
   in let walk_static let_decls =
     let interp_expr = function (* TODO: write interpretor for compile-time evaluation *)
       | _ -> StmtDud
-    in let walk = function
-      | SLetDecl(b, e) -> CConstDecl(b, interp_expr e)
-      | SStructDef(s) -> CStructDef(s)
-      | SExternDecl(x) -> CExternDecl(x)
+    in
+    let walk = function
+      | SLetDecl(SBind(t, n, s), e) -> CConstDecl(SBind(t, prefix_l n, s), interp_expr e)
+      | SStructDef(s) -> CStructDef({s with ssname = prefix_s s.ssname})
+      | SExternDecl(x) -> CExternDecl({x with sxalias = prefix_x x.sxalias})
     in walk let_decls
   (* function entry point: walk entire program *)
-  in let walk_program l f =
+  in 
+  let walk_program l f =
     let r = List.map walk_static l in r @ walk_fns f
   in walk_program let_decls f_decls
