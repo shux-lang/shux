@@ -1,4 +1,4 @@
-CAMLC=ocamlc
+qqCAMLC=ocamlc
 OCAML=ocamlfind $(CAMLC) -linkpkg -thread -package core -package llvm -package llvm.analysis
 OBJS=exceptions.cmo ast.cmo astprint.cmo scanner.cmo parser.cmo semant.cmo codegen.cmo
 INCLUDE=-I ../src/include -g
@@ -78,6 +78,6 @@ hello: $(COMPILER) $(EXAMPLES)/hello_world.shux
 	./shuxc $(EXAMPLES)/hello_world.shux > hello_world.ll
 	lli hello_world.ll
 
-test:
+tests:
 	cp shuxc ../tests/shuxc
 	@cd $(TEST_DIR) && ./$(TEST)
