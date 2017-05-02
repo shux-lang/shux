@@ -6,7 +6,6 @@ test_ext=".shux"
 obj_ext=".ll"
 out_ext=".out"
 expected_ext=".test"
-error_ext=".error"
 passes=0
 fails=0
 
@@ -28,27 +27,56 @@ else
     	
         # run compiler and invoke runtime
         ERROR="$($compiler $test$test_ext 2>&1 > $test_obj)"
-        if [ -n "$ERROR" ]; then
-            echo "compilation failed! saving $test$error_ext"
-            echo $ERROR > $test$error_ext
-            fails=$((fails+1))
-            continue
+        if [ -n "$ERROR" ]; then    
+            echo $ERROR > $test$out_ext
+            if echo $ERROR | grep -q "Uncaught exception"; then
+                echo "compilation failed! saving $test$out_ext ❌"
+                fails=$((fails+1))
+                continue
+            fi
         fi
-    	$runtime $test_obj > $test_out
 
+        # check for valid test file
         if [ ! -f $expected_out ]; then
             # expected output file not found
-            echo "expected output file not found!"
+            echo "expected output file not found! ❌"
             fails=$((fails+1))
             continue
         fi
-    	if diff -q $test_out $expected_out > /dev/null; then
-    	    echo "passed!"
-            passes=$((passes+1))
-    	else
-    	    echo "failed! please check output files for debug info"
-    	    fails=$((fails+1))
+
+        # check type of test
+        expected_head=$(head -n 1 $expected_out)
+        expected_body=/tmp/expected_body
+        echo -n $(tail -n +2 $expected_out) > $expected_body
+        if [ "$expected_head" = "PASS" ]; then
+            # diff against expected output
+            $runtime $test_obj > $test_out 2>&1
+            if diff -q $test_out $expected_body > /dev/null; then
+                echo "passed! ✅"
+                passes=$((passes+1))
+            else
+                echo "failed! please check $test$out_ext for debug info ❌"
+                fails=$((fails+1))
+            fi
+        elif [ "$expected_head" = "FAIL" ]; then
+            # pattern match against execption keywords
+            echo $(diff -q $test_out $expected_body)
+            if diff -q $test_out $expected_body > /dev/null; then
+                echo "passed! ✅"
+                passes=$((passes+1))
+            else
+                echo "failed! please check $test$out_ext for debug info ❌"
+                fails=$((fails+1))
+            fi
+        else
+            echo "invalid test specification ❌"
+            fails=$((fails+1))
+            continue
         fi
     done
-    echo "$((fails+passes)) tests run", "$fails fails", "$passes passes"
+
+    echo "\n$((fails+passes)) tests run", "$fails fail(s)", "$passes passes"
+    if [ $fails -eq 0 ]; then
+        echo "all tests passed. you done it 💯"
+    fi
 fi
