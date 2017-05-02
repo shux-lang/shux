@@ -25,11 +25,17 @@ let sast_to_cast let_decls f_decls =
       in let st_element t id = SAccess(t, st_id, id)
       in let st_var t = st_element (SArray(t, Some gn.sgmax_iter))
       in let st_cnt = st_element SInt gnc
+      in let wrap_int n = SLit(SInt, SLitInt(n))
+
+      in let inc_cnt =
+        let t = SInt
+        in let inc = SBinop(t, st_cnt, SBinopInt(SAddi), wrap_int 1)
+        in let e = SAssign(t, st_cnt, inc)
+        in (e, t)
 
       in let lb_st t id n =
         (* should be gnx_arg.id[(gnx_ctr - n) % mod_iter] *)
-        let wrap_int n = SLit(SInt, SLitInt(n))
-        in let idx = SBinop(SInt, wrap_int n, SBinopInt(SSubi), st_cnt)
+        let idx = SBinop(SInt, wrap_int n, SBinopInt(SSubi), st_cnt)
         in let idx = SBinop(SInt, idx, SBinopInt(SMod), wrap_int gn.sgmax_iter)
         in SBinop(t, st_element t id, SBinopPtr(SIndex), idx)
 
@@ -54,7 +60,7 @@ let sast_to_cast let_decls f_decls =
 
       in { skname = prefix_gn gn.sgname; skret_typ = gn.sgret_typ;
         skformals = [SBind(SStruct(gns_typ), gns_arg, SLocalVar)];
-        sklocals = gn.sglocalvars; skbody = List.map lookback gn.sgbody; 
+        sklocals = gn.sglocalvars; skbody = inc_cnt :: List.map lookback gn.sgbody; 
         skret_expr = lookback gn.sgret_expr; }
 
     in let defn_struct val_binds =
