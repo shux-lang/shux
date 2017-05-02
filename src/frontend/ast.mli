@@ -6,8 +6,10 @@ type typ =
   | String
   | Bool
   | Struct of string (* struct identifier *)
-  | Array of typ
+  | Array of typ * int option
   | Vector of int (* number of elements in vector *)
+  | Ptr
+  | Void
 
 type mut =
   | Mutable
@@ -21,13 +23,11 @@ type fn_typ =
 
 type bin_op =
   | Add | Sub | Mul | Div | Mod | Exp
-  | Asn
   | Eq | Lt | Gt | Neq | Leq | Geq
   | LogAnd | LogOr
   | Filter | Map
-  | Index | Lookback
+  | Index
   | For | Do
-  | Access
 
 type un_op =
   | LogNot | Neg | Pos
@@ -46,22 +46,24 @@ and lit =
   | LitKn of lambda
   | LitVector of expr list
   | LitArray of expr list (* include optional type annotation here? *)
-  | LitStruct of struct_field list (* should this be more sophisticated? *)
+  | LitStruct of string * struct_field list (* should this be more sophisticated? *)
 
 and struct_field = StructField of string * expr
 
 and expr =
   | Lit of lit
   | Id of string
+  | Lookback of string * int
   | Binop of expr * bin_op * expr
   | Assign of expr * expr
   | Call of string option * expr list
   | Uniop of un_op * expr
   | LookbackDefault of expr * expr
   | Cond of expr * expr * expr (* technically Ternop *)
+  | Access of expr * string
 
 and stmt =
-    VDecl of bind * expr option
+  | VDecl of bind * expr option
   | Expr of expr
 
 type fn_decl = {

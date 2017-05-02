@@ -19,9 +19,11 @@ let rec _string_of_typ = function
   | Float -> "float"
   | String -> "string"
   | Bool -> "bool" 
+  | Ptr -> "_ptr"
   | Struct t -> "struct " ^ t 
-  | Array t -> _string_of_typ t ^ "[]"
+  | Array(t, i) -> _string_of_typ t ^ "[" ^ (match i with Some(n) -> string_of_int n | None -> "") ^ "]"
   | Vector t -> "vector<" ^ string_of_int t ^ ">"
+  | Void -> "__void__" (* should not be used *)
 
 let string_of_typ x = string_of_opt _string_of_typ x
 
@@ -32,10 +34,9 @@ let string_of_fn_typ = function
 type op_typ = Infix | Prefix | PostfixPair
 
 let _fix = function
-  | Asn
   | Add | Sub | Mul | Div | Mod | Exp 
   | Eq | Lt | Gt | Neq | Leq | Geq | LogAnd | LogOr
-  | Filter | Map | Lookback | Access -> Infix
+  | Filter | Map -> Infix
   | For | Do -> Prefix
   | Index -> PostfixPair
 
@@ -58,9 +59,6 @@ let string_of_binop = function
   | Map -> " @ "
   | For -> "for "
   | Do -> "do "
-  | Asn -> " = "
-  | Lookback -> ".."
-  | Access -> "."
   | _ -> "" (* should raise error *)
 
 let string_of_binop_match = function
@@ -72,6 +70,8 @@ let string_of_binop_expr f l o r =
   | Infix -> f l ^ string_of_binop o ^ f r
   | Prefix -> string_of_binop o ^ f l ^ f r 
   | PostfixPair -> match string_of_binop_match o with (o, c) -> f l ^ o ^ f r ^ c
+let string_of_asn_expr f l r =
+  f l ^ " = " ^ f r
 
 let string_of_unop = function
   | LogNot -> "!"
@@ -114,13 +114,15 @@ and string_of_lit = function
   | LitKn(l) -> string_of_lambda l
   | LitVector(l) -> string_of_list string_of_expr l "<" ", " ">" true
   | LitArray(l) -> string_of_list string_of_expr l "[" ", " "]" true
-  | LitStruct(l) -> string_of_list string_of_struct_field l "{" ";\n" "}" true
+  | LitStruct(id, l) -> id ^ string_of_list string_of_struct_field l "{" ";\n" "}" true
 
 and string_of_expr = function
  | Lit l -> string_of_lit l
  | Id s -> s
+ | Lookback(s, i) -> s ^ ".." ^ string_of_int i
+ | Access(e, i) -> string_of_expr e ^ "." ^ i
  | Uniop(o, e) -> string_of_uniop_expr string_of_expr o e
- | Assign(l, r) -> string_of_binop_expr string_of_expr l Asn r
+ | Assign(l, r) -> string_of_asn_expr string_of_expr l r
  | Binop(e1, o, e2) -> string_of_binop_expr string_of_expr e1 o e2
  | Call(s, el) -> string_of_opt_default "_" nop s ^ 
                   string_of_list string_of_expr el "(" ", " ")" (is_some s)

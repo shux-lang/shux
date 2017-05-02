@@ -7,7 +7,7 @@
 %token ASSIGN ADD_ASN SUB_ASN MUL_ASN DIV_ASN MOD_ASN EXP_ASN
 %token LOG_AND LOG_OR LOG_NOT LT GT EQ NEQ LEQ GEQ
 %token QUES COLON FILTER MAP FUNC IF THEN ELIF ELSE FOR WHILE DO UNDERSCORE
-%token NS GN KN STRUCT LET EXTERN VAR INT_T FLOAT_T STRING_T BOOL_T VECTOR_T
+%token NS GN KN STRUCT LET EXTERN VAR INT_T FLOAT_T STRING_T BOOL_T VECTOR_T PTR_T
 
 %token <bool> BOOL_LIT
 %token <int> INT_LIT
@@ -188,7 +188,7 @@ unary_expr:
 postfix_expr:
   | postfix_expr LBRACK expr RBRACK         { Binop($1, Index, $3) }
   | ID LPAREN actuals RPAREN                { Call(Some($1), $3) }
-  | postfix_expr DOT id                     { Binop($1, Access, $3) }
+  | postfix_expr DOT ID                     { Access($1, $3) }
   | primary_expr                            { $1 }
 
 primary_expr:
@@ -197,7 +197,7 @@ primary_expr:
   | id_expr                                 { $1 }
 
 id_expr:
-  | id DOTDOT int_lit                       { Binop($1, Lookback, Lit($3)) }
+  | ID DOTDOT INT_LIT                       { Lookback($1, $3) }
   | id                                      { $1 }
 
 
@@ -267,7 +267,8 @@ val_decl:
   | typ ID                                  { Bind(Immutable, $1, $2) }
 
 typ:
-  | typ LBRACK RBRACK                       { Array($1) }
+  | typ LBRACK RBRACK                       { Array($1, None) }
+  | typ LBRACK INT_LIT RBRACK               { Array($1, Some($3)) }
   | unit_t                                  { $1 }
 
 unit_t:
@@ -279,6 +280,7 @@ primitive_t:
   | FLOAT_T                                 { Float }
   | STRING_T                                { String }
   | BOOL_T                                  { Bool }
+  | PTR_T                                   { Ptr }
   | vector_t                                { $1 }
 
 vector_t:
@@ -304,8 +306,8 @@ lit:
   | INT_LIT                                 { LitInt($1) }
 
 struct_lit:  
-  | LBRACE struct_lit_fields RBRACE         { LitStruct($2) }
-  | LBRACE RBRACE                           { LitStruct([]) }
+  | ID LBRACE struct_lit_fields RBRACE         { LitStruct($1, $3) }
+  | ID LBRACE RBRACE                           { LitStruct($1, []) }
 
 struct_lit_fields:
   | struct_lit_field SEMI struct_lit_fields { $1::$3 }
@@ -327,8 +329,5 @@ lit_elements:
 
 
 /* Type wrappers */
-int_lit:
-  | INT_LIT                                 { LitInt($1) }
-
 id:
   | ID                                      { Id($1) }
