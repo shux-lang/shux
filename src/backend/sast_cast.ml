@@ -21,7 +21,8 @@ let sast_to_cast let_decls f_decls =
     in let gnc = "gnx_ctr"                (* gn execution state counter name *)
 
     in let gn_to_kn =
-      let lookback expr = (SLit(SInt, SLitInt(42)), SInt)
+      let lookback = function
+        | _ -> (SLit(SInt, SLitInt(42)), SInt)
 
       in { skname = prefix_gn gn.sgname; skret_typ = gn.sgret_typ;
         skformals = [SBind(SStruct(gns_typ), gns_arg, SLocalVar)];
