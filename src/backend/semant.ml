@@ -44,7 +44,6 @@ type trans_env = {
     ret_type : Sast.styp;*) 
 }
 
-
 let rec get_styp = function
  | Int -> SInt
  | Float -> SFloat
@@ -350,7 +349,6 @@ let check (ns, globals, functions) =
 	let start_env = create_new_env global_env in 
   check_functions (functions @ (snd flat_ns)) start_env;
 	([], globals @ fst flat_ns, functions @ snd flat_ns)
-
 
 (*				(* Checking functions *)
 				if not (List.exists (fun fd -> (fd.fname = "main" && (Astprint.string_of_typ fd.ret_typ) = "int")) functions)
