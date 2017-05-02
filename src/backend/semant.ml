@@ -44,10 +44,6 @@ type trans_env = {
     ret_type : Sast.styp;*) 
 }
 
-let compare_ast_typ l r = match(l,r) with
-   | (Array(t1, None), Array(t2, Some i)) -> t1=t2
-   | (l,r) -> l=r
-
 let rec get_styp = function
  | Int -> SInt
  | Float -> SFloat
