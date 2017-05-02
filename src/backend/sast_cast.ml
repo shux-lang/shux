@@ -9,34 +9,46 @@ let sast_to_cast let_decls f_decls =
   in let prefix_gn s = "gn_" ^ s
   in let prefix_gns s = "gns_" ^ s (* gn struct *)
 
-  in let walk_gn gn = 
-    let gn_struct_id = "gns_" (* gn struct prefix *)
-    in let pgnc = "gnc_" (* gn execution state counter prefix *)
+  in let walk_kn kn =
+    let walk = function { skname; _ } ->
+    DeclDud 
+    in walk kn
 
-    in let defn_struct val_binds max_iter =
+  in let walk_gn gn = 
+    let prefix_gnv s = "gnv_" ^ s
+    in let gnc = "gnc_ctr" (* gn execution state counter prefix *)
+
+    in let gn_to_fn =
+      { skname = ""; skret_typ = gn.sgret_typ;
+        skformals = []; sklocals = []; skbody = []; 
+        skret_expr = gn.sgret_expr; }
+
+
+    in let defn_struct val_binds =
       let val_to_a_decl = function 
-        | SBind(t, s, SLocalVal) -> SBind(SArray(t, Some(max_iter)), s, SLocalVar)
-        | _ -> raise (Failure "shit")
+        | SBind(t, n, SLocalVal) -> SBind(SArray(t, Some(gn.sgmax_iter)),
+                                          prefix_gnv n, SLocalVar)
+        | _ -> raise (Failure "Bad SBind found in sglocalvals") (* TODO: write english *)
       in let ctr_decl =
-        SBind(SInt, pgnc, SLocalVar)
+        SBind(SInt, gnc, SLocalVar)
       in CStructDef({ ssname = prefix_gns gn.sgname; 
                       ssfields = ctr_decl :: List.map val_to_a_decl val_binds })
-    in let walk { sgname; sgret_typ; sgmax_iter; 
-                  sgformals; sglocalvals; sglocalvars;
-                  sgbody; sgret_expr } =
-      [ defn_struct (sgformals @ sglocalvals) sgmax_iter ]
+
+    in let walk = 
+      [ defn_struct (gn.sgformals @ gn.sglocalvals);
+        walk_kn gn_to_fn ]
                             (*
       [ CStructDef(defn_struct n (f @ ll));
         CFnDecl({ cfname = n; cret_typ = t; cformals = get_struct n;
         clocals = get_locals f ll lr;
         cbody = get_ctr :: let br = walk_gn_stmts b m in br @ walk_gn_stmt r})]
         *)
-    in walk gn
+    in walk
   in let walk_fns f_decls =
     let rec walk = function
       | [] -> []
       | SGnDecl(g)::t -> let r = walk_gn g in r @ walk t
-      | SKnDecl(k)::t -> []
+      | SKnDecl(k)::t -> let r = walk_kn k in r :: walk t
     in walk f_decls
   in let walk_static let_decls =
     let interp_expr = function (* TODO: write interpretor for compile-time evaluation *)
