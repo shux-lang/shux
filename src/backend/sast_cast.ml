@@ -2,12 +2,12 @@ open Sast
 open Cast
 
 let sast_to_cast let_decls f_decls =
-  let prefix_x s = "extern_" ^ s
-  in let prefix_s s = "struct_" ^ s 
-  in let prefix_l s = "let_" ^ s
-  in let prefix_kn s = "kn_" ^ s
-  in let prefix_gn s = "gn_" ^ s
-  in let prefix_gns s = "gns_" ^ s (* gn struct *)
+  let prefix_x s = "extern_" ^ s    (* extern decl *)
+  in let prefix_s s = "struct_" ^ s (* struct defn *)
+  in let prefix_l s = "let_" ^ s    (* let decl *)
+  in let prefix_kn s = "kn_" ^ s    (* kn function *)
+  in let prefix_gn s = "gn_" ^ s    (* gn function *)
+  in let prefix_gns s = "gns_" ^ s  (* gn struct *)
 
   in let walk_kn kn =
     let walk = function { skname; _ } ->
@@ -16,34 +16,34 @@ let sast_to_cast let_decls f_decls =
 
   in let walk_gn gn = 
     let prefix_gnv s = "gnv_" ^ s
-    in let gnc = "gnc_ctr" (* gn execution state counter prefix *)
+    in let gns_typ = prefix_gns gn.sgname (* struct type name *)
+    in let gns_arg = "gnx_arg"            (* gn execution state argument name *)
+    in let gnc = "gnx_ctr"                (* gn execution state counter name *)
 
-    in let gn_to_fn =
-      { skname = ""; skret_typ = gn.sgret_typ;
-        skformals = []; sklocals = []; skbody = []; 
+    in let gn_to_kn =
+      { skname = prefix_gn gn.sgname; skret_typ = gn.sgret_typ;
+        skformals = [SBind(SStruct(gns_typ), gns_arg, SLocalVar)];
+        sklocals = gn.sglocalvars; skbody = []; 
         skret_expr = gn.sgret_expr; }
-
 
     in let defn_struct val_binds =
       let val_to_a_decl = function 
-        | SBind(t, n, SLocalVal) -> SBind(SArray(t, Some(gn.sgmax_iter)),
-                                          prefix_gnv n, SLocalVar)
+        | SBind(t, n, SLocalVal) ->
+            SBind(SArray(t, Some(gn.sgmax_iter)), prefix_gnv n, SLocalVar)
         | _ -> raise (Failure "Bad SBind found in sglocalvals") (* TODO: write english *)
       in let ctr_decl =
         SBind(SInt, gnc, SLocalVar)
-      in CStructDef({ ssname = prefix_gns gn.sgname; 
+      in CStructDef({ ssname = gns_typ; 
                       ssfields = ctr_decl :: List.map val_to_a_decl val_binds })
 
-    in let walk = 
-      [ defn_struct (gn.sgformals @ gn.sglocalvals);
-        walk_kn gn_to_fn ]
+    in [ defn_struct (gn.sgformals @ gn.sglocalvals);
+          walk_kn gn_to_kn ]
                             (*
       [ CStructDef(defn_struct n (f @ ll));
         CFnDecl({ cfname = n; cret_typ = t; cformals = get_struct n;
         clocals = get_locals f ll lr;
         cbody = get_ctr :: let br = walk_gn_stmts b m in br @ walk_gn_stmt r})]
         *)
-    in walk
   in let walk_fns f_decls =
     let rec walk = function
       | [] -> []
