@@ -88,17 +88,16 @@ let rec  type_of_lit tr_env = function
     if VarMap.mem id tr_env.structs then
         let s = VarMap.find id tr_env.structs in
         if List.length s.fields != List.length l
-        then let err_msg = "Wrong number of fields in struct
-                " ^ id ^ "Expected: " ^ string_of_int
-                (List.length s.fields) ^ " Got: " ^ string_of_int
-                (List.length l) in raise(Failure err_msg)
+        then let err_msg = "Wrong number of fields in struct "
+                ^ id ^ ". Expected: " ^ string_of_int (List.length s.fields) ^ 
+                " Got: " ^ string_of_int (List.length l) in raise(Failure err_msg)
         else    let match_lits struct_field = 
                    let match_lit b lit strct = 
                            if b then
                                    if get_sfield_name lit = (fst struct_field) then
                                            let err_msg = "Struct field " ^ (fst
-                                           struct_field) ^ " takes place more
-                                           than once in struct literal." in 
+                                           struct_field) ^ " takes place more " ^
+                                           "than once in struct literal." in 
                                            raise (Failure err_msg)
                                    else b
                            else 
@@ -109,7 +108,7 @@ let rec  type_of_lit tr_env = function
                                else
                                     false
                    in 
-                   List.fold_left (fun b x -> match_lit b x struct_field) true l
+                   List.fold_left (fun b x -> match_lit b x struct_field) false l
                 in 
                 let match_fields b sfield  = b && match_lits sfield in
                 if (List.fold_left match_fields true s.fields) then Struct(id)
@@ -120,7 +119,7 @@ let rec  type_of_lit tr_env = function
    | LitVector(l) -> Vector (List.length l)
    | LitArray(l) ->
 			let rec array_check arr typ = 
-        if (arr = []) then typ else
+        if (arr = []) then Array(typ, Some (List.length l)) else
         let nxt_typ = check_expr tr_env (List.hd arr) in
         if nxt_typ != typ then raise (Failure ("Array types not consistent."))
         else array_check (List.tl arr) (check_expr tr_env (List.hd arr)) in
@@ -210,11 +209,11 @@ and check_expr tr_env expr =
                              else b 
                          in
                          if (List.fold_left2 match_formal true fn.formals tlist)
-                         then (match fn.ret_expr with 
-                            | Some x -> check_expr tr_env x
-                            | None -> Void)
-                         else let err_msg = "Formals dont match for function
-                                 call " ^ s in raise (Failure err_msg)
+                         then match(fn.ret_typ) with 
+                             | Some x -> x
+                             | None -> Void
+                         else let err_msg = "Formals dont match for function" ^
+                                 " call " ^ s in raise (Failure err_msg)
           else let err_msg = "Kernel " ^ s ^ "is not defined in call." in 
           raise (Failure err_msg)
        | None -> Int)
@@ -243,14 +242,16 @@ and check_expr tr_env expr =
              | Struct(id) -> if VarMap.mem id tr_env.structs
                 then 
                         let s = VarMap.find id tr_env.structs in
-                        let find_field str field = if (fst str)="NONE" then
-                                if (fst field)=fname then field else str
-                                else str in 
-                       let matched = List.fold_left find_field ("NONE", Int)
+                        let find_field tuple field = 
+                                if (fst tuple)="NONE" then
+                                   if (fst field)=str 
+                                      then (fname, snd field) else tuple
+                                else tuple in
+                                let matched = List.fold_left find_field ("NONE", Int)
                        s.fields in 
                        if (fst matched)="NONE" then
-                               let err_msg = "Struct field named " ^ fname ^ " is
-                               not defined." in raise (Failure err_msg) 
+                               let err_msg = "Struct field named " ^ str ^ " is "  ^
+                               "not defined." in raise (Failure err_msg) 
                         else (snd matched)
                 else let err_msg = "Struct named " ^ id ^ " not defined." in 
                          raise (Failure err_msg)
@@ -297,7 +298,6 @@ let rec flatten_ns ns_list =
 	in List.fold_left (fun (a,b) (an, bn) -> (a@an, b@bn)) ([], [])
 	(List.map handle_ns ns_list)
 
-(*TODO: *) 
 let check_globals g =
    let rec check_global_inner tr_env = function
         | [] -> tr_env
@@ -305,17 +305,36 @@ let check_globals g =
            | LetDecl(bind, expr) -> (match bind with
               | Bind(mut, typ, s) -> 
                let t2 = check_expr tr_env expr in
-               if typ = t2 then
+               if compare_ast_typ typ t2 then
                       let v = { id = s; var_type = typ } in
                       let vlist = if VarMap.mem s tr_env.scope then
                               v :: VarMap.find s tr_env.scope else [v] in 
-                      { scope = VarMap.add s vlist tr_env.scope; 
+                      check_global_inner { scope = VarMap.add s vlist tr_env.scope; 
                         structs = tr_env.structs;
-                        fn_map = tr_env.fn_map }
-              else let err_msg = "Type mismatch in glob" in raise(Failure
-              err_msg))
-           | StructDef(s) -> check_global_inner tr_env tl
-           | ExternDecl(e) -> check_global_inner tr_env tl) (*TODO: externs *) 
+                        fn_map = tr_env.fn_map } tl
+              else let err_msg = "Type mismatch in let decl: " ^ _string_of_typ typ ^ 
+                                 " " ^ s ^ " is assigned to " ^ _string_of_typ t2 
+                                 in raise(Failure  err_msg))
+           | StructDef(s) -> if VarMap.mem s.sname tr_env.structs 
+                             then let err_msg = "Struct with name " ^ s.sname ^ 
+                             " defined more than once." in raise(Failure err_msg)
+                             else 
+                 let map_fields = function
+                   | Bind(m, t, id) -> (id,t)
+                 in let nfields = List.map map_fields s.fields in 
+                 let st = {id = s.sname; fields = nfields} in
+                 check_global_inner { scope = tr_env.scope; 
+                                      structs = VarMap.add s.sname st tr_env.structs;
+                                      fn_map = tr_env.fn_map } tl
+           | ExternDecl(e) -> 
+                 let f = { fname = e.xalias; fn_typ = Kn;
+                           ret_typ = e.xret_typ; formals=e.xformals;      
+                           body = []; ret_expr = None } in
+                 let ntr_env = 
+                       { scope = tr_env.scope; structs = tr_env.structs;
+                         fn_map = VarMap.add f.fname f tr_env.fn_map } in 
+                 check_global_inner ntr_env tl)
+                                                    
    in 
    let env_default = { scope = VarMap.empty; structs = VarMap.empty; 
                        fn_map = VarMap.empty; } in
