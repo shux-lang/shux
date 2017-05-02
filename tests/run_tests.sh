@@ -6,6 +6,7 @@ test_ext=".shux"
 obj_ext=".ll"
 out_ext=".out"
 expected_ext=".test"
+error_ext=".error"
 passes=0
 fails=0
 
@@ -26,8 +27,13 @@ else
     	expected_out=$test$expected_ext
     	
         # run compiler and invoke runtime
-        # TODO this needs to capture errors if the compiler fails and redirect them to test_out
-        $compiler $test$test_ext > $test_obj
+        ERROR="$($compiler $test$test_ext 2>&1 > $test_obj)"
+        if [ -n "$ERROR" ]; then
+            echo "compilation failed! saving $test$error_ext"
+            echo $ERROR > $test$error_ext
+            fails=$((fails+1))
+            continue
+        fi
     	$runtime $test_obj > $test_out
 
         if [ ! -f $expected_out ]; then
@@ -44,4 +50,5 @@ else
     	    fails=$((fails+1))
         fi
     done
+    echo "$((fails+passes)) tests run", "$fails fails", "$passes passes"
 fi
