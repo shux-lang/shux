@@ -15,7 +15,7 @@ let sast_to_cast let_decls f_decls =
     in walk kn
 
   in let walk_gn gn = 
-    let prefix_gnv s = "gnv_" ^ s
+    let prefix_gnv s = "gnv_" ^ s         (* for local vars *)
     in let gns_typ = prefix_gns gn.sgname (* struct type name *)
     in let gns_arg = "gnx_arg"            (* gn execution state argument name *)
     in let gnc = "gnx_ctr"                (* gn execution state counter name *)
@@ -27,6 +27,10 @@ let sast_to_cast let_decls f_decls =
       in let st_cnt = st_element SInt gnc
       in let wrap_int n = SLit(SInt, SLitInt n)
 
+      in let prefix_var = function
+        | SBind(t, n, SLocalVar) -> SBind(t, prefix_gnv n, SLocalVar)
+        | SBind(_, n, _)-> raise (Failure ("Bad SBind found in sglocalvars: " ^ n))
+
       in let inc_cnt =
         let t = SInt
         in let inc = SBinop(t, st_cnt, SBinopInt SAddi, wrap_int 1)
@@ -37,13 +41,18 @@ let sast_to_cast let_decls f_decls =
         (* should be gnx_arg.id[(gnx_ctr - n) % mod_iter] *)
         let idx = SBinop(SInt, wrap_int n, SBinopInt SSubi, st_cnt)
         in let idx = SBinop(SInt, idx, SBinopInt SMod, wrap_int gn.sgmax_iter)
-        in SBinop(t, st_element t id, SBinopPtr SIndex, idx)
+        in SBinop(t, st_var t id, SBinopPtr SIndex, idx)
 
       in let lb_cmp n = SBinop(SBool, wrap_int n, SBinopInt SLeqi, st_cnt)
 
       in let rec lookback (e, t) =
-        let rec lb = function
-          | SId(t, id, _) -> lb_st t id 0
+        let sid t id = function
+          | SGlobal as s -> SId(t, id, s) (* global prefixing will happen in walk_kn *)
+          | SLocalVar as s -> SId(t, prefix_gnv id, s)
+          | SLocalVal -> lb_st t id 0
+
+        in let rec lb = function
+          | SId(t, id, s) -> sid t id s
           | SLookback(t, id, n) -> lb_st t id n
           | SLookbackDefault(t, n, f, e) -> SCond(t, lb_cmp n, lb f, lb e)
           | SAccess(t, e, id) -> SAccess(t, lb e, id)
@@ -58,14 +67,14 @@ let sast_to_cast let_decls f_decls =
 
       in { skname = prefix_gn gn.sgname; skret_typ = gn.sgret_typ;
         skformals = [SBind(SStruct gns_typ, gns_arg, SLocalVar)];
-        sklocals = gn.sglocalvars; skbody = inc_cnt :: List.map lookback gn.sgbody; 
+        sklocals = List.map prefix_var gn.sglocalvars; 
+        skbody = inc_cnt :: List.map lookback gn.sgbody; 
         skret_expr = lookback gn.sgret_expr; }
 
     in let defn_struct val_binds =
       let val_to_a_decl = function 
-        | SBind(t, n, SLocalVal) ->
-            SBind(SArray(t, Some gn.sgmax_iter), prefix_gnv n, SLocalVar)
-        | _ -> raise (Failure "Bad SBind found in sglocalvals") (* TODO: write english *)
+        | SBind(t, n, SLocalVal) -> SBind(SArray(t, Some gn.sgmax_iter), n, SLocalVar)
+        | SBind(_, n, _)-> raise (Failure ("Bad SBind found in sglocalvals: " ^ n))
       in let ctr_decl =
         SBind(SInt, gnc, SLocalVar)
       in CStructDef { ssname = gns_typ; 
