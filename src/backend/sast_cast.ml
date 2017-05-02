@@ -23,6 +23,12 @@ let sast_to_cast let_decls f_decls =
     in let gn_to_kn =
       let st_id = SId(SStruct(gns_typ), gns_arg, SLocalVar)
       in let st_element t id = SAccess(t, st_id, id)
+      in let st_var t = st_element (SArray(t, Some gn.sgmax_iter))
+
+      in let lb_st t id n =
+        let idx = SLit(SInt, SLitInt(n))
+        in SBinop(t, st_element t id, SBinopPtr(SIndex), idx)
+
       in let lb_cmp n = 
         let lb_amt = SLit(SInt, SLitInt(n))
         in let st_cnt = st_element SInt gnc
@@ -31,7 +37,7 @@ let sast_to_cast let_decls f_decls =
       in let rec lookback (e, t) =
         let rec lb = function
           | SId(t, n, s) -> SLit(SInt, SLitInt(42))
-          | SLookback(t, id, n) -> SLit(SInt, SLitInt(42))
+          | SLookback(t, id, n) -> lb_st t id n
           | SLookbackDefault(t, n, f, e) -> SCond(t, lb_cmp n, lb f, lb e)
           | SAccess(t, e, id) -> SAccess(t, lb e, id)
           | SBinop(t, l, o, r) -> SBinop(t, lb l, o, lb r)
@@ -51,7 +57,7 @@ let sast_to_cast let_decls f_decls =
     in let defn_struct val_binds =
       let val_to_a_decl = function 
         | SBind(t, n, SLocalVal) ->
-            SBind(SArray(t, Some(gn.sgmax_iter)), prefix_gnv n, SLocalVar)
+            SBind(SArray(t, Some gn.sgmax_iter), prefix_gnv n, SLocalVar)
         | _ -> raise (Failure "Bad SBind found in sglocalvals") (* TODO: write english *)
       in let ctr_decl =
         SBind(SInt, gnc, SLocalVar)
