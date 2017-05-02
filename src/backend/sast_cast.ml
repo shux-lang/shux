@@ -36,7 +36,7 @@ let sast_to_cast let_decls f_decls =
 
       in let rec lookback (e, t) =
         let rec lb = function
-          | SId(t, n, s) -> SLit(SInt, SLitInt(42))
+          | SId(t, id, _) -> lb_st t id 0
           | SLookback(t, id, n) -> lb_st t id n
           | SLookbackDefault(t, n, f, e) -> SCond(t, lb_cmp n, lb f, lb e)
           | SAccess(t, e, id) -> SAccess(t, lb e, id)
