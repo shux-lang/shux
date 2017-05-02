@@ -24,14 +24,17 @@ let sast_to_cast let_decls f_decls =
       let st_id = SId(SStruct(gns_typ), gns_arg, SLocalVar)
       in let st_element t id = SAccess(t, st_id, id)
       in let st_var t = st_element (SArray(t, Some gn.sgmax_iter))
+      in let st_cnt = st_element SInt gnc
 
       in let lb_st t id n =
-        let idx = SLit(SInt, SLitInt(n))
+        (* should be gnx_arg.id[(gnx_ctr - n) % mod_iter] *)
+        let wrap_int n = SLit(SInt, SLitInt(n))
+        in let idx = SBinop(SInt, wrap_int n, SBinopInt(SSubi), st_cnt)
+        in let idx = SBinop(SInt, idx, SBinopInt(SMod), wrap_int gn.sgmax_iter)
         in SBinop(t, st_element t id, SBinopPtr(SIndex), idx)
 
       in let lb_cmp n = 
         let lb_amt = SLit(SInt, SLitInt(n))
-        in let st_cnt = st_element SInt gnc
         in SBinop(SBool, lb_amt, SBinopInt(SLeqi), st_cnt)
 
       in let rec lookback (e, t) =
