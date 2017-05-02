@@ -159,7 +159,15 @@ and check_expr tr_env expr =
        in
             if (match e2 with
             | Binop(kn, _, _) -> (match kn with
-              | Id(n) -> false (*TODO: Match with formals of the kernel *)
+              | Id(n) ->
+                  if VarMap.mem n tr_env.fn_map then
+                      let k = VarMap.find n tr_env.fn_map in
+                      if k.fn_typ = Kn 
+                      then List.length k.formals = 1
+                      else let err_msg = "Map/Filter function" ^ n
+                       ^ " needs to be a kernel" in raise(Failure err_msg)
+                  else let err_msg = "Kernel call in filter/map " ^ n ^ "doesnt
+                  exist" in raise(Failure err_msg)
               | Lit(n) -> (match n with
                           | LitKn(l) ->(List.length l.lformals) = 1 && 
                                     (get_bind_typ (List.hd l.lformals)) = t
@@ -299,7 +307,7 @@ let check (ns, globals, functions) =
 	let flat_ns = flatten_ns ns in
 	let global_env = check_globals (globals @ (fst flat_ns)) in
 	let start_env = create_new_env global_env in 
-	(* check_functions (functions @ (snd flat_ns)) global_env *)
+  check_functions (functions @ (snd flat_ns)) start_env;
 	([], globals @ fst flat_ns, functions @ snd flat_ns)
 
 
