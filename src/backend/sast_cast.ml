@@ -11,23 +11,30 @@ let sast_to_cast let_decls f_decls =
 
   in let walk_kn kn =
     let rec walk = function (* TODO: this is gonna be fed a tuple of typ * expr *)
-      | SLit(t, l)::ll -> []
-      | SId(t, id, s)::ll -> []
-      | SAccess(t, e, id)::ll -> []
-      | SBinop(t, l, o, r)::ll -> []
-      | SAssign(t, l, r)::ll -> []
-      | SKnCall(t, id, e)::ll -> []
-      | SGnCall(t, id, e)::ll -> []
-      | SUnop(t, o, e)::ll -> []
-      | SCond(t, i, f, e)::ll -> []
-      | SLookbackDefault(_)::ll -> raise (Failure ("Tried to lookback default in kn: " ^ kn.skname))
-      | SLookback(_, id, _)::ll -> raise (Failure ("Tried to lookback " ^ id ^ " in kn: " ^ kn.skname))
+      | SLit(t, l) -> []
+      | SId(t, id, s) -> []
+      | SAccess(t, e, id) -> []
+      | SBinop(t, l, o, r) -> []
+      | SAssign(t, l, r) -> []
+      | SKnCall(t, id, e) -> []
+      | SGnCall(t, id, e) -> []
+      | SUnop(t, o, e) -> []
+      | SCond(t, i, f, e) -> []
+      | SLookbackDefault(_) -> raise (Failure ("Tried to lookback default in kn: " ^ kn.skname))
+      | SLookback(_, id, _) -> raise (Failure ("Tried to lookback " ^ id ^ " in kn: " ^ kn.skname))
+    in let walk_block = function
+      | [] -> []
+      | (e, SArray(t, n))::ll -> []
+      | (e, SStruct(id))::ll -> []
+      | (e, SPtr)::ll -> raise (Failure "Tried to walk a SPtr type expr")
+      | (e, SVoid)::ll -> raise (Failure "Tried to walk a SVoid type expr")
+      | (e, _)::ll -> []
     in let walk_ret = function
       | _ -> []
     in CFnDecl { cfname = kn.skname; cret_typ = kn.skret_typ;
                   cformals = kn.skformals;
                   clocals = kn.sklocals;
-                  cbody = walk kn.skbody @ walk_ret kn.skret_expr }
+                  cbody = walk_block kn.skbody @ walk_ret kn.skret_expr }
 
   in let walk_gn gn = 
     let prefix_gnv s = "gnv_" ^ s         (* for local vars *)
