@@ -21,10 +21,18 @@ let sast_to_cast let_decls f_decls =
     in let gnc = "gnx_ctr"                (* gn execution state counter name *)
 
     in let gn_to_kn =
-      let rec lookback (e, t) =
+      let st_id = SId(SStruct(gns_typ), gns_arg, SLocalVar)
+      in let st_element t id = SAccess(t, st_id, id)
+      in let lb_cmp n = 
+        let lb_amt = SLit(SInt, SLitInt(n))
+        in let st_cnt = st_element SInt gnc
+        in SBinop(SBool, lb_amt, SBinopInt(SLeqi), st_cnt)
+
+      in let rec lookback (e, t) =
         let rec lb = function
+          | SId(t, n, s) -> SLit(SInt, SLitInt(42))
           | SLookback(t, id, n) -> SLit(SInt, SLitInt(42))
-          | SLookbackDefault(t, n, f, e) -> SLookbackDefault(t, n, lb f, lb e)
+          | SLookbackDefault(t, n, f, e) -> SCond(t, lb_cmp n, lb f, lb e)
           | SAccess(t, e, id) -> SAccess(t, lb e, id)
           | SBinop(t, l, o, r) -> SBinop(t, lb l, o, lb r)
           | SAssign(t, l, r) -> SAssign(t, lb l, lb r)
