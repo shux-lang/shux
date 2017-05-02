@@ -1,6 +1,6 @@
 CAMLC=ocamlc
 OCAML=ocamlfind $(CAMLC) -linkpkg -thread -package core -package llvm -package llvm.analysis
-OBJS=exceptions.cmo ast.cmo astprint.cmo scanner.cmo parser.cmo semant.cmo codegen.cmo
+OBJS=exceptions.cmo sast.cmo ast.cmo astprint.cmo scanner.cmo parser.cmo semant.cmo codegen.cmo
 INCLUDE=-I ../src/include -g
 OCAML_FLAGS=$(INCLUDE) $(OBJS)
 EXAMPLES=../examples
@@ -15,6 +15,7 @@ default: $(TARGETS)
 symlink:
 	$(SYMLINK) ../src/frontend/exceptions.ml exceptions.ml
 	$(SYMLINK) ../src/frontend/ast.mli ast.ml
+	$(SYMLINK) ../src/backend/sast.mli sast.ml
 	$(SYMLINK) ../src/backend/codegen.ml codegen.ml
 	$(SYMLINK) ../src/frontend/parser.mly parser.mly
 	$(SYMLINK) ../src/frontend/scanner.mll scanner.mll
