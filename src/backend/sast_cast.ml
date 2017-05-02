@@ -21,27 +21,25 @@ let sast_to_cast let_decls f_decls =
     in let gnc = "gnx_ctr"                (* gn execution state counter name *)
 
     in let gn_to_kn =
-      let st_id = SId(SStruct(gns_typ), gns_arg, SLocalVar)
+      let st_id = SId(SStruct gns_typ, gns_arg, SLocalVar)
       in let st_element t id = SAccess(t, st_id, id)
       in let st_var t = st_element (SArray(t, Some gn.sgmax_iter))
       in let st_cnt = st_element SInt gnc
-      in let wrap_int n = SLit(SInt, SLitInt(n))
+      in let wrap_int n = SLit(SInt, SLitInt n)
 
       in let inc_cnt =
         let t = SInt
-        in let inc = SBinop(t, st_cnt, SBinopInt(SAddi), wrap_int 1)
+        in let inc = SBinop(t, st_cnt, SBinopInt SAddi, wrap_int 1)
         in let e = SAssign(t, st_cnt, inc)
         in (e, t)
 
       in let lb_st t id n =
         (* should be gnx_arg.id[(gnx_ctr - n) % mod_iter] *)
-        let idx = SBinop(SInt, wrap_int n, SBinopInt(SSubi), st_cnt)
-        in let idx = SBinop(SInt, idx, SBinopInt(SMod), wrap_int gn.sgmax_iter)
-        in SBinop(t, st_element t id, SBinopPtr(SIndex), idx)
+        let idx = SBinop(SInt, wrap_int n, SBinopInt SSubi, st_cnt)
+        in let idx = SBinop(SInt, idx, SBinopInt SMod, wrap_int gn.sgmax_iter)
+        in SBinop(t, st_element t id, SBinopPtr SIndex, idx)
 
-      in let lb_cmp n = 
-        let lb_amt = SLit(SInt, SLitInt(n))
-        in SBinop(SBool, lb_amt, SBinopInt(SLeqi), st_cnt)
+      in let lb_cmp n = SBinop(SBool, wrap_int n, SBinopInt SLeqi, st_cnt)
 
       in let rec lookback (e, t) =
         let rec lb = function
@@ -59,7 +57,7 @@ let sast_to_cast let_decls f_decls =
         in (lb e, t)
 
       in { skname = prefix_gn gn.sgname; skret_typ = gn.sgret_typ;
-        skformals = [SBind(SStruct(gns_typ), gns_arg, SLocalVar)];
+        skformals = [SBind(SStruct gns_typ, gns_arg, SLocalVar)];
         sklocals = gn.sglocalvars; skbody = inc_cnt :: List.map lookback gn.sgbody; 
         skret_expr = lookback gn.sgret_expr; }
 
@@ -70,11 +68,10 @@ let sast_to_cast let_decls f_decls =
         | _ -> raise (Failure "Bad SBind found in sglocalvals") (* TODO: write english *)
       in let ctr_decl =
         SBind(SInt, gnc, SLocalVar)
-      in CStructDef({ ssname = gns_typ; 
-                      ssfields = ctr_decl :: List.map val_to_a_decl val_binds })
+      in CStructDef { ssname = gns_typ; 
+                      ssfields = ctr_decl :: List.map val_to_a_decl val_binds }
 
-    in [ defn_struct (gn.sgformals @ gn.sglocalvals);
-          walk_kn gn_to_kn ]
+    in [ defn_struct (gn.sgformals @ gn.sglocalvals); walk_kn gn_to_kn ]
                             (*
       [ CStructDef(defn_struct n (f @ ll));
         CFnDecl({ cfname = n; cret_typ = t; cformals = get_struct n;
@@ -93,8 +90,8 @@ let sast_to_cast let_decls f_decls =
     in
     let walk = function
       | SLetDecl(SBind(t, n, s), e) -> CConstDecl(SBind(t, prefix_l n, s), interp_expr e)
-      | SStructDef(s) -> CStructDef({s with ssname = prefix_s s.ssname})
-      | SExternDecl(x) -> CExternDecl({x with sxalias = prefix_x x.sxalias})
+      | SStructDef s -> CStructDef {s with ssname = prefix_s s.ssname}
+      | SExternDecl x -> CExternDecl {x with sxalias = prefix_x x.sxalias}
     in walk let_decls
   (* function entry point: walk entire program *)
   in 
