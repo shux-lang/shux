@@ -25,7 +25,7 @@ let sast_to_cast let_decls f_decls =
         let rec lb = function
           | SLookback(t, id, n) -> SLit(SInt, SLitInt(42))
           | SLookbackDefault(t, n, f, e) -> SLookbackDefault(t, n, lb f, lb e)
-          | SAccess(t, e, id) -> SLit(SInt, SLitInt(42))
+          | SAccess(t, e, id) -> SAccess(t, lb e, id)
           | SBinop(t, l, o, r) -> SBinop(t, lb l, o, lb r)
           | SAssign(t, l, r) -> SAssign(t, lb l, lb r)
           | SKnCall(t, id, a) -> SKnCall(t, id, List.map lb a)
