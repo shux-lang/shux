@@ -10,9 +10,12 @@ let sast_to_cast let_decls f_decls =
   in let prefix_gns s = "gns_" ^ s  (* gn struct *)
 
   in let walk_kn kn =
-    let walk = function { skname; _ } ->
-    DeclDud 
-    in walk kn
+    let rec walk es = []
+    in let walk_ret e = []
+    in CFnDecl { cfname = kn.skname; cret_typ = kn.skret_typ;
+                  cformals = kn.skformals;
+                  clocals = kn.sklocals;
+                  cbody = walk kn.skbody @ walk_ret kn.skret_expr; }
 
   in let walk_gn gn = 
     let prefix_gnv s = "gnv_" ^ s         (* for local vars *)
@@ -66,27 +69,22 @@ let sast_to_cast let_decls f_decls =
         in (lb e, t)
 
       in { skname = prefix_gn gn.sgname; skret_typ = gn.sgret_typ;
-        skformals = [SBind(SStruct gns_typ, gns_arg, SLocalVar)];
+        skformals = [ SBind(SStruct gns_typ, gns_arg, SLocalVar) ];
         sklocals = List.map prefix_var gn.sglocalvars; 
         skbody = inc_cnt :: List.map lookback gn.sgbody; 
         skret_expr = lookback gn.sgret_expr; }
 
     in let defn_struct val_binds =
-      let val_to_a_decl = function 
+      let a_decl = function 
         | SBind(t, n, SLocalVal) -> SBind(SArray(t, Some gn.sgmax_iter), n, SLocalVar)
         | SBind(_, n, _)-> raise (Failure ("Bad SBind found in sglocalvals: " ^ n))
       in let ctr_decl =
         SBind(SInt, gnc, SLocalVar)
       in CStructDef { ssname = gns_typ; 
-                      ssfields = ctr_decl :: List.map val_to_a_decl val_binds }
+                      ssfields = ctr_decl :: List.map a_decl val_binds }
 
     in [ defn_struct (gn.sgformals @ gn.sglocalvals); walk_kn gn_to_kn ]
-                            (*
-      [ CStructDef(defn_struct n (f @ ll));
-        CFnDecl({ cfname = n; cret_typ = t; cformals = get_struct n;
-        clocals = get_locals f ll lr;
-        cbody = get_ctr :: let br = walk_gn_stmts b m in br @ walk_gn_stmt r})]
-        *)
+
   in let walk_fns f_decls =
     let rec walk = function
       | [] -> []
