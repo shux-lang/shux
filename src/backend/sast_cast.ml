@@ -21,17 +21,19 @@ let sast_to_cast let_decls f_decls =
     in let gnc = "gnx_ctr"                (* gn execution state counter name *)
 
     in let gn_to_kn =
-      let rec lookback (e, t) = ((match e with
-        | SLookback(t, id, n) -> SLit(SInt, SLitInt(42))
-        | SAccess(t, e, id) -> SLit(SInt, SLitInt(42))
-        | SBinop(t, l, o, r) -> SLit(SInt, SLitInt(42))
-        | SAssign(t, l, r) -> SLit(SInt, SLitInt(42))
-        | SKnCall(t, id, a) -> SLit(SInt, SLitInt(42))
-        | SGnCall(t, id, a) -> SLit(SInt, SLitInt(42))
-        | SLookbackDefault(t, n, f, e) -> SLit(SInt, SLitInt(42))
-        | SUnop(t, o, e) -> SLit(SInt, SLitInt(42))
-        | SCond(t, i, f, e) -> SLit(SInt, SLitInt(42))
-        | e -> e), t)
+      let rec lookback (e, t) =
+        let rec lb = function
+          | SLookback(t, id, n) -> SLit(SInt, SLitInt(42))
+          | SLookbackDefault(t, n, f, e) -> SLookbackDefault(t, n, lb f, lb e)
+          | SAccess(t, e, id) -> SLit(SInt, SLitInt(42))
+          | SBinop(t, l, o, r) -> SBinop(t, lb l, o, lb r)
+          | SAssign(t, l, r) -> SAssign(t, lb l, lb r)
+          | SKnCall(t, id, a) -> SKnCall(t, id, List.map lb a)
+          | SGnCall(t, id, a) -> SGnCall(t, id, List.map lb a)
+          | SUnop(t, o, e) -> SUnop(t, o, lb e)
+          | SCond(t, i, f, e) -> SCond(t, lb i, lb f, lb e)
+          | e -> e
+        in (lb e, t)
 
       in { skname = prefix_gn gn.sgname; skret_typ = gn.sgret_typ;
         skformals = [SBind(SStruct(gns_typ), gns_arg, SLocalVar)];
