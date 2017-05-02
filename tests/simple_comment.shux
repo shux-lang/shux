@@ -1,0 +1,7 @@
+kn main() int {
+    /* this is a single line comment */
+    /* this comment
+     * has many lines
+     */
+    0
+}

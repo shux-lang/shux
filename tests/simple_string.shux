@@ -1,0 +1,4 @@
+kn main() int {
+    string s = "hi there this is an ASCII string\n\n";
+    0
+}
