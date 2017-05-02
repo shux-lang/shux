@@ -18,7 +18,7 @@ else
     for test in $test_names 
     do
     	test=`echo "$test" | cut -d'.' -f1`
-    	echo -n "running "$test"... "
+    	echo -n $test"... "
 
         # what intermediate objects do we need?
     	test_obj=$test$obj_ext
@@ -60,12 +60,12 @@ else
             fi
         elif [ "$expected_head" = "FAIL" ]; then
             # pattern match against execption keywords
-            echo $(diff -q $test_out $expected_body)
-            if diff -q $test_out $expected_body > /dev/null; then
+            exp_holder=$(cat $expected_body)
+            if grep -q "$exp_holder" $test_out > /dev/null; then
                 echo "passed! ✅"
                 passes=$((passes+1))
             else
-                echo "failed! please check $test$out_ext for debug info ❌"
+                echo "failed! expected error keyword(s) not found. please see $test$out_ext ❌"
                 fails=$((fails+1))
             fi
         else
