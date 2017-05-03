@@ -360,8 +360,6 @@ let check_body f env =
                              t2 = get_bind_typ b and
                              var_name = get_bind_name b 
                              and m = get_bind_mut b in
-                print_string (_string_of_typ t1);
-                print_string (_string_of_typ t2);
                if compare_ast_typ t2 t1 then
                        let v = { id = var_name; var_type = t2; mut = m } in
                    let new_scope = 

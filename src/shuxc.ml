@@ -6,6 +6,8 @@ open Llvm
 open Codegen
 open Printf 
 open Astprint
+open Ast_sast
+open Sast_cast
 
 type action = Ast | LLVM
 
@@ -23,7 +25,8 @@ let _ =
 		else (open_in Sys.argv.(1), LLVM) in
 	let lexbuf = Lexing.from_channel cin in
 	let ast = Parser.program Scanner.token lexbuf in
-  let sast = Semant.check ast in
+  let check_ast = Semant.check ast in
+  let sast = Ast_sast.translate_to_sast check_ast in
 	match action with
 		| Ast -> print_string (Astprint.string_of_program sast)
 		| LLVM -> 
