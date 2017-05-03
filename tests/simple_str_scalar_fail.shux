@@ -1,0 +1,5 @@
+kn main() int {
+   string x = "hi";
+   x = 423.534524;
+   0
+}

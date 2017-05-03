@@ -1,0 +1,8 @@
+kn main() int {
+   /* this is a comment */
+   /* this is a bad multiline
+   comment
+   without stars
+   */
+   0
+}

@@ -1,0 +1,4 @@
+kn main() int {
+   /* this is a comment that is never closed
+   0
+}
