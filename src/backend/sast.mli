@@ -1,17 +1,17 @@
+type sscope = (* replacing Mutable vs Immutable *)
+  | SLocalVal | SLocalVar | SGlobal | SStructField
+
 type styp =
   | SInt
   | SFloat
   | SString
   | SBool
-  | SStruct of string
+  | SStruct of string * sbind list
   | SArray of styp * int option
   | SPtr
   | SVoid 
 
-type sscope = (* replacing Mutable vs Immutable *)
-  | SLocalVal | SLocalVar | SGlobal
-
-type sbind = SBind of styp * string * sscope
+and sbind = SBind of styp * string * sscope
 
 type sbin_op_i =
   | SAddi | SSubi | SMuli | SDivi | SMod | SExpi
@@ -59,7 +59,7 @@ and sexpr =
   | SAssign of styp * sexpr * sexpr
   | SKnCall of styp * string * sexpr list
   | SGnCall of styp * string * sexpr list
-  | SLookbackDefault of styp * sexpr * sexpr
+  | SLookbackDefault of styp * int * sexpr * sexpr
   | SUnop of styp * sun_op * sexpr
   | SCond of styp * sexpr * sexpr * sexpr
 
