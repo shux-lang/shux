@@ -1,12 +1,14 @@
 CAMLC=ocamlc
 OCAML=ocamlfind $(CAMLC) -linkpkg -thread -package core -package llvm -package llvm.analysis
-OBJS=exceptions.cmo ast.cmo astprint.cmo scanner.cmo parser.cmo semant.cmo codegen.cmo
+OBJS=exceptions.cmo sast.cmo ast.cmo astprint.cmo scanner.cmo parser.cmo semant.cmo codegen.cmo
 INCLUDE=-I ../src/include -g
 OCAML_FLAGS=$(INCLUDE) $(OBJS)
 EXAMPLES=../examples
 SYMLINK=ln -s -f
 PREREQS=symlink
 COMPILER=shuxc
+TEST_DIR=../tests
+TEST=run_tests.sh
 TARGETS=$(PREREQS) $(COMPILER)
 
 .PHONY: default symlink hello
@@ -15,6 +17,7 @@ default: $(TARGETS)
 symlink:
 	$(SYMLINK) ../src/frontend/exceptions.ml exceptions.ml
 	$(SYMLINK) ../src/frontend/ast.mli ast.ml
+	$(SYMLINK) ../src/backend/sast.mli sast.ml
 	$(SYMLINK) ../src/backend/codegen.ml codegen.ml
 	$(SYMLINK) ../src/frontend/parser.mly parser.mly
 	$(SYMLINK) ../src/frontend/scanner.mll scanner.mll
@@ -59,7 +62,7 @@ shuxc.cmx : semant.cmx scanner.cmx parser.cmx codegen.cmx astprint.cmx
 parser.cmi : ast.cmo
 
 
-.PHONY: all clean cleanall autoclean hello
+.PHONY: all clean cleanall autoclean hello test
 
 all: cleanall symlink $(OBJS) $(TARGETS)
 
@@ -75,3 +78,7 @@ autoclean:
 hello: $(COMPILER) $(EXAMPLES)/hello_world.shux
 	./shuxc $(EXAMPLES)/hello_world.shux > hello_world.ll
 	lli hello_world.ll
+
+tests:
+	cp shuxc ../tests/shuxc
+	@cd $(TEST_DIR) && ./$(TEST)

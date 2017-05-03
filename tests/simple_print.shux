@@ -1,0 +1,4 @@
+kn main() int {
+    print("hello world!");
+    0
+}
