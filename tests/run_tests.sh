@@ -61,12 +61,25 @@ else
         elif [ "$expected_head" = "FAIL" ]; then
             # pattern match against execption keywords
             exp_holder=$(cat $expected_body)
-            if grep -q "$exp_holder" $test_out > /dev/null; then
+            if grep -q "$exp_holder" $test_out > /dev/null 2>&1; then
                 echo "passed! ✅"
                 passes=$((passes+1))
             else
                 echo "failed! expected error keyword(s) not found. please see $test$out_ext ❌"
                 fails=$((fails+1))
+            fi
+        elif [ "$expected_head" = "COMPILE" ]; then
+            if [ -f $test_out ]; then
+                if grep -q "Uncaught exception" $test_out > /dev/null; then
+                    echo "compilation failed ❌"
+                    fails=$((fails+1))
+                else
+                    echo "passed! ✅"
+                    passes=$((passes+1))
+                fi
+            else
+                echo "passed! ✅"
+                passes=$((passes+1))
             fi
         else
             echo "invalid test specification ❌"

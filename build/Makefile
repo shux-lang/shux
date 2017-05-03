@@ -68,6 +68,7 @@ all: cleanall symlink $(OBJS) $(TARGETS)
 
 cleanall:
 	rm -rf *.* shuxc
+	cd $(TEST_DIR) && rm -rf *.ll && rm -rf *.out
 
 clean:
 	rm -rf *.cmx *.cmi *.cmo *.cmx *.o parser.ml parser.mli scanner.ml shuxc
