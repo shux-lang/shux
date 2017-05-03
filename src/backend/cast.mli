@@ -24,6 +24,7 @@ and cexpr =
   | CLit of ctyp * clit
   | CId of ctyp * string
   | CBinop of ctyp * cexpr * cbin_op * cexpr
+  | CAccess of ctyp * cexpr * string
   | CAssign of ctyp * cexpr * cexpr
   | CCall of ctyp * string * cexpr list
   | CUnop of ctyp * cun_op * cexpr

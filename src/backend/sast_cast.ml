@@ -10,33 +10,49 @@ let sast_to_cast let_decls f_decls =
   in let prefix_gns s = "gns_" ^ s  (* gn struct *)
 
   in let kn_to_fn kn =
-    let rec walk = function (* TODO: this is gonna be fed a tuple of typ * expr *)
-      | SLit(t, l) -> []
-      | SId(t, id, s) -> []
-      | SAccess(t, e, id) -> []
-      | SBinop(t, l, o, r) -> []
-      | SAssign(t, l, r) -> []
-      | SKnCall(t, id, e) -> []
-      | SGnCall(t, id, e) -> []
-      | SUnop(t, o, e) -> []
-      | SCond(t, i, f, e) -> []
-      | SLookbackDefault(_) -> raise (Failure ("Tried to lookback default in kn: " ^ kn.skname))
-      | SLookback(_, id, _) -> raise (Failure ("Tried to lookback " ^ id ^ " in kn: " ^ kn.skname))
+    let walk_block e =
+      let lit = function
+        | SLitInt(i) -> CLitInt(i)
+        | SLitFloat(f) -> CLitFloat(f)
+        | SLitBool(b) -> CLitBool(b)
+        | SLitStr(s) -> CLitStr(s)
+        | _ -> raise (Failure ("Encountered unexpected type in walk_block"))
+      in let binop = function
+        | SBinopInt(o) -> CBinopInt(o)
+        | SBinopFloat(o) -> CBinopFloat(o)
+        | SBinopBool(o) -> CBinopBool(o)
+        | SBinopPtr(o) -> CBinopPtr(o)
+        | _ -> raise (Failure ("Encountered unexpected operator type in walk_block"))
+      in let rec walk = function
+        | SLit(t, l) -> CLit(t, lit l)
+        | SId(t, id, _) -> CId(t, id)
+        | SAccess(t, e, id) -> CAccess(t, walk e, id)
+        | SBinop(t, l, o, r) -> CBinop(t, walk l, binop o, walk r)
+        | SAssign(t, l, r) -> CAssign(t, walk l, walk r)
+        | SKnCall(t, id, e) -> CCall(t, id, []) (* TODO: walk that list *)
+        | SUnop(t, o, e) -> CUnop(t, o, walk e)
+        | SCond(t, i, f, e) -> CCond(t, walk i, walk f, walk e)
+        | SGnCall(t, id, e) -> raise (Failure ("Encountered GnCall in walk_block"))
+        | SLookbackDefault(_) -> raise (Failure ("Tried to lookback default in kn: " ^ kn.skname))
+        | SLookback(_, id, _) -> raise (Failure ("Tried to lookback " ^ id ^ " in kn: " ^ kn.skname))
+      in CBlock([walk e])
+
     in let walk_loop typ num = function
       | _ -> []
-    in let rec walk_block = function
+
+    in let rec walk_stmts = function
       | [] -> []
-      | (e, SArray(t, n))::ll -> let r = walk_loop t n e in r @ walk_block ll
+      | (e, SArray(t, n))::ll -> let r = walk_loop t n e in r @ walk_stmts ll
       | (e, SStruct(id))::ll -> [] (* TODO: struct assignment? *)
       | (e, SPtr)::ll -> raise (Failure "Tried to walk a SPtr type expr")
       | (e, SVoid)::ll -> raise (Failure "Tried to walk a SVoid type expr")
-      | (e, _)::ll -> let r = CBlock(walk e) in r :: walk_block ll
+      | (e, _)::ll -> let r = walk_block e in r :: walk_stmts ll
     in let walk_ret = function
       | _ -> []
     in CFnDecl { cfname = kn.skname; cret_typ = kn.skret_typ;
                   cformals = kn.skformals;
                   clocals = kn.sklocals;
-                  cbody = walk_block kn.skbody @ walk_ret kn.skret_expr }
+                  cbody = walk_stmts kn.skbody @ walk_ret kn.skret_expr }
 
   in let walk_kn kn =
      kn_to_fn {kn with skname = prefix_kn kn.skname }
