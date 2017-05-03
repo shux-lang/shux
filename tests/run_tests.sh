@@ -18,7 +18,7 @@ else
     for test in $test_names 
     do
     	test=`echo "$test" | cut -d'.' -f1`
-    	echo -n $test"... "
+    	echo -n $test
 
         # what intermediate objects do we need?
     	test_obj=$test$obj_ext
@@ -47,6 +47,7 @@ else
         # check type of test
         expected_head=$(head -n 1 $expected_out)
         expected_body=/tmp/expected_body
+        echo -n " ($expected_head)... "
         echo -n $(tail -n +2 $expected_out) > $expected_body
         if [ "$expected_head" = "PASS" ]; then
             # diff against expected output
