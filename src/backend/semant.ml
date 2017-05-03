@@ -39,6 +39,7 @@ type trans_env = {
 
 }
 
+(* A bunch of generic helper functions *) 
 let rec get_styp = function
  | Int -> SInt
  | Float -> SFloat
@@ -62,6 +63,23 @@ let rec get_typ = function
  
 let get_sfield_name = function
  | StructField(id, _ ) -> id
+
+let get_bind_typ = function
+   | Bind(_,t,_) -> t
+
+let get_bind_name = function
+   | Bind(_,_,s) -> s
+
+let get_bind_mut = function
+   | Bind(m,_,_) -> m
+
+let convert_ret_typ = function
+   | Some x -> x
+   | None -> Void
+
+let compare_ast_typ l r = match(l,r) with
+   | (Array(t1, None), Array(t2, Some i)) -> t1=t2
+   | (l,r) -> l=r
 
 
 (* check expression 
