@@ -19,7 +19,8 @@ module VarSet = Set.Make(struct
 (*TODO: How are we handling nested name declarations of different types?
 ideally we should disallow this *) 
 type var = {
-	id : string; 
+	id : string;
+  mut : Ast.mut;
 	var_type : Ast.typ;
 }
 
@@ -190,9 +191,25 @@ and check_expr tr_env expr =
          else raise (Failure "Indexing needs to be by integer expression only.")
       | For -> Array(t2, None) (*For returns an array of the return type of gn *)
       | Do -> t2 (* Do simply returns the final value of the gn *))
-   | Assign(e1, e2) -> let t1 = check_expr tr_env e1 in 
-          if t1 = check_expr tr_env e2 then t1 else 
-		    	raise (Failure "Assignment types don't match. shux can't autocast types.")  
+   | Assign(e1, e2) -> 
+        let match_typ exp1 exp2 = 
+            let t1 = check_expr tr_env exp1 and
+                t2 = check_expr tr_env exp2 in
+            if t1 = t2 then t1 
+            else raise (Failure "Assignment types don't match. shux can't
+            autocast types") in
+        let get_mutability l =
+                let v = List.hd (VarMap.find l tr_env.scope) in
+                if v.mut = Mutable then v.var_type 
+                else raise (Failure "Cannot assign to immutable type")
+        in
+   (match e1 with 
+       | Id l -> ignore (match_typ e1 e2); get_mutability l
+       | Assign(l1,l2) -> match_typ e1 e2
+       | Access(x,y)-> match_typ e1 e2 
+       | _ -> raise (Failure "Assign can only be done against an id or struct field")
+   )                (*TODO: check for mutability *) 
+		    	 
    | Call(str, elist) -> (match(str) with
        | Some s -> if VarMap.mem s tr_env.fn_map then
                       let fn = VarMap.find s tr_env.fn_map and
@@ -304,7 +321,7 @@ let check_globals g =
               | Bind(mut, typ, s) -> 
                let t2 = check_expr tr_env expr in
                if compare_ast_typ typ t2 then
-                      let v = { id = s; var_type = typ } in
+                       let v = { id = s; var_type = typ; mut=mut} in
                       let vlist = if VarMap.mem s tr_env.scope then
                               v :: VarMap.find s tr_env.scope else [v] in 
                       check_global_inner { scope = VarMap.add s vlist tr_env.scope; 
@@ -346,9 +363,10 @@ let check_body f env =
         | VDecl(b,e) -> (match e with (*TODO: ensure uniqueness of bind name *) 
            | Some exp -> let t1 = check_expr env exp and
                              t2 = get_bind_typ b and
-                             var_name = get_bind_name b in
+                             var_name = get_bind_name b 
+                             and m = get_bind_mut b in
                if t1 = t2 then
-                   let v = { id = var_name; var_type = t2 } in
+                       let v = { id = var_name; var_type = t2; mut = m } in
                    let new_scope = 
                         if VarMap.mem var_name env.scope then 
                                 VarMap.add var_name [v] env.scope
@@ -361,8 +379,9 @@ let check_body f env =
                                   ^ " to type " ^ _string_of_typ t1 
                    in raise(Failure err_msg)
            | None -> let t = get_bind_typ b and (*TODO: ensure uniqueness.. *) 
-                         var_name = get_bind_name b
-           in let v = { id = var_name; var_type = t }
+                         var_name = get_bind_name b and
+                         m = get_bind_mut b 
+           in let v = { id = var_name; var_type = t; mut = m}
            in let new_scope = 
                   if VarMap.mem var_name env.scope then
                           VarMap.add var_name [v] env.scope
