@@ -105,6 +105,9 @@ let get_bind_typ = function
 let get_bind_name = function
    | Bind(_,_,s) -> s
 
+let get_bind_mut = function
+   | Bind(m,_,_) -> m
+
 let convert_ret_typ = function
    | Some x -> x
    | None -> Void
