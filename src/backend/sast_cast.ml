@@ -9,7 +9,7 @@ let sast_to_cast let_decls f_decls =
   in let prefix_gn s = "gn_" ^ s    (* gn function *)
   in let prefix_gns s = "gns_" ^ s  (* gn struct *)
 
-  in let walk_kn kn =
+  in let kn_to_fn kn =
     let rec walk = function (* TODO: this is gonna be fed a tuple of typ * expr *)
       | SLit(t, l) -> []
       | SId(t, id, s) -> []
@@ -22,19 +22,24 @@ let sast_to_cast let_decls f_decls =
       | SCond(t, i, f, e) -> []
       | SLookbackDefault(_) -> raise (Failure ("Tried to lookback default in kn: " ^ kn.skname))
       | SLookback(_, id, _) -> raise (Failure ("Tried to lookback " ^ id ^ " in kn: " ^ kn.skname))
-    in let walk_block = function
+    in let walk_loop typ num = function
+      | _ -> []
+    in let rec walk_block = function
       | [] -> []
-      | (e, SArray(t, n))::ll -> []
-      | (e, SStruct(id))::ll -> []
+      | (e, SArray(t, n))::ll -> let r = walk_loop t n e in r @ walk_block ll
+      | (e, SStruct(id))::ll -> [] (* TODO: struct assignment? *)
       | (e, SPtr)::ll -> raise (Failure "Tried to walk a SPtr type expr")
       | (e, SVoid)::ll -> raise (Failure "Tried to walk a SVoid type expr")
-      | (e, _)::ll -> []
+      | (e, _)::ll -> let r = CBlock(walk e) in r :: walk_block ll
     in let walk_ret = function
       | _ -> []
     in CFnDecl { cfname = kn.skname; cret_typ = kn.skret_typ;
                   cformals = kn.skformals;
                   clocals = kn.sklocals;
                   cbody = walk_block kn.skbody @ walk_ret kn.skret_expr }
+
+  in let walk_kn kn =
+     kn_to_fn {kn with skname = prefix_kn kn.skname }
 
   in let walk_gn gn = 
     let prefix_gnv s = "gnv_" ^ s         (* for local vars *)
@@ -102,7 +107,7 @@ let sast_to_cast let_decls f_decls =
       in CStructDef { ssname = gns_typ; 
                       ssfields = ctr_decl :: List.map a_decl val_binds }
 
-    in [ defn_struct (gn.sgformals @ gn.sglocalvals); walk_kn gn_to_kn ]
+    in [ defn_struct (gn.sgformals @ gn.sglocalvals); kn_to_fn gn_to_kn ]
 
   in let walk_fns f_decls =
     let rec walk = function
