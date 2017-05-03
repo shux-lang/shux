@@ -44,7 +44,7 @@ let rec get_styp = function
  | Float -> SFloat
  | String -> SString
  | Bool -> SBool
- | Struct(l) -> SStruct(l)
+ | Struct(l) -> SStruct(l,[])
  | Array(t, n) -> SArray(get_styp t, n)
  | Vector(l) -> SArray(SFloat, Some(l))
  | Ptr -> SPtr
@@ -55,7 +55,7 @@ let rec get_typ = function
  | SFloat -> Float
  | SString -> String
  | SBool -> Bool
- | SStruct(l) -> Struct(l)
+ | SStruct(l, bindings) -> Struct(l)
  | SArray(t, n) -> Array(get_typ t, n)
  | SPtr -> Ptr
  | SVoid -> Void
