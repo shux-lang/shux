@@ -115,8 +115,9 @@ let rec  type_of_lit tr_env = function
         in raise (Failure err_msg)        
    | LitVector(l) -> Vector (List.length l)
    | LitArray(l) ->
+      let arr_length = List.length l in
 			let rec array_check arr typ = 
-        if (arr = []) then Array(typ, Some (List.length l)) else
+        if (arr = []) then Array(typ, Some (arr_length)) else
         let nxt_typ = check_expr tr_env (List.hd arr) in
         if nxt_typ != typ then raise (Failure ("Array types not consistent."))
         else array_check (List.tl arr) (check_expr tr_env (List.hd arr)) in
@@ -131,7 +132,7 @@ and check_expr tr_env expr =
    | Id(var) -> 
       if VarMap.mem var tr_env.scope
 			then let x = List.hd (VarMap.find var tr_env.scope) in x.var_type
-			else raise (Failure ("Variable " ^ var ^ "has not been declared"))
+			else raise (Failure ("Variable " ^ var ^ " has not been declared"))
    | Binop(e1, op, e2) -> 
       let t1 = check_expr tr_env e1 in
       let t2 = check_expr tr_env e2 in
@@ -227,7 +228,7 @@ and check_expr tr_env expr =
                              | None -> Void
                          else let err_msg = "Formals dont match for function" ^
                                  " call " ^ s in raise (Failure err_msg)
-          else let err_msg = "Kernel " ^ s ^ "is not defined in call." in 
+          else let err_msg = "Kernel " ^ s ^ " is not defined in call." in 
           raise (Failure err_msg)
        | None -> Int)
            
@@ -369,14 +370,15 @@ let check_body f env =
                        let v = { id = var_name; var_type = t2; mut = m } in
                    let new_scope = 
                         if VarMap.mem var_name env.scope then 
-                                VarMap.add var_name [v] env.scope
-                        else 
                                 let old_varlist = VarMap.find var_name env.scope
                                 in VarMap.add var_name (v::old_varlist) env.scope
-                                in  { scope = new_scope; structs = env.structs;
-                                      fn_map = env.fn_map }  
-               else let err_msg = "Type " ^ _string_of_typ t2 ^ " cannot be assigned" 
-                                  ^ " to type " ^ _string_of_typ t1 
+                        else 
+                                VarMap.add var_name [v] env.scope
+                                
+                        in  { scope = new_scope; structs = env.structs;
+                              fn_map = env.fn_map }  
+               else let err_msg = "Type " ^ _string_of_typ t1 ^ " cannot be assigned" 
+                                  ^ " to type " ^ _string_of_typ t2
                    in raise(Failure err_msg)
            | None -> let t = get_bind_typ b and (*TODO: ensure uniqueness.. *) 
                          var_name = get_bind_name b and
