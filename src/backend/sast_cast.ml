@@ -43,7 +43,7 @@ let sast_to_cast let_decls f_decls =
     in let rec walk_stmts = function
       | [] -> []
       | (e, SArray(t, n))::ll -> let r = walk_loop t n e in r @ walk_stmts ll
-      | (e, SStruct(id))::ll -> [] (* TODO: struct assignment? *)
+      | (e, SStruct(id, _))::ll -> [] (* TODO: struct assignment? *)
       | (e, SPtr)::ll -> raise (Failure "Tried to walk a SPtr type expr")
       | (e, SVoid)::ll -> raise (Failure "Tried to walk a SVoid type expr")
       | (e, _)::ll -> let r = walk_block e in r :: walk_stmts ll
@@ -59,12 +59,23 @@ let sast_to_cast let_decls f_decls =
 
   in let walk_gn gn = 
     let prefix_gnv s = "gnv_" ^ s         (* for local vars *)
-    in let gns_typ = prefix_gns gn.sgname (* struct type name *)
     in let gns_arg = "gnx_arg"            (* gn execution state argument name *)
     in let gnc = "gnx_ctr"                (* gn execution state counter name *)
 
+    in let st_fields =
+      let a_decl = function
+        | SBind(t, n, SLocalVal) -> SBind(SArray(t, Some gn.sgmax_iter), n, SStructField)
+        | SBind(_, n, _)-> raise (Failure ("Bad SBind found in sglocalvals: " ^ n))
+      in let ctr_decl =
+        SBind(SInt, gnc, SLocalVar)
+      in ctr_decl :: List.map a_decl (gn.sgformals @ gn.sglocalvals)
+
+    in let gns_typ_name = prefix_gns gn.sgname
+    in let gns_typ = SStruct(gns_typ_name, st_fields) (* struct type name *)
+    in let defn_cstruct = CStructDef { ssname = gns_typ_name; ssfields = st_fields }
+
     in let gn_to_kn =
-      let st_id = SId(SStruct gns_typ, gns_arg, SLocalVar)
+      let st_id = SId(gns_typ, gns_arg, SLocalVar)
       in let st_element t id = SAccess(t, st_id, id)
       in let st_var t = st_element (SArray(t, Some gn.sgmax_iter))
       in let st_cnt = st_element SInt gnc
@@ -93,6 +104,7 @@ let sast_to_cast let_decls f_decls =
           | SGlobal as s -> SId(t, id, s) (* global prefixing will happen in walk_kn *)
           | SLocalVar as s -> SId(t, prefix_gnv id, s)
           | SLocalVal -> lb_st t id 0
+          | SStructField -> raise (Failure ("Bad scope for variable " ^ id))
 
         in let rec lb = function
           | SId(t, id, s) -> sid t id s
@@ -109,21 +121,12 @@ let sast_to_cast let_decls f_decls =
         in (lb e, t)
 
       in { skname = prefix_gn gn.sgname; skret_typ = gn.sgret_typ;
-        skformals = [ SBind(SStruct gns_typ, gns_arg, SLocalVar) ];
+        skformals = [ SBind(gns_typ, gns_arg, SLocalVar) ];
         sklocals = List.map prefix_var gn.sglocalvars; 
         skbody = inc_cnt :: List.map lookback gn.sgbody; 
         skret_expr = lookback gn.sgret_expr; }
 
-    in let defn_struct val_binds =
-      let a_decl = function 
-        | SBind(t, n, SLocalVal) -> SBind(SArray(t, Some gn.sgmax_iter), n, SLocalVar)
-        | SBind(_, n, _)-> raise (Failure ("Bad SBind found in sglocalvals: " ^ n))
-      in let ctr_decl =
-        SBind(SInt, gnc, SLocalVar)
-      in CStructDef { ssname = gns_typ; 
-                      ssfields = ctr_decl :: List.map a_decl val_binds }
-
-    in [ defn_struct (gn.sgformals @ gn.sglocalvals); kn_to_fn gn_to_kn ]
+    in [ defn_cstruct; kn_to_fn gn_to_kn ]
 
   in let walk_fns f_decls =
     let rec walk = function

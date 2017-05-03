@@ -1,17 +1,17 @@
+type sscope = (* replacing Mutable vs Immutable *)
+  | SLocalVal | SLocalVar | SGlobal | SStructField
+
 type styp =
   | SInt
   | SFloat
   | SString
   | SBool
-  | SStruct of string
+  | SStruct of string * sbind list
   | SArray of styp * int option
   | SPtr
   | SVoid 
 
-type sscope = (* replacing Mutable vs Immutable *)
-  | SLocalVal | SLocalVar | SGlobal
-
-type sbind = SBind of styp * string * sscope
+and sbind = SBind of styp * string * sscope
 
 type sbin_op_i =
   | SAddi | SSubi | SMuli | SDivi | SMod | SExpi
