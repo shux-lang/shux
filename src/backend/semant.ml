@@ -65,9 +65,6 @@ let rec get_typ = function
  | SPtr -> Ptr
  | SVoid -> Void
  
-let get_bind_typ = function
- | Bind(_, t, _) -> t
-
 let get_sfield_name = function
  | StructField(id, _ ) -> id
 
@@ -261,9 +258,6 @@ and get_sfield_typ tr_env = function
  | StructField(_, expr) -> check_expr tr_env expr
 
 
-(* TODO: take i:n a list of globals and create a trans_env *)
- 
-let create_new_env decls = decls
 let fltn_global nsname globs =
 	let handle_glob nsname = function
 		| LetDecl(Bind(m,t,n),e) ->		
@@ -344,15 +338,70 @@ let check_globals g =
                        fn_map = VarMap.empty; } in
    check_global_inner env_default g
 
+let check_body f env = 
+    let body = f.body and
+        ret = f.ret_expr 
+    in
+    let check_stmt env = function
+        | VDecl(b,e) -> (match e with (*TODO: ensure uniqueness of bind name *) 
+           | Some exp -> let t1 = check_expr env exp and
+                             t2 = get_bind_typ b and
+                             var_name = get_bind_name b in
+               if t1 = t2 then
+                   let v = { id = var_name; var_type = t2 } in
+                   let new_scope = 
+                        if VarMap.mem var_name env.scope then 
+                                VarMap.add var_name [v] env.scope
+                        else 
+                                let old_varlist = VarMap.find var_name env.scope
+                                in VarMap.add var_name (v::old_varlist) env.scope
+                                in  { scope = new_scope; structs = env.structs;
+                                      fn_map = env.fn_map }  
+               else let err_msg = "Type " ^ _string_of_typ t2 ^ " cannot be assigned" 
+                                  ^ " to type " ^ _string_of_typ t1 
+                   in raise(Failure err_msg)
+           | None -> let t = get_bind_typ b and (*TODO: ensure uniqueness.. *) 
+                         var_name = get_bind_name b
+           in let v = { id = var_name; var_type = t }
+           in let new_scope = 
+                  if VarMap.mem var_name env.scope then
+                          VarMap.add var_name [v] env.scope
+                  else 
+                          let old_varlist = VarMap.find var_name env.scope
+                          in VarMap.add var_name (v::old_varlist) env.scope
+                          in { scope = new_scope; structs = env.structs;
+                               fn_map = env.fn_map })
+        | Expr(e) -> ignore (check_expr env e); env in
+       let ret_typ = convert_ret_typ f.ret_typ
+       and tr = (match ret with
+          | Some r -> check_expr (List.fold_left check_stmt env body) r
+          | None -> Void)
+       in if (tr = ret_typ) then
+                   { scope = env.scope; structs = env.structs;
+                     fn_map = VarMap.add f.fname f env.fn_map }
+          else 
+                   let err_msg  = "Function " ^ f.fname ^ " has type "
+                   ^ _string_of_typ ret_typ ^ 
+                   " but returns type " ^ _string_of_typ tr
+                   in raise (Failure err_msg)
+
 (* main type checking goes on here *) 
-let check_functions functions run_env = run_env
+let check_functions functions run_env = 
+   let check_function tr_env f =
+      if VarMap.mem f.fname tr_env.fn_map then
+         let err_msg = "Function " ^ f.fname ^ " is defined more than once" in 
+         raise(Failure err_msg)
+      else if VarMap.mem f.fname tr_env.scope then
+         let err_msg = "Function " ^ f.fname ^ " name conflicts with global"
+         ^ " variable" in raise(Failure err_msg) 
+      else check_body f tr_env
+   in List.fold_left check_function run_env functions
 
 (* entry point *) 
 let check (ns, globals, functions) = 
 	let flat_ns = flatten_ns ns in
 	let global_env = check_globals (globals @ (fst flat_ns)) in
-	let start_env = create_new_env global_env in 
-  check_functions (functions @ (snd flat_ns)) start_env;
+  check_functions (functions @ (snd flat_ns)) global_env;
 	([], globals @ fst flat_ns, functions @ snd flat_ns)
 
 (*				(* Checking functions *)
