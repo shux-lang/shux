@@ -15,9 +15,6 @@ module VarSet = Set.Make(struct
       let compare x y = Pervasives.compare x y
 		end)
 
-(* represent typed variables with same name *)
-(*TODO: How are we handling nested name declarations of different types?
-ideally we should disallow this *) 
 type var = {
 	id : string;
   mut : Ast.mut;
@@ -40,9 +37,6 @@ type trans_env = {
     (* list of already defined kernels/generators *)
     fn_map : fn_decl VarMap.t;
 
-    (*TODO: externs : extern_decl VarMap.t; *)
-		(* return type of block 
-    ret_type : Sast.styp;*) 
 }
 
 let rec get_styp = function
@@ -69,13 +63,12 @@ let rec get_typ = function
 let get_sfield_name = function
  | StructField(id, _ ) -> id
 
+
 (* check expression 
 tr_env: current translation environment
 expr: expression to be checked 
 
 returns the type of the expression *) 
-
-(*TODO: Return type of literal *) 
 let rec  type_of_lit tr_env = function
    | LitInt(l) -> Int
    | LitFloat(l) -> Float
@@ -88,31 +81,17 @@ let rec  type_of_lit tr_env = function
         then let err_msg = "Wrong number of fields in struct "
                 ^ id ^ ". Expected: " ^ string_of_int (List.length s.fields) ^ 
                 " Got: " ^ string_of_int (List.length l) in raise(Failure err_msg)
-        else    let match_lits struct_field = 
-                   let match_lit b lit strct = 
-                           if b then
-                                   if get_sfield_name lit = (fst struct_field) then
-                                           let err_msg = "Struct field " ^ (fst
-                                           struct_field) ^ " takes place more " ^
-                                           "than once in struct literal." in 
-                                           raise (Failure err_msg)
-                                   else b
-                           else 
-                             if get_sfield_name lit = (fst struct_field) then
-                               if get_sfield_typ tr_env lit = (snd struct_field) then
-                                    true
-                                 else raise (Failure "Type mismatch")
-                               else
-                                    false
-                   in 
-                   List.fold_left (fun b x -> match_lit b x struct_field) false l
-                in 
-                let match_fields b sfield  = b && match_lits sfield in
-                if (List.fold_left match_fields true s.fields) then Struct(id)
-                else let err_msg = "Struct literal doesn't match struct defined
-                as" ^ id in raise(Failure err_msg)
-        else let err_msg = "Struct " ^ id ^ "is not defined"
-        in raise (Failure err_msg)        
+        else 
+            let match_lits = match_sfields tr_env l in
+            let match_fields b sfield = b && match_lits sfield in
+                if (List.fold_left match_fields true s.fields) then 
+                    Struct(id)
+                else 
+                    let err_msg = "Struct literal doesn't match struct defined" ^ 
+                                  "as" ^ id in raise(Failure err_msg)
+    else let err_msg = "Struct " ^ id ^ "is not defined"
+                       in raise (Failure err_msg)
+
    | LitVector(l) -> Vector (List.length l)
    | LitArray(l) ->
       let arr_length = List.length l in
@@ -210,7 +189,7 @@ and check_expr tr_env expr =
        | Access(x,y)-> match_typ e1 e2 
        | _ -> raise (Failure "Assign can only be done against an id or struct field")
    )                (*TODO: check for mutability *) 
-		    	 
+
    | Call(str, elist) -> (match(str) with
        | Some s -> if VarMap.mem s tr_env.fn_map then
                       let fn = VarMap.find s tr_env.fn_map and
@@ -275,6 +254,26 @@ and check_expr tr_env expr =
 and get_sfield_typ tr_env = function
  | StructField(_, expr) -> check_expr tr_env expr
 
+(* type checking helper for structs *)
+and
+match_sfields env lit struct_field = 
+   let get_typ = get_sfield_typ env in
+   let match_lit b lit strct = 
+      if b then
+         if get_sfield_name lit = (fst struct_field) then
+             let err_msg = "Struct field " ^ (fst struct_field) ^ 
+                 " takes place more than once in struct literal." in
+                 raise (Failure err_msg)
+         else b
+      else
+         if get_sfield_name lit = (fst struct_field) then
+				    if get_typ lit = (snd struct_field) then
+						    true
+						 else raise (Failure "Type mismatch in struct literal")
+			   else
+             false
+    in List.fold_left (fun b x -> match_lit b x struct_field) false lit
+
 
 let fltn_global nsname globs =
 	let handle_glob nsname = function
@@ -308,11 +307,6 @@ let rec flatten_ns ns_list =
                            fltn_fn ns.nname (fn @ (snd flat_ns)))
 	in List.fold_left (fun (a,b) (an, bn) -> (a@an, b@bn)) ([], [])
 	(List.map handle_ns ns_list)
-
-let compare_ast_typ l r = match(l,r) with
-   | (Array(t1, None), Array(t2, Some i)) -> t1=t2
-   | (l,r) -> l=r
-
 
 let check_globals g =
    let rec check_global_inner tr_env = function
@@ -366,7 +360,9 @@ let check_body f env =
                              t2 = get_bind_typ b and
                              var_name = get_bind_name b 
                              and m = get_bind_mut b in
-               if t1 = t2 then
+                print_string (_string_of_typ t1);
+                print_string (_string_of_typ t2);
+               if compare_ast_typ t2 t1 then
                        let v = { id = var_name; var_type = t2; mut = m } in
                    let new_scope = 
                         if VarMap.mem var_name env.scope then 
@@ -422,12 +418,5 @@ let check_functions functions run_env =
 let check (ns, globals, functions) = 
 	let flat_ns = flatten_ns ns in
 	let global_env = check_globals (globals @ (fst flat_ns)) in
-  check_functions (functions @ (snd flat_ns)) global_env;
+  ignore (check_functions (functions @ (snd flat_ns)) global_env);
 	([], globals @ fst flat_ns, functions @ snd flat_ns)
-
-(*				(* Checking functions *)
-				if not (List.exists (fun fd -> (fd.fname = "main" && (Astprint.string_of_typ fd.ret_typ) = "int")) functions)
-				then raise (Failure ("no main method given")) else ();
-				(ns, globals, functions)
-
-*)
