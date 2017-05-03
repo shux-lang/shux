@@ -99,7 +99,17 @@ type ns_decl = {
 
 and program = ns_decl list * let_decl list * fn_decl list
 
+let get_bind_typ = function
+   | Bind(_,t,_) -> t
+
+let get_bind_name = function
+   | Bind(_,_,s) -> s
+
+let convert_ret_typ = function
+   | Some x -> x
+   | None -> Void
 
 let compare_ast_typ l r = match(l,r) with
    | (Array(t1, None), Array(t2, Some i)) -> t1=t2
    | (l,r) -> l=r
+
