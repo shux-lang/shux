@@ -1,0 +1,13 @@
+ns foo = {
+   kn bar(int a) int {
+      0
+   }
+
+   kn baz(scalar b) scalar {
+      24.545
+   }
+}
+
+kn main() int {
+   0
+}

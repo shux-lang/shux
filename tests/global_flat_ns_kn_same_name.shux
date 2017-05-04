@@ -1,0 +1,13 @@
+ns foo {
+   kn bar(int a) int {
+      0
+   }
+   kn bar(int b) int {
+      0
+   }
+   int b = 5;
+}
+
+kn main() int {
+   0
+}

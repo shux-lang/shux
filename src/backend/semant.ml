@@ -15,17 +15,16 @@ module VarSet = Set.Make(struct
       let compare x y = Pervasives.compare x y
 		end)
 
-type var = {
-	id : string;
-  mut : Ast.mut;
-	var_type : Ast.typ;
-}
-
 type struct_type = {
   id : string;
   fields : (string * Ast.typ) list;
 }
 
+type var = {
+	id : string;
+  mut : Ast.mut;
+	var_type : Ast.typ;
+}
 
 type trans_env = {
 		(*  a stack of variables mapped to a name *)
@@ -37,6 +36,10 @@ type trans_env = {
     (* list of already defined kernels/generators *)
     fn_map : fn_decl VarMap.t;
 
+		(* new variables defined within a scope
+       to ensure that name conflicts dont happen
+       within a scope  *) 
+		new_variables : var list;
 }
 
 (* A bunch of generic helper functions *) 
@@ -339,7 +342,8 @@ let check_globals g =
                               v :: VarMap.find s tr_env.scope else [v] in 
                       check_global_inner { scope = VarMap.add s vlist tr_env.scope; 
                         structs = tr_env.structs;
-                        fn_map = tr_env.fn_map } tl
+                        fn_map = tr_env.fn_map; 
+                        new_variables = [] } tl
               else let err_msg = "Type mismatch in let decl: " ^ _string_of_typ typ ^ 
                                  " " ^ s ^ " is assigned to " ^ _string_of_typ t2 
                                  in raise(Failure  err_msg))
@@ -353,22 +357,61 @@ let check_globals g =
                  let st = {id = s.sname; fields = nfields} in
                  check_global_inner { scope = tr_env.scope; 
                                       structs = VarMap.add s.sname st tr_env.structs;
-                                      fn_map = tr_env.fn_map } tl
+                                      fn_map = tr_env.fn_map; 
+                                      new_variables = [] } tl
            | ExternDecl(e) -> 
                  let f = { fname = e.xalias; fn_typ = Kn;
                            ret_typ = e.xret_typ; formals=e.xformals;      
                            body = []; ret_expr = None } in
                  let ntr_env = 
                        { scope = tr_env.scope; structs = tr_env.structs;
-                         fn_map = VarMap.add f.fname f tr_env.fn_map } in 
+                         fn_map = VarMap.add f.fname f tr_env.fn_map;
+                         new_variables = []} in 
                  check_global_inner ntr_env tl)
                                                     
    in 
    let env_default = { scope = VarMap.empty; structs = VarMap.empty; 
-                       fn_map = VarMap.empty; } in
+                       fn_map = VarMap.empty; new_variables = []} in
    check_global_inner env_default g
 
+(* ensure that a variable isnt part of new_variables when its defined *) 
+let check_var_notdef var env = 
+    let check_var v b new_var = 
+       if b then 
+          if v.id = new_var.id then false else b
+       else false in
+    List.fold_left (check_var var) true env.new_variables
+       
+(* return new trans env with var v added *) 
+let push_variable_env v env = 
+    if not (check_var_notdef v env)
+        then let err_msg = v.id ^ " defined more than once in scope." in 
+                 raise (Failure err_msg) 
+    else let new_scope = 
+        if VarMap.mem v.id env.scope then
+            let oldvarlist = VarMap.find v.id env.scope
+            in VarMap.add v.id (v::oldvarlist) env.scope
+        else 
+            VarMap.add v.id [v] env.scope
+    in { scope = new_scope; structs = env.structs; fn_map = env.fn_map;
+         new_variables = v::env.new_variables } 
+
 let check_body f env = 
+    let check_formals formals env = 
+        let check_formal env old_formals formal = 
+            if List.mem formal old_formals then
+                let err_msg = "Formal " ^ get_bind_name formal ^ " has been" 
+                            ^ " defined more than once." in raise (Failure err_msg)
+            else formal  :: old_formals 
+        in List.fold_left (check_formal env) [] formals and
+        place_formal env formal = 
+           let formal_name = get_bind_name formal and
+               formal_type = get_bind_typ formal and
+               m = Immutable
+           in let v = { id = formal_name; var_type = formal_type; mut = m }
+           in push_variable_env v env
+    in let formal_env = 
+       List.fold_left place_formal env (check_formals f.formals env) in
     let body = f.body and
         ret = f.ret_expr 
     in
@@ -379,16 +422,8 @@ let check_body f env =
                              var_name = get_bind_name b 
                              and m = get_bind_mut b in
                if compare_ast_typ t2 t1 then
-                       let v = { id = var_name; var_type = t2; mut = m } in
-                   let new_scope = 
-                        if VarMap.mem var_name env.scope then 
-                                let old_varlist = VarMap.find var_name env.scope
-                                in VarMap.add var_name (v::old_varlist) env.scope
-                        else 
-                                VarMap.add var_name [v] env.scope
-                                
-                        in  { scope = new_scope; structs = env.structs;
-                              fn_map = env.fn_map }  
+                   let v = { id = var_name; var_type = t2; mut = m }
+                   in push_variable_env v env                  
                else let err_msg = "Type " ^ _string_of_typ t1 ^ " cannot be assigned" 
                                   ^ " to type " ^ _string_of_typ t2
                    in raise(Failure err_msg)
@@ -396,22 +431,16 @@ let check_body f env =
                          var_name = get_bind_name b and
                          m = get_bind_mut b 
            in let v = { id = var_name; var_type = t; mut = m}
-           in let new_scope = 
-                  if VarMap.mem var_name env.scope then
-                          VarMap.add var_name [v] env.scope
-                  else 
-                          let old_varlist = VarMap.find var_name env.scope
-                          in VarMap.add var_name (v::old_varlist) env.scope
-                          in { scope = new_scope; structs = env.structs;
-                               fn_map = env.fn_map })
+           in push_variable_env v env ) 
         | Expr(e) -> ignore (check_expr env e); env in
        let ret_typ = convert_ret_typ f.ret_typ
        and tr = (match ret with
-          | Some r -> check_expr (List.fold_left check_stmt env body) r
+          | Some r -> check_expr (List.fold_left check_stmt formal_env body) r
           | None -> Void)
        in if (tr = ret_typ) then
                    { scope = env.scope; structs = env.structs;
-                     fn_map = VarMap.add f.fname f env.fn_map }
+                     fn_map = VarMap.add f.fname f env.fn_map;
+                     new_variables = env.new_variables}
           else 
                    let err_msg  = "Function " ^ f.fname ^ " has type "
                    ^ _string_of_typ ret_typ ^ 

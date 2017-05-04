@@ -1,0 +1,10 @@
+ns foo = {
+    let int x = 4;
+    let scalar x = 4.0;
+    let string x = "potato";
+}
+
+kn main() int {
+    0
+}
+    

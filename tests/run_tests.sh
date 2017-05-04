@@ -18,22 +18,32 @@ else
     for test in $test_names 
     do
     	test=`echo "$test" | cut -d'.' -f1`
-    	echo -n $test"... "
+    	echo -n $test
 
         # what intermediate objects do we need?
     	test_obj=$test$obj_ext
     	test_out=$test$out_ext
     	expected_out=$test$expected_ext
-    	
-        # run compiler and invoke runtime
+        expected_head=$(head -n 1 $expected_out)
+    	expected_body=/tmp/expected_body
+        echo -n " ($expected_head)... "
+
+        # run compiler
         ERROR="$($compiler $test$test_ext 2>&1 > $test_obj)"
         if [ -n "$ERROR" ]; then    
-            echo $ERROR > $test$out_ext
-            if echo $ERROR | grep -q "Uncaught exception"; then
-                echo "compilation failed! saving $test$out_ext ❌"
-                fails=$((fails+1))
-                continue
-            fi
+            echo $ERROR > $test_out
+
+            # if echo $ERROR | grep -q "Uncaught exception"; then
+            #     if [ "$expected_head" = "PASS" ]; then
+            #         echo "passed! ✅"
+            #         passes=$((passes+1))
+            #         continue
+            #     else
+            #         echo "compilation failed! saving $test_out ❌"
+            #         fails=$((fails+1))
+            #         continue
+            #     fi
+            # fi
         fi
 
         # check for valid test file
@@ -44,9 +54,7 @@ else
             continue
         fi
 
-        # check type of test
-        expected_head=$(head -n 1 $expected_out)
-        expected_body=/tmp/expected_body
+        # check type of test and invoke runtime if necessary
         echo -n $(tail -n +2 $expected_out) > $expected_body
         if [ "$expected_head" = "PASS" ]; then
             # diff against expected output
@@ -61,12 +69,25 @@ else
         elif [ "$expected_head" = "FAIL" ]; then
             # pattern match against execption keywords
             exp_holder=$(cat $expected_body)
-            if grep -q "$exp_holder" $test_out > /dev/null; then
+            if grep -q "$exp_holder" $test_out > /dev/null 2>&1; then
                 echo "passed! ✅"
                 passes=$((passes+1))
             else
                 echo "failed! expected error keyword(s) not found. please see $test$out_ext ❌"
                 fails=$((fails+1))
+            fi
+        elif [ "$expected_head" = "COMPILE" ]; then
+            if [ -f $test_out ]; then
+                if grep -q "Uncaught exception" $test_out > /dev/null; then
+                    echo "compilation failed ❌"
+                    fails=$((fails+1))
+                else
+                    echo "passed! ✅"
+                    passes=$((passes+1))
+                fi
+            else
+                echo "passed! ✅"
+                passes=$((passes+1))
             fi
         else
             echo "invalid test specification ❌"

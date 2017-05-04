@@ -1,0 +1,5 @@
+kn main() int {
+   bool x = false;
+   x = "hi";
+   0
+}
