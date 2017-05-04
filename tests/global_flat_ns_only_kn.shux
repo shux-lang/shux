@@ -1,4 +1,4 @@
-ns foo {
+ns foo = {
    kn bar(int a) int {
       0
    }
