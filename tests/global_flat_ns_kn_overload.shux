@@ -1,0 +1,13 @@
+ns {
+   kn foo(int a) int {
+      0
+   }
+   kn foo(int b, scalar c, string d) int {
+      1
+   }
+   int a = 5;
+}
+
+kn main() int {
+   0
+}
