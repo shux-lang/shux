@@ -1,0 +1,5 @@
+kn main() int {
+   int[2] x = [2,3];
+   x[0] = 5; /* assignment not allowed, not var */
+   0
+}

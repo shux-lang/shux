@@ -1,0 +1,5 @@
+kn main() int {
+   bool x = true;
+   x = 23.53452;
+   0
+}

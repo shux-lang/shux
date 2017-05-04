@@ -1,0 +1,9 @@
+kn foo(int a, scalar b) int {
+   string a = "hi";
+   string b = "potato";
+   0
+}
+
+kn main() int {
+   0
+}

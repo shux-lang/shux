@@ -1,0 +1,7 @@
+kn foo(int a, string a) int {
+   0
+}
+
+kn main() int {
+   0
+}

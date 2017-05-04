@@ -1,0 +1,8 @@
+kn foo(int x) int {
+   x+1
+}
+
+kn main() int {
+   int b = foo(2);
+   b
+}
