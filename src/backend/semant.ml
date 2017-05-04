@@ -447,17 +447,26 @@ let check_body f env =
                    " but returns type " ^ _string_of_typ tr
                    in raise (Failure err_msg)
 
+(* checks if main is defined *)
+let check_main functions = 
+    let check_if_main b f = 
+        if b then b
+        else if f.fname = "main" && f.fn_typ = Kn then true else b in
+    List.fold_left check_if_main false functions
+
 (* main type checking goes on here *) 
 let check_functions functions run_env = 
-   let check_function tr_env f =
-      if VarMap.mem f.fname tr_env.fn_map then
-         let err_msg = "Function " ^ f.fname ^ " is defined more than once" in 
-         raise(Failure err_msg)
-      else if VarMap.mem f.fname tr_env.scope then
-         let err_msg = "Function " ^ f.fname ^ " name conflicts with global"
-         ^ " variable" in raise(Failure err_msg) 
-      else check_body f tr_env
-   in List.fold_left check_function run_env functions
+   if check_main functions then
+       let check_function tr_env f =
+          if VarMap.mem f.fname tr_env.fn_map then
+             let err_msg = "Function " ^ f.fname ^ " is defined more than once" in 
+             raise(Failure err_msg)
+          else if VarMap.mem f.fname tr_env.scope then
+             let err_msg = "Function " ^ f.fname ^ " name conflicts with global"
+             ^ " variable" in raise(Failure err_msg) 
+          else check_body f tr_env
+       in List.fold_left check_function run_env functions
+    else raise (Failure "Main kn not defined") 
 
 (* entry point *) 
 let check (ns, globals, functions) = 
