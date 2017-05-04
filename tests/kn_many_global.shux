@@ -1,0 +1,13 @@
+kn foo(int a) int {
+   0
+}
+
+kn bar(int a) int {
+   1
+}
+
+kn main() int {
+   int a = foo(1);
+   int b = foo(2);
+   a+b
+}

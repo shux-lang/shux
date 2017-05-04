@@ -1,0 +1,7 @@
+kn foo(int a) int {
+   int b = 3;
+}
+
+kn main() int {
+   0
+}

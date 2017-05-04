@@ -1,0 +1,11 @@
+kn foo(int a) int {
+   0
+}
+
+kn foo(string b, scalar c) int {
+   1
+}
+
+kn main() int {
+   0
+}
