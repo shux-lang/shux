@@ -16,7 +16,7 @@ module VarSet = Set.Make(struct
 		end)
 
 type struct_type = {
-  id : string;
+  struct_id : string;
   fields : (string * Ast.typ) list;
 }
 
@@ -354,7 +354,7 @@ let check_globals g =
                  let map_fields = function
                    | Bind(m, t, id) -> (id,t)
                  in let nfields = List.map map_fields s.fields in 
-                 let st = {id = s.sname; fields = nfields} in
+                 let st = {struct_id = s.sname; fields = nfields} in
                  check_global_inner { scope = tr_env.scope; 
                                       structs = VarMap.add s.sname st tr_env.structs;
                                       fn_map = tr_env.fn_map; 
@@ -472,5 +472,5 @@ let check_functions functions run_env =
 let check (ns, globals, functions) = 
 	let flat_ns = flatten_ns ns in
 	let global_env = check_globals (globals @ (fst flat_ns)) in
-  ignore (check_functions (functions @ (snd flat_ns)) global_env);
-	([], globals @ fst flat_ns, functions @ snd flat_ns)
+	(([], globals @ fst flat_ns, functions @ snd flat_ns),
+  (check_functions (functions @ (snd flat_ns)) global_env))
