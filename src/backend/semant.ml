@@ -15,11 +15,9 @@ module VarSet = Set.Make(struct
       let compare x y = Pervasives.compare x y
 		end)
 
-(* represent typed variables with same name *)
-(*TODO: How are we handling nested name declarations of different types?
-ideally we should disallow this *) 
 type var = {
-	id : string; 
+	id : string;
+  mut : Ast.mut;
 	var_type : Ast.typ;
 }
 
@@ -39,17 +37,15 @@ type trans_env = {
     (* list of already defined kernels/generators *)
     fn_map : fn_decl VarMap.t;
 
-    (*TODO: externs : extern_decl VarMap.t; *)
-		(* return type of block 
-    ret_type : Sast.styp;*) 
 }
 
+(* A bunch of generic helper functions *) 
 let rec get_styp = function
  | Int -> SInt
  | Float -> SFloat
  | String -> SString
  | Bool -> SBool
- | Struct(l) -> SStruct(l)
+ | Struct(l) -> SStruct(l,[])
  | Array(t, n) -> SArray(get_styp t, n)
  | Vector(l) -> SArray(SFloat, Some(l))
  | Ptr -> SPtr
@@ -60,24 +56,37 @@ let rec get_typ = function
  | SFloat -> Float
  | SString -> String
  | SBool -> Bool
- | SStruct(l) -> Struct(l)
+ | SStruct(l, bindings) -> Struct(l)
  | SArray(t, n) -> Array(get_typ t, n)
  | SPtr -> Ptr
  | SVoid -> Void
  
-let get_bind_typ = function
- | Bind(_, t, _) -> t
-
 let get_sfield_name = function
  | StructField(id, _ ) -> id
+
+let get_bind_typ = function
+   | Bind(_,t,_) -> t
+
+let get_bind_name = function
+   | Bind(_,_,s) -> s
+
+let get_bind_mut = function
+   | Bind(m,_,_) -> m
+
+let convert_ret_typ = function
+   | Some x -> x
+   | None -> Void
+
+let compare_ast_typ l r = match(l,r) with
+   | (Array(t1, None), Array(t2, Some i)) -> t1=t2
+   | (l,r) -> l=r
+
 
 (* check expression 
 tr_env: current translation environment
 expr: expression to be checked 
 
 returns the type of the expression *) 
-
-(*TODO: Return type of literal *) 
 let rec  type_of_lit tr_env = function
    | LitInt(l) -> Int
    | LitFloat(l) -> Float
@@ -90,35 +99,22 @@ let rec  type_of_lit tr_env = function
         then let err_msg = "Wrong number of fields in struct "
                 ^ id ^ ". Expected: " ^ string_of_int (List.length s.fields) ^ 
                 " Got: " ^ string_of_int (List.length l) in raise(Failure err_msg)
-        else    let match_lits struct_field = 
-                   let match_lit b lit strct = 
-                           if b then
-                                   if get_sfield_name lit = (fst struct_field) then
-                                           let err_msg = "Struct field " ^ (fst
-                                           struct_field) ^ " takes place more " ^
-                                           "than once in struct literal." in 
-                                           raise (Failure err_msg)
-                                   else b
-                           else 
-                             if get_sfield_name lit = (fst struct_field) then
-                               if get_sfield_typ tr_env lit = (snd struct_field) then
-                                    true
-                                 else raise (Failure "Type mismatch")
-                               else
-                                    false
-                   in 
-                   List.fold_left (fun b x -> match_lit b x struct_field) false l
-                in 
-                let match_fields b sfield  = b && match_lits sfield in
-                if (List.fold_left match_fields true s.fields) then Struct(id)
-                else let err_msg = "Struct literal doesn't match struct defined
-                as" ^ id in raise(Failure err_msg)
-        else let err_msg = "Struct " ^ id ^ "is not defined"
-        in raise (Failure err_msg)        
+        else 
+            let match_lits = match_sfields tr_env l in
+            let match_fields b sfield = b && match_lits sfield in
+                if (List.fold_left match_fields true s.fields) then 
+                    Struct(id)
+                else 
+                    let err_msg = "Struct literal doesn't match struct defined" ^ 
+                                  "as" ^ id in raise(Failure err_msg)
+    else let err_msg = "Struct " ^ id ^ "is not defined"
+                       in raise (Failure err_msg)
+
    | LitVector(l) -> Vector (List.length l)
    | LitArray(l) ->
+      let arr_length = List.length l in
 			let rec array_check arr typ = 
-        if (arr = []) then Array(typ, Some (List.length l)) else
+        if (arr = []) then Array(typ, Some (arr_length)) else
         let nxt_typ = check_expr tr_env (List.hd arr) in
         if nxt_typ != typ then raise (Failure ("Array types not consistent."))
         else array_check (List.tl arr) (check_expr tr_env (List.hd arr)) in
@@ -133,7 +129,7 @@ and check_expr tr_env expr =
    | Id(var) -> 
       if VarMap.mem var tr_env.scope
 			then let x = List.hd (VarMap.find var tr_env.scope) in x.var_type
-			else raise (Failure ("Variable " ^ var ^ "has not been declared"))
+			else raise (Failure ("Variable " ^ var ^ " has not been declared"))
    | Binop(e1, op, e2) -> 
       let t1 = check_expr tr_env e1 in
       let t2 = check_expr tr_env e2 in
@@ -193,9 +189,25 @@ and check_expr tr_env expr =
          else raise (Failure "Indexing needs to be by integer expression only.")
       | For -> Array(t2, None) (*For returns an array of the return type of gn *)
       | Do -> t2 (* Do simply returns the final value of the gn *))
-   | Assign(e1, e2) -> let t1 = check_expr tr_env e1 in 
-          if t1 = check_expr tr_env e2 then t1 else 
-		    	raise (Failure "Assignment types don't match. shux can't autocast types.")  
+   | Assign(e1, e2) -> 
+        let match_typ exp1 exp2 = 
+            let t1 = check_expr tr_env exp1 and
+                t2 = check_expr tr_env exp2 in
+            if t1 = t2 then t1 
+            else raise (Failure "Assignment types don't match. shux can't
+            autocast types") in
+        let get_mutability l =
+                let v = List.hd (VarMap.find l tr_env.scope) in
+                if v.mut = Mutable then v.var_type 
+                else raise (Failure "Cannot assign to immutable type")
+        in
+   (match e1 with 
+       | Id l -> ignore (match_typ e1 e2); get_mutability l
+       | Assign(l1,l2) -> match_typ e1 e2
+       | Access(x,y)-> match_typ e1 e2 
+       | _ -> raise (Failure "Assign can only be done against an id or struct field")
+   )                (*TODO: check for mutability *) 
+
    | Call(str, elist) -> (match(str) with
        | Some s -> if VarMap.mem s tr_env.fn_map then
                       let fn = VarMap.find s tr_env.fn_map and
@@ -213,7 +225,7 @@ and check_expr tr_env expr =
                              | None -> Void
                          else let err_msg = "Formals dont match for function" ^
                                  " call " ^ s in raise (Failure err_msg)
-          else let err_msg = "Kernel " ^ s ^ "is not defined in call." in 
+          else let err_msg = "Kernel " ^ s ^ " is not defined in call." in 
           raise (Failure err_msg)
        | None -> Int)
            
@@ -260,10 +272,27 @@ and check_expr tr_env expr =
 and get_sfield_typ tr_env = function
  | StructField(_, expr) -> check_expr tr_env expr
 
+(* type checking helper for structs *)
+and
+match_sfields env lit struct_field = 
+   let get_typ = get_sfield_typ env in
+   let match_lit b lit strct = 
+      if b then
+         if get_sfield_name lit = (fst struct_field) then
+             let err_msg = "Struct field " ^ (fst struct_field) ^ 
+                 " takes place more than once in struct literal." in
+                 raise (Failure err_msg)
+         else b
+      else
+         if get_sfield_name lit = (fst struct_field) then
+				    if get_typ lit = (snd struct_field) then
+						    true
+						 else raise (Failure "Type mismatch in struct literal")
+			   else
+             false
+    in List.fold_left (fun b x -> match_lit b x struct_field) false lit
 
-(* TODO: take i:n a list of globals and create a trans_env *)
- 
-let create_new_env decls = decls
+
 let fltn_global nsname globs =
 	let handle_glob nsname = function
 		| LetDecl(Bind(m,t,n),e) ->		
@@ -305,7 +334,7 @@ let check_globals g =
               | Bind(mut, typ, s) -> 
                let t2 = check_expr tr_env expr in
                if compare_ast_typ typ t2 then
-                      let v = { id = s; var_type = typ } in
+                       let v = { id = s; var_type = typ; mut=mut} in
                       let vlist = if VarMap.mem s tr_env.scope then
                               v :: VarMap.find s tr_env.scope else [v] in 
                       check_global_inner { scope = VarMap.add s vlist tr_env.scope; 
@@ -339,20 +368,71 @@ let check_globals g =
                        fn_map = VarMap.empty; } in
    check_global_inner env_default g
 
+let check_body f env = 
+    let body = f.body and
+        ret = f.ret_expr 
+    in
+    let check_stmt env = function
+        | VDecl(b,e) -> (match e with (*TODO: ensure uniqueness of bind name *) 
+           | Some exp -> let t1 = check_expr env exp and
+                             t2 = get_bind_typ b and
+                             var_name = get_bind_name b 
+                             and m = get_bind_mut b in
+               if compare_ast_typ t2 t1 then
+                       let v = { id = var_name; var_type = t2; mut = m } in
+                   let new_scope = 
+                        if VarMap.mem var_name env.scope then 
+                                let old_varlist = VarMap.find var_name env.scope
+                                in VarMap.add var_name (v::old_varlist) env.scope
+                        else 
+                                VarMap.add var_name [v] env.scope
+                                
+                        in  { scope = new_scope; structs = env.structs;
+                              fn_map = env.fn_map }  
+               else let err_msg = "Type " ^ _string_of_typ t1 ^ " cannot be assigned" 
+                                  ^ " to type " ^ _string_of_typ t2
+                   in raise(Failure err_msg)
+           | None -> let t = get_bind_typ b and (*TODO: ensure uniqueness.. *) 
+                         var_name = get_bind_name b and
+                         m = get_bind_mut b 
+           in let v = { id = var_name; var_type = t; mut = m}
+           in let new_scope = 
+                  if VarMap.mem var_name env.scope then
+                          VarMap.add var_name [v] env.scope
+                  else 
+                          let old_varlist = VarMap.find var_name env.scope
+                          in VarMap.add var_name (v::old_varlist) env.scope
+                          in { scope = new_scope; structs = env.structs;
+                               fn_map = env.fn_map })
+        | Expr(e) -> ignore (check_expr env e); env in
+       let ret_typ = convert_ret_typ f.ret_typ
+       and tr = (match ret with
+          | Some r -> check_expr (List.fold_left check_stmt env body) r
+          | None -> Void)
+       in if (tr = ret_typ) then
+                   { scope = env.scope; structs = env.structs;
+                     fn_map = VarMap.add f.fname f env.fn_map }
+          else 
+                   let err_msg  = "Function " ^ f.fname ^ " has type "
+                   ^ _string_of_typ ret_typ ^ 
+                   " but returns type " ^ _string_of_typ tr
+                   in raise (Failure err_msg)
+
 (* main type checking goes on here *) 
-let check_functions functions run_env = run_env
+let check_functions functions run_env = 
+   let check_function tr_env f =
+      if VarMap.mem f.fname tr_env.fn_map then
+         let err_msg = "Function " ^ f.fname ^ " is defined more than once" in 
+         raise(Failure err_msg)
+      else if VarMap.mem f.fname tr_env.scope then
+         let err_msg = "Function " ^ f.fname ^ " name conflicts with global"
+         ^ " variable" in raise(Failure err_msg) 
+      else check_body f tr_env
+   in List.fold_left check_function run_env functions
 
 (* entry point *) 
 let check (ns, globals, functions) = 
 	let flat_ns = flatten_ns ns in
 	let global_env = check_globals (globals @ (fst flat_ns)) in
-	let start_env = create_new_env global_env in 
-  check_functions (functions @ (snd flat_ns)) start_env;
+  ignore (check_functions (functions @ (snd flat_ns)) global_env);
 	([], globals @ fst flat_ns, functions @ snd flat_ns)
-
-(*				(* Checking functions *)
-				if not (List.exists (fun fd -> (fd.fname = "main" && (Astprint.string_of_typ fd.ret_typ) = "int")) functions)
-				then raise (Failure ("no main method given")) else ();
-				(ns, globals, functions)
-
-*)

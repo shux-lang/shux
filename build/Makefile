@@ -1,6 +1,6 @@
 CAMLC=ocamlc
 OCAML=ocamlfind $(CAMLC) -linkpkg -thread -package core -package llvm -package llvm.analysis
-OBJS=exceptions.cmo sast.cmo ast.cmo astprint.cmo scanner.cmo parser.cmo semant.cmo codegen.cmo
+OBJS=exceptions.cmo sast.cmo ast.cmo astprint.cmo scanner.cmo parser.cmo semant.cmo codegen.cmo ast_sast.cmo sast_cast.cmo
 INCLUDE=-I ../src/include -g
 OCAML_FLAGS=$(INCLUDE) $(OBJS)
 EXAMPLES=../examples
@@ -18,10 +18,13 @@ symlink:
 	$(SYMLINK) ../src/frontend/exceptions.ml exceptions.ml
 	$(SYMLINK) ../src/frontend/ast.mli ast.ml
 	$(SYMLINK) ../src/backend/sast.mli sast.ml
+	$(SYMLINK) ../src/backend/cast.mli cast.ml
 	$(SYMLINK) ../src/backend/codegen.ml codegen.ml
 	$(SYMLINK) ../src/frontend/parser.mly parser.mly
 	$(SYMLINK) ../src/frontend/scanner.mll scanner.mll
 	$(SYMLINK) ../src/backend/semant.ml semant.ml
+	$(SYMLINK) ../src/backend/sast_cast.ml sast_cast.ml
+	$(SYMLINK) ../src/backend/ast_sast.ml ast_sast.ml
 	$(SYMLINK) ../src/shuxc.ml shuxc.ml
 	$(SYMLINK) ../src/frontend/astprint.ml astprint.ml
 
@@ -47,21 +50,29 @@ ast.cmo :
 ast.cmx :
 astprint.cmo : ast.cmo
 astprint.cmx : ast.cmx
+ast_sast.cmo : sast.cmo ast.cmo
+ast_sast.cmx : sast.cmx ast.cmx
+cast.cmo : sast.cmo
+cast.cmx : sast.cmx
 codegen.cmo : ast.cmo
 codegen.cmx : ast.cmx
 exceptions.cmo :
 exceptions.cmx :
 parser.cmo : ast.cmo parser.cmi
 parser.cmx : ast.cmx parser.cmi
+sast_cast.cmo : sast.cmo cast.cmo
+sast_cast.cmx : sast.cmx cast.cmx
+sast.cmo :
+sast.cmx :
 scanner.cmo : parser.cmi exceptions.cmo
 scanner.cmx : parser.cmx exceptions.cmx
-semant.cmo : astprint.cmo ast.cmo
-semant.cmx : astprint.cmx ast.cmx
-shuxc.cmo : semant.cmo scanner.cmo parser.cmi codegen.cmo astprint.cmo
-shuxc.cmx : semant.cmx scanner.cmx parser.cmx codegen.cmx astprint.cmx
+semant.cmo : sast.cmo astprint.cmo ast.cmo
+semant.cmx : sast.cmx astprint.cmx ast.cmx
+shuxc.cmo : semant.cmo scanner.cmo sast_cast.cmo parser.cmi codegen.cmo \
+    astprint.cmo ast_sast.cmo
+shuxc.cmx : semant.cmx scanner.cmx sast_cast.cmx parser.cmx codegen.cmx \
+    astprint.cmx ast_sast.cmx
 parser.cmi : ast.cmo
-
-
 .PHONY: all clean cleanall autoclean hello test
 
 all: cleanall symlink $(OBJS) $(TARGETS)
@@ -84,3 +95,4 @@ hello: $(COMPILER) $(EXAMPLES)/hello_world.shux
 tests:
 	cp shuxc ../tests/shuxc
 	@cd $(TEST_DIR) && ./$(TEST)
+
