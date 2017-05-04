@@ -72,6 +72,7 @@ cleanall:
 
 clean:
 	rm -rf *.cmx *.cmi *.cmo *.cmx *.o parser.ml parser.mli scanner.ml shuxc
+	cd $(TEST_DIR) && rm -rf *.ll && rm -rf *out
 
 autoclean:
 	ocamlbuild -clean
