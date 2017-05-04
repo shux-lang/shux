@@ -384,7 +384,7 @@ let check_var_notdef var env =
        
 (* return new trans env with var v added *) 
 let push_variable_env v env = 
-    if check_var_notdef v env
+    if not (check_var_notdef v env)
         then let err_msg = v.id ^ " defined more than once in scope." in 
                  raise (Failure err_msg) 
     else let new_scope = 
@@ -396,7 +396,6 @@ let push_variable_env v env =
     in { scope = new_scope; structs = env.structs; fn_map = env.fn_map;
          new_variables = v::env.new_variables } 
 
-
 let check_body f env = 
     let check_formals formals env = 
         let check_formal env old_formals formal = 
@@ -404,8 +403,8 @@ let check_body f env =
                 let err_msg = "Formal " ^ get_bind_name formal ^ " has been" 
                             ^ " defined more than once." in raise (Failure err_msg)
             else formal  :: old_formals 
-        in List.fold_left (check_formal env) [] formals
-    in let place_formal env formal = 
+        in List.fold_left (check_formal env) [] formals and
+        place_formal env formal = 
            let formal_name = get_bind_name formal and
                formal_type = get_bind_typ formal and
                m = Immutable
@@ -432,7 +431,7 @@ let check_body f env =
                          var_name = get_bind_name b and
                          m = get_bind_mut b 
            in let v = { id = var_name; var_type = t; mut = m}
-           in push_variable_env v env) 
+           in push_variable_env v env ) 
         | Expr(e) -> ignore (check_expr env e); env in
        let ret_typ = convert_ret_typ f.ret_typ
        and tr = (match ret with
