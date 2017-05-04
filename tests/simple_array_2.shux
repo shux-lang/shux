@@ -1,0 +1,5 @@
+kn main() int {
+   scalar[3] a = [2.0,4.0,3.0];
+   scalar b = a[1];
+   0
+}
