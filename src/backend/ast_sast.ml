@@ -16,6 +16,21 @@ let rec to_styp env = function
         | Void -> SVoid)
     | None -> SVoid
 
+and to_slit = function
+    | LitInt(i) -> SLitInt(i)
+    | LitFloat(f) -> SLitFloat(f)
+    | LitBool(b) -> SLitBool(b)
+    | LitStr(s) -> SLitStr(s)
+    | LitKn(l) -> SLitKn(to_slambda l)
+    | LitVector(el) -> SLitArray(List.map get_sexpr el)
+    | LitArray(e) -> SLitArray(List.map get_sexpr e)
+    | LitStruct(s,e) -> SLitStructs([]) (*TODO: *) 
+
+(*TODO: *)
+and to_slambda l = 
+    { slret_typ = SInt; slformals = []; sllocals = []; slbody = [];
+      slret_expr = (SLit(SInt, SLitInt(1)), SLitInt(1)) } 
+
 and get_struct_binds env name = 
     let s = VarMap.find name env.structs in
     let to_sbind field = 
@@ -37,11 +52,11 @@ and translate_struct_defs env struct_def =
     {ssname  = struct_def.sname; ssfields = List.map (to_sbind env) struct_def.fields }
 
 (*TODO: how the fuck is this going to work ayy lmao *) 
-and get_sexpr t expr = 
+and get_sexpr expr = 
     SLit(t, SLitInt 4)
 
 and translate_letdecl env = function
-    | LetDecl(b,e) -> SLetDecl(to_sbind env b, get_sexpr (to_styp env (Some (get_bind_typ b))) e)
+    | LetDecl(b,e) -> SLetDecl(to_sbind env b, get_sexpr (* (to_styp env (Some (get_bind_typ b)))*) e)
     | StructDef(s) -> SStructDef(translate_struct_defs env s)
     | ExternDecl(e) -> SExternDecl(translate_extern env e)
 
