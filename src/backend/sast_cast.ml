@@ -137,14 +137,13 @@ let sast_to_cast let_decls f_decls =
   in let walk_static let_decls =
     let interp_expr = function (* TODO: write interpretor for compile-time evaluation *)
       | _ -> StmtDud
-    in
-    let walk = function
+    in let walk = function
       | SLetDecl(SBind(t, n, s), e) -> CConstDecl(SBind(t, prefix_l n, s), interp_expr e)
       | SStructDef s -> CStructDef {s with ssname = prefix_s s.ssname}
       | SExternDecl x -> CExternDecl {x with sxalias = prefix_x x.sxalias}
     in walk let_decls
+
   (* function entry point: walk entire program *)
-  in 
-  let walk_program l f =
+  in let walk_program l f =
     let r = List.map walk_static l in r @ walk_fns f
   in walk_program let_decls f_decls

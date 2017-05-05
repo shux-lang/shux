@@ -1,5 +1,7 @@
 type ctyp = Sast.styp
 
+type canon_val = ctyp
+
 type cbind = Sast.sbind
 
 type cbin_op =
@@ -26,15 +28,17 @@ and cexpr =
   | CBinop of ctyp * cexpr * cbin_op * cexpr
   | CAccess of ctyp * cexpr * string
   | CAssign of ctyp * cexpr * cexpr
-  | CCall of ctyp * string * cexpr list
+  | CVal of ctyp * cexpr
+  | CCall of ctyp * string * cstmt list
   | CUnop of ctyp * cun_op * cexpr
   | CCond of ctyp * cexpr * cexpr * cexpr
   | ExprDud
 
-type cstmt =
-  | CBlock of cexpr list
-  | CLoop of cexpr (* int *) * cstmt
-  | CReturn of cexpr
+and cstmt =
+  | CExpr of ctyp * cexpr
+  | CBlock of ctyp * cstmt list
+  | CLoop of ctyp * cexpr (* int *) * cstmt
+  | CReturn of ctyp * cstmt
   | StmtDud
 
 type cfn_decl = {
