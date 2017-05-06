@@ -187,7 +187,10 @@ and check_expr tr_env expr =
        | Id l -> ignore (match_typ e1 e2); get_mutability l
        | Assign(l1,l2) -> match_typ e1 e2
        | Access(x,y)-> match_typ e1 e2 
-       | Binop(_, Index, _) -> match_typ e1 e2
+       | Binop(idx1, Index, _) -> (match idx1 with
+           | Id(l) -> get_mutability l
+           | _ -> raise (Failure "Semant not implemented for indexing into non-ids")); 
+       match_typ e1 e2
        | _ -> raise (Failure "Assign can only be done against an id or struct field")
    )              
 
