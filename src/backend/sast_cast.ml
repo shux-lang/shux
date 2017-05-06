@@ -1,6 +1,12 @@
 open Sast
 open Cast
 
+module StringMap = Map.Make(String)
+
+let map_tuple l p =
+  let build e = (e, p)
+  in List.map build l
+
 let sast_to_cast let_decls f_decls =
   let prefix_x s = "extern_" ^ s    (* extern decl *)
   in let prefix_s s = "struct_" ^ s (* struct defn *)
@@ -10,43 +16,57 @@ let sast_to_cast let_decls f_decls =
   in let prefix_gns s = "gns_" ^ s  (* gn struct *)
 
   in let kn_to_fn kn =
-    let rec walk_block e et =
+    let rec walk_expr e typ =
       let lit = function
         | SLitInt(i) -> CLitInt(i)
         | SLitFloat(f) -> CLitFloat(f)
         | SLitBool(b) -> CLitBool(b)
         | SLitStr(s) -> CLitStr(s)
-        | _ -> raise (Failure ("Encountered unexpected type in walk_block"))
+        | _ -> assert false
       in let binop = function
         | SBinopInt(o) -> CBinopInt(o)
         | SBinopFloat(o) -> CBinopFloat(o)
         | SBinopBool(o) -> CBinopBool(o)
         | SBinopPtr(o) -> CBinopPtr(o)
-        | _ -> raise (Failure ("Encountered unexpected operator type in walk_block"))
+        | _ -> assert false
       in let rec walk = function
         | SLit(t, l) -> CLit(t, lit l)
         | SId(t, id, _) -> CId(t, id)
         | SAccess(t, e, id) -> CAccess(t, walk e, id)
         | SBinop(t, l, o, r) -> CBinop(t, walk l, binop o, walk r)
         | SAssign(t, l, r) -> CAssign(t, walk l, walk r)
-        | SKnCall(t, id, e) -> CCall(t, id, List.map walk_stmt e) (* TODO: walk that list *)
+        | SKnCall(t, id, a) -> CCall(t, id, List.map walk_stmt a)
         | SUnop(t, o, e) -> CUnop(t, o, walk e)
         | SCond(t, i, f, e) -> CCond(t, walk i, walk f, walk e)
-        | SGnCall(t, id, e) -> raise (Failure ("Encountered GnCall in walk_block"))
-        | SLookbackDefault(_) -> raise (Failure ("Tried to lookback default in kn: " ^ kn.skname))
-        | SLookback(_, id, _) -> raise (Failure ("Tried to lookback " ^ id ^ " in kn: " ^ kn.skname))
-        | SExprDud -> assert false
-      in CExpr(et, walk e)
+        | _ -> assert false
+      in CExpr(typ, walk e)
 
-    and walk_loop typ num = function
-      | _ -> CStmtDud
+    and walk_loop typ num expr =
+      let lit = function
+        | SLitArray(es) -> CLitArray(List.map walk_stmt (map_tuple es typ))
+        | _ -> assert false
+      in let binop = function
+        | SBinopFn(o) -> ()
+        | _ -> assert false
+      in let rec walk_r = function
+        | SLit(t, l) -> CLit(t, lit l)              (* r-value *)
+        | SId(t, id, _) -> CId(t, id)               (* lr-value *)
+        | SBinop(t, l, o, r) -> assert false        (* r-value *)
+        | SKnCall(t, id, a) -> assert false         (* r-value *)
+        | SCond(t, i, f, e) -> assert false         (* r-value *)
+        | SAssign(t, l, r) -> assert false          (* m-value *)
+        | _ -> CExprDud
+      in let rec walk_l ass = function
+        | SAssign(t, l, r) -> walk_l ((walk_expr l)::ass) r
+        | e -> walk_r e
+      in CExpr(typ, walk_l [] expr)
 
     and walk_stmt = function
       | (e, SArray(t, n)) -> walk_loop t n e
       | (e, SStruct(id, _)) -> CStmtDud (* TODO: struct assignment? *)
       | (e, SPtr) -> assert false
       | (e, SVoid) -> assert false
-      | (e, t) -> walk_block e t
+      | (e, t) -> walk_expr e t
 
     in let walk_ret = function
       | _ -> []
@@ -66,7 +86,7 @@ let sast_to_cast let_decls f_decls =
     in let st_fields =
       let a_decl = function
         | SBind(t, n, SLocalVal) -> SBind(SArray(t, Some gn.sgmax_iter), n, SStructField)
-        | SBind(_, n, _)-> raise (Failure ("Bad SBind found in sglocalvals: " ^ n))
+        | SBind(_, n, _)-> assert false
       in let ctr_decl =
         SBind(SInt, gnc, SLocalVar)
       in ctr_decl :: List.map a_decl (gn.sgformals @ gn.sglocalvals)
@@ -84,7 +104,7 @@ let sast_to_cast let_decls f_decls =
 
       in let prefix_var = function
         | SBind(t, n, SLocalVar) -> SBind(t, prefix_gnv n, SLocalVar)
-        | SBind(_, n, _)-> raise (Failure ("Bad SBind found in sglocalvars: " ^ n))
+        | SBind(_, n, _)-> assert false
 
       in let inc_cnt =
         let t = SInt
@@ -105,7 +125,7 @@ let sast_to_cast let_decls f_decls =
           | SGlobal as s -> SId(t, id, s) (* global prefixing will happen in walk_kn *)
           | SLocalVar as s -> SId(t, prefix_gnv id, s)
           | SLocalVal -> lb_st t id 0
-          | SStructField -> raise (Failure ("Bad scope for variable " ^ id))
+          | SStructField -> assert false
 
         in let rec lb = function
           | SId(t, id, s) -> sid t id s
