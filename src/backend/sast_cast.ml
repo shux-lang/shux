@@ -63,7 +63,12 @@ let sast_to_cast let_decls f_decls =
       in let rec walk_l ass = function
         | SAssign(t, l, r) -> walk_l ((walk_expr l)::ass) r
         | e -> walk_r e
-      in CExpr(typ, walk_l [] expr)
+      in let num = match num with
+        | Some(x) -> CLit(SInt, CLitInt x)
+        | None -> assert false
+      in CLoop(typ, num, [], CStVal typ)
+   (*   in CExpr(typ, walk_l [] expr) *)
+
     and walk_struct typ expr =
       CStmtDud
     and walk_stmt = function
