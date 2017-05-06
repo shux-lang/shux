@@ -1,0 +1,9 @@
+struct foo {
+   var int[2] a;
+}
+
+kn main() int {
+   struct foo my_foo = foo { .a=[2,3] };
+   my_foo.a = 5; /* this should be allowed */
+   0
+}
