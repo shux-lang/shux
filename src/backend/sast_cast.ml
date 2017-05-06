@@ -10,7 +10,7 @@ let sast_to_cast let_decls f_decls =
   in let prefix_gns s = "gns_" ^ s  (* gn struct *)
 
   in let kn_to_fn kn =
-    let walk_block e =
+    let rec walk_block e et =
       let lit = function
         | SLitInt(i) -> CLitInt(i)
         | SLitFloat(f) -> CLitFloat(f)
@@ -29,30 +29,31 @@ let sast_to_cast let_decls f_decls =
         | SAccess(t, e, id) -> CAccess(t, walk e, id)
         | SBinop(t, l, o, r) -> CBinop(t, walk l, binop o, walk r)
         | SAssign(t, l, r) -> CAssign(t, walk l, walk r)
-        | SKnCall(t, id, e) -> CCall(t, id, []) (* TODO: walk that list *)
+        | SKnCall(t, id, e) -> CCall(t, id, List.map walk_stmt e) (* TODO: walk that list *)
         | SUnop(t, o, e) -> CUnop(t, o, walk e)
         | SCond(t, i, f, e) -> CCond(t, walk i, walk f, walk e)
         | SGnCall(t, id, e) -> raise (Failure ("Encountered GnCall in walk_block"))
         | SLookbackDefault(_) -> raise (Failure ("Tried to lookback default in kn: " ^ kn.skname))
         | SLookback(_, id, _) -> raise (Failure ("Tried to lookback " ^ id ^ " in kn: " ^ kn.skname))
-      in CBlock([walk e])
+        | SExprDud -> assert false
+      in CExpr(et, walk e)
 
-    in let walk_loop typ num = function
-      | _ -> []
+    and walk_loop typ num = function
+      | _ -> CStmtDud
 
-    in let rec walk_stmts = function
-      | [] -> []
-      | (e, SArray(t, n))::ll -> let r = walk_loop t n e in r @ walk_stmts ll
-      | (e, SStruct(id, _))::ll -> [] (* TODO: struct assignment? *)
-      | (e, SPtr)::ll -> raise (Failure "Tried to walk a SPtr type expr")
-      | (e, SVoid)::ll -> raise (Failure "Tried to walk a SVoid type expr")
-      | (e, _)::ll -> let r = walk_block e in r :: walk_stmts ll
+    and walk_stmt = function
+      | (e, SArray(t, n)) -> walk_loop t n e
+      | (e, SStruct(id, _)) -> CStmtDud (* TODO: struct assignment? *)
+      | (e, SPtr) -> assert false
+      | (e, SVoid) -> assert false
+      | (e, t) -> walk_block e t
+
     in let walk_ret = function
       | _ -> []
     in CFnDecl { cfname = kn.skname; cret_typ = kn.skret_typ;
                   cformals = kn.skformals;
                   clocals = kn.sklocals;
-                  cbody = walk_stmts kn.skbody @ walk_ret kn.skret_expr }
+                  cbody = List.map walk_stmt kn.skbody @ walk_ret kn.skret_expr }
 
   in let walk_kn kn =
      kn_to_fn {kn with skname = prefix_kn kn.skname }
@@ -113,8 +114,8 @@ let sast_to_cast let_decls f_decls =
           | SAccess(t, e, id) -> SAccess(t, lb e, id)
           | SBinop(t, l, o, r) -> SBinop(t, lb l, o, lb r)
           | SAssign(t, l, r) -> SAssign(t, lb l, lb r)
-          | SKnCall(t, id, a) -> SKnCall(t, id, List.map lb a)
-          | SGnCall(t, id, a) -> SGnCall(t, id, List.map lb a)
+          | SKnCall(t, id, a) -> SKnCall(t, id, List.map lookback a)
+          | SGnCall(t, id, a) -> SGnCall(t, id, List.map lookback a)
           | SUnop(t, o, e) -> SUnop(t, o, lb e)
           | SCond(t, i, f, e) -> SCond(t, lb i, lb f, lb e)
           | e -> e
@@ -136,15 +137,14 @@ let sast_to_cast let_decls f_decls =
     in walk f_decls
   in let walk_static let_decls =
     let interp_expr = function (* TODO: write interpretor for compile-time evaluation *)
-      | _ -> StmtDud
-    in
-    let walk = function
+      | _ -> CStmtDud
+    in let walk = function
       | SLetDecl(SBind(t, n, s), e) -> CConstDecl(SBind(t, prefix_l n, s), interp_expr e)
       | SStructDef s -> CStructDef {s with ssname = prefix_s s.ssname}
       | SExternDecl x -> CExternDecl {x with sxalias = prefix_x x.sxalias}
     in walk let_decls
+
   (* function entry point: walk entire program *)
-  in 
-  let walk_program l f =
+  in let walk_program l f =
     let r = List.map walk_static l in r @ walk_fns f
   in walk_program let_decls f_decls

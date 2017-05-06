@@ -57,11 +57,12 @@ and sexpr =
   | SAccess of styp * sexpr * string
   | SBinop of styp * sexpr * sbin_op * sexpr
   | SAssign of styp * sexpr * sexpr
-  | SKnCall of styp * string * sexpr list
-  | SGnCall of styp * string * sexpr list
+  | SKnCall of styp * string * (sexpr * styp) list
+  | SGnCall of styp * string * (sexpr * styp) list
   | SLookbackDefault of styp * int * sexpr * sexpr
   | SUnop of styp * sun_op * sexpr
   | SCond of styp * sexpr * sexpr * sexpr
+  | SExprDud
 
 and slambda = {
   slret_typ   : styp;
