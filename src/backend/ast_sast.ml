@@ -110,12 +110,16 @@ and get_sexpr senv = function
                in SId(v.svar_type, s, v.scope)
     | Lookback(str, i) -> SLookback(SInt, str, i)
     | Binop(e1, bin_op, e2) -> 
-        let st1 = get_sexpr senv e1 in 
-        let n_binop = (match (get_styp_from_sexpr st1) with
-        | SInt -> to_sbin_op true bin_op
-        | SFloat -> to_sbin_op false bin_op) in 
-        SBinop((get_styp_from_sexpr st1), st1, n_binop, get_sexpr senv e2)
-    | _ -> raise (Failure "u sux") 
+        let st1 = get_sexpr senv e1 in (match bin_op with
+        | Add | Sub | Mul | Div | Mod | Exp | Eq | Lt | Gt | Neq | Leq | Geq -> 
+            let sbinop = (match get_styp_from_sexpr st1 with
+                  | SInt -> to_sbin_op true bin_op
+                  | SFloat -> to_sbin_op false bin_op
+                  | _ -> raise (Failure "Integer/Float binop on wrong type")) in 
+            SBinop(get_styp_from_sexpr st1, st1, sbinop, get_sexpr senv e2)
+        | _ -> raise(Failure "u suxorz"))
+
+    | _ -> raise (Failure "u sux")
 
 
 and translate_letdecl senv = function
@@ -127,6 +131,10 @@ let if_letdecls = function
     | LetDecl(b, e) -> true
     | _ -> false
 
-let translate_to_sast ((ns, globals, functions), env)= 
-    let let_decls = List.map (translate_letdecl env) globals in 
+
+let empty_senv = { variables = VarMap.empty; sfn_decl = VarMap.empty;
+                   sstruct_map = VarMap.empty; }
+
+let translate_to_sast (ns, globals, functions) = 
+    let let_decls = List.map (translate_letdecl empty_senv) globals in 
     (ns, globals, functions)

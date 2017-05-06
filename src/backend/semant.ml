@@ -42,28 +42,7 @@ type trans_env = {
 		new_variables : var list;
 }
 
-(* A bunch of generic helper functions *) 
-let rec get_styp = function
- | Int -> SInt
- | Float -> SFloat
- | String -> SString
- | Bool -> SBool
- | Struct(l) -> SStruct(l,[])
- | Array(t, n) -> SArray(get_styp t, n)
- | Vector(l) -> SArray(SFloat, Some(l))
- | Ptr -> SPtr
- | Void -> SVoid
 
-let rec get_typ = function
- | SInt -> Int
- | SFloat -> Float
- | SString -> String
- | SBool -> Bool
- | SStruct(l, bindings) -> Struct(l)
- | SArray(t, n) -> Array(get_typ t, n)
- | SPtr -> Ptr
- | SVoid -> Void
- 
 let get_sfield_name = function
  | StructField(id, _ ) -> id
 
@@ -449,8 +428,8 @@ let check_body f env =
 
 (* checks if main is defined *)
 let check_main functions = 
-    let check_if_main b f = 
-        if b then b
+        let check_if_main b f = 
+                if b then b
         else if f.fname = "main" && f.fn_typ = Kn then true else b in
     List.fold_left check_if_main false functions
 
@@ -472,5 +451,5 @@ let check_functions functions run_env =
 let check (ns, globals, functions) = 
 	let flat_ns = flatten_ns ns in
 	let global_env = check_globals (globals @ (fst flat_ns)) in
-	(([], globals @ fst flat_ns, functions @ snd flat_ns),
-  (check_functions (functions @ (snd flat_ns)) global_env))
+  ignore (check_functions (functions @ (snd flat_ns)) global_env);
+	([], globals @ fst flat_ns, functions @ snd flat_ns)
