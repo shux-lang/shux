@@ -187,8 +187,9 @@ and check_expr tr_env expr =
        | Id l -> ignore (match_typ e1 e2); get_mutability l
        | Assign(l1,l2) -> match_typ e1 e2
        | Access(x,y)-> match_typ e1 e2 
+       | Binop(_, Index, _) -> match_typ e1 e2
        | _ -> raise (Failure "Assign can only be done against an id or struct field")
-   )                (*TODO: check for mutability *) 
+   )              
 
    | Call(str, elist) -> (match(str) with
        | Some s -> if VarMap.mem s tr_env.fn_map then
