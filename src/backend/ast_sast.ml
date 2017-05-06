@@ -29,12 +29,11 @@ let rec to_styp senv = function
         | Void -> SVoid)
     | None -> SVoid
 
-    (* iorf: true for int, false for float *) 
+(* iorf: true for int, false for float *) 
 and to_sbin_op iorf = function
   | Add -> if iorf then SBinopInt SAddi else SBinopFloat SAddf 
   | Sub -> if iorf then SBinopInt SSubi else SBinopFloat SSubf
   | Mul -> if iorf then SBinopInt SMuli else SBinopFloat SMulf
-
   | Div -> if iorf then SBinopInt SDivi else SBinopFloat SDivf
   | Exp -> if iorf then SBinopInt SExpi else SBinopFloat SExpf
   | Eq  -> if iorf then SBinopInt SEqi else SBinopFloat SEqf
@@ -162,7 +161,7 @@ and get_sexpr senv = function
 
 (* this translates letdecls and also builds an environment for further translation *) 
 and translate_letdecl senv globals = 
-    let global_mapper (sglobals, senv)= function
+    let global_mapper (sglobals, senv) = function
         | LetDecl(b,e) -> 
                     let name = get_bind_name b
                     and st = to_styp senv (Some (get_bind_typ b))
@@ -204,6 +203,18 @@ and translate_letdecl senv globals =
                     in ((SExternDecl new_extern)::sglobals, new_env)
     in let (sglob, new_env) = List.fold_left global_mapper ([], senv) globals in (List.rev sglob, new_env)
 
+let get_sfn_name = function
+    | SGnDecl(g) -> g.sgname
+    | SKnDecl(k) -> k.skname
+
+and translate_fndecls senv sfn_decls = function
+    | [] -> sfn_decls
+    | tl::hd -> let translate_decl senv f = 
+               (match f.fn_typ with
+                   | Kn -> translate_kn_decl senv f
+                   | Gn -> translate_gn_decl senv f)
+      in let new_fn = translate_decl senv tl
+      in let new_fnmap = VarMap.add (get_sfn_name new_fn) new_fn senv.sfn_decl
 let if_letdecls = function
     | LetDecl(b, e) -> true
     | _ -> false
