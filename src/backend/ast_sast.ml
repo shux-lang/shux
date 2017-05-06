@@ -106,7 +106,6 @@ and get_sfn_name = function
 and to_sbind env = function
     | Bind(m, t, s) -> SBind(to_styp env (Some t), s, mut_to_scope m)
 
-
 and translate_struct_defs env struct_def = 
     {ssname  = struct_def.sname; ssfields = List.map (to_sbind env) struct_def.fields }
 
@@ -134,9 +133,11 @@ and get_sexpr senv = function
     | Assign(e1, e2) -> let st1 = get_sexpr senv e1 in 
                         SAssign(get_styp_from_sexpr st1, st1, get_sexpr senv e2)
     | Call(s, elist) -> (match s with
-        | Some s -> let f = VarMap.find s senv.sfn_decl in (match f with
-            | SGnDecl(gn) -> SGnCall(gn.sgret_typ, s, List.map (get_sexpr senv) elist)
-            | SKnDecl(kn) -> SKnCall(kn.skret_typ, s, List.map (get_sexpr senv) elist))
+        | Some s -> let sexpr_list = List.map (get_sexpr senv) elist
+                    in let call_formals = List.map (fun x -> (x, get_styp_from_sexpr x)) sexpr_list
+            in let f = VarMap.find s senv.sfn_decl in (match f with 
+            | SGnDecl(gn) -> SGnCall(gn.sgret_typ, s, call_formals)
+            | SKnDecl(kn) -> SKnCall(kn.skret_typ, s, call_formals))
         | None -> SGnCall(SInt, "_", []))
     | Uniop(u, e) -> (match u with
         | LogNot -> let st1 = get_sexpr senv e in 
