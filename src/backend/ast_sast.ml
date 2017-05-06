@@ -98,8 +98,14 @@ and mut_to_scope = function
     | Mutable -> SLocalVar
     | Immutable -> SLocalVal
 
+and get_sfn_name = function
+    | SGnDecl(g) -> g.sgname
+    | SKnDecl(k) -> k.skname
+
+
 and to_sbind env = function
     | Bind(m, t, s) -> SBind(to_styp env (Some t), s, mut_to_scope m)
+
 
 and translate_struct_defs env struct_def = 
     {ssname  = struct_def.sname; ssfields = List.map (to_sbind env) struct_def.fields }
@@ -196,25 +202,55 @@ and translate_letdecl senv globals =
 
                     in let new_func = { skname = e.xalias; skret_typ = sret_type;
                                         skformals = new_formals; sklocals = [];
-                                        skbody = []; skret_expr = (SExprDud, SVoid) } 
+                                        skbody = []; skret_expr = None } 
                     in let new_fnmap = VarMap.add new_func.skname (SKnDecl new_func) senv.sfn_decl
                     in let new_env = { variables = senv.variables; sfn_decl = new_fnmap; 
                                        sstruct_map = senv.sstruct_map }
                     in ((SExternDecl new_extern)::sglobals, new_env)
     in let (sglob, new_env) = List.fold_left global_mapper ([], senv) globals in (List.rev sglob, new_env)
 
-let get_sfn_name = function
-    | SGnDecl(g) -> g.sgname
-    | SKnDecl(k) -> k.skname
+and translate_kn_decl senv kn = 
+    let name = kn.fname 
+    and ret_typ = to_styp senv kn.ret_typ
+    and knformals = List.map (fun (Bind(m,t,s)) -> SBind(to_styp senv (Some t), s, SLocalVal)) kn.formals
+    in let rec hoist_body (vdecls, local_exprs) = function
+        | [] -> (List.rev vdecls, List.rev local_exprs)
+        | VDecl(b,e)::tl -> (match e with 
+            | Some e -> let id = get_bind_name b
+                        in let asn = Assign(Id(id), e)
+                        in hoist_body (VDecl(b,Some e)::vdecls, asn::local_exprs) tl
+            | None -> hoist_body (VDecl(b,e)::vdecls, local_exprs) tl)
+        | Expr(e)::tl -> hoist_body (vdecls, e::local_exprs) tl
+    in let vdecl_to_local senv = function
+        | VDecl(b,e) -> to_sbind senv b
+        | Expr(e) -> raise (Failure "hoisting failed. vdecl_to_local should only accept VDecl") 
+    in let (vdecls, local_exprs) = hoist_body ([],[]) kn.body
+    in let klocals = List.map (vdecl_to_local senv) vdecls
+    in let body_intermediate = List.map (get_sexpr senv) local_exprs
+    in let kbody = List.map (fun x -> (x, get_styp_from_sexpr x)) body_intermediate
+    in (match kn.ret_expr with
+        | Some x -> let kret_expr = (get_sexpr senv x, ret_typ)
+                    in { skname = name; skret_typ = ret_typ; skformals = knformals;
+                         sklocals = klocals; skbody = kbody; skret_expr = Some kret_expr } 
+        | None -> { skname = name; skret_typ = ret_typ; skformals = knformals;
+                    sklocals = klocals; skbody = kbody; skret_expr = None })
+
+and translate_gn_decl senv gn = 
+    { sgname = ""; sgret_typ = SPtr; sgmax_iter = 0; sgformals = [];
+      sglocalvals = []; sglocalvars = []; sgbody = []; sgret_expr = (SExprDud, SPtr) } 
 
 and translate_fndecls senv sfn_decls = function
-    | [] -> sfn_decls
-    | tl::hd -> let translate_decl senv f = 
+    | [] -> List.rev sfn_decls
+    | hd::tl -> let translate_decl senv f = 
                (match f.fn_typ with
-                   | Kn -> translate_kn_decl senv f
-                   | Gn -> translate_gn_decl senv f)
-      in let new_fn = translate_decl senv tl
+                   | Kn -> SKnDecl (translate_kn_decl senv f)
+                   | Gn -> SGnDecl (translate_gn_decl senv f))
+      in let new_fn = translate_decl senv hd
       in let new_fnmap = VarMap.add (get_sfn_name new_fn) new_fn senv.sfn_decl
+      in let new_senv = { variables = senv.variables; sfn_decl = new_fnmap;
+                          sstruct_map = senv.sstruct_map } 
+      in translate_fndecls new_senv (new_fn::sfn_decls) tl
+
 let if_letdecls = function
     | LetDecl(b, e) -> true
     | _ -> false

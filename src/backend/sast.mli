@@ -78,7 +78,7 @@ type skn_decl = {
   skformals   : sbind list;
   sklocals    : sbind list;         (* do not have lookback *)
   skbody      : (sexpr * styp) list;
-  skret_expr  : (sexpr * styp);
+  skret_expr  : (sexpr * styp) option;
 }
 
 type sgn_decl = {
