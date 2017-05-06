@@ -27,8 +27,8 @@ symlink:
 	$(SYMLINK) ../src/backend/ast_sast.ml ast_sast.ml
 	$(SYMLINK) ../src/shuxc.ml shuxc.ml
 	$(SYMLINK) ../src/frontend/astprint.ml astprint.ml
-  $(SYMLINK) ../src/backend/llast.mli llast.mli
-  $(SYMLINK) ../src/backend/lltranslate.ml lltranslate.ml
+	$(SYMLINK) ../src/backend/llast.mli llast.ml
+	$(SYMLINK) ../src/backend/lltranslate.ml lltranslate.ml
 
 shuxc.native:
 	ocamlbuild -use-ocamlfind -tag thread -pkgs llvm,llvm.analysis,core -cflags -w,+a-4 shuxc.native
@@ -66,6 +66,10 @@ sast_cast.cmo : sast.cmo cast.cmo
 sast_cast.cmx : sast.cmx cast.cmx
 sast.cmo :
 sast.cmx :
+llast.cmo:
+llast.cmx:
+lltranslate.cmo: llast.cmo
+lltranslate.cmx: llast.cmx
 scanner.cmo : parser.cmi exceptions.cmo
 scanner.cmx : parser.cmx exceptions.cmx
 semant.cmo : sast.cmo astprint.cmo ast.cmo
