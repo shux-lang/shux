@@ -15,6 +15,8 @@ module VarSet = Set.Make(struct
       let compare x y = Pervasives.compare x y
 		end)
 
+module StringMap = Map.Make(String)
+
 type struct_type = {
   struct_id : string;
   fields : (string * Ast.typ) list;
@@ -188,8 +190,8 @@ and check_expr tr_env expr =
        | Assign(l1,l2) -> match_typ e1 e2
        | Access(x,y)-> match_typ e1 e2 
        | Binop(idx1, Index, _) -> (match idx1 with
-           | Id(l) -> get_mutability l
-           | _ -> raise (Failure "Semant not implemented for indexing into non-ids")); 
+           | Id(l) -> ignore (get_mutability l)
+           | _ -> raise (Failure "Semant not implemented for indexing into non-ids"));
        match_typ e1 e2
        | _ -> raise (Failure "Assign can only be done against an id or struct field")
    )              
@@ -334,6 +336,13 @@ let check_globals g =
                              then let err_msg = "Struct with name " ^ s.sname ^ 
                              " defined more than once." in raise(Failure err_msg)
                              else 
+                             let check_unique m bind = 
+                                 let name = get_bind_name bind in
+                                 if StringMap.mem name m then
+                                     let err_msg = "Field name " ^ name ^ " defined more than once in struct "
+                                                   ^ s.sname in raise (Failure err_msg)
+                                 else StringMap.add name name m
+                             in ignore(List.fold_left check_unique StringMap.empty s.fields);
                  let map_fields = function
                    | Bind(m, t, id) -> (id,t)
                  in let nfields = List.map map_fields s.fields in 
