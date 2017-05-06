@@ -89,7 +89,7 @@ type sgn_decl = {
   sglocalvals : sbind list;
   sglocalvars : sbind list;
   sgbody      : (sexpr * styp) list;
-  sgret_expr  : (sexpr * styp);
+  sgret_expr  : (sexpr * styp) option;
 }
 
 type sfn_decl =
