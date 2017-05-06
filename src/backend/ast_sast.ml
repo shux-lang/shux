@@ -24,8 +24,7 @@ let rec to_styp senv = function
         | Vector(i) -> SArray(SFloat, Some i)
         | Struct(s) -> let sstruct_binds = (VarMap.find s senv.sstruct_map).ssfields 
                                            in SStruct(s, sstruct_binds)
-        | Array(t,i) -> let n_styp = to_styp senv (Some t) in
-                        SArray(n_styp, i)
+        | Array(t,i) -> let n_styp = to_styp senv (Some t) in  SArray(n_styp, i)
         | Ptr -> SPtr
         | Void -> SVoid)
     | None -> SVoid
@@ -35,6 +34,7 @@ and to_sbin_op iorf = function
   | Add -> if iorf then SBinopInt SAddi else SBinopFloat SAddf 
   | Sub -> if iorf then SBinopInt SSubi else SBinopFloat SSubf
   | Mul -> if iorf then SBinopInt SMuli else SBinopFloat SMulf
+
   | Div -> if iorf then SBinopInt SDivi else SBinopFloat SDivf
   | Exp -> if iorf then SBinopInt SExpi else SBinopFloat SExpf
   | Eq  -> if iorf then SBinopInt SEqi else SBinopFloat SEqf
@@ -64,6 +64,7 @@ and get_styp_from_sexpr = function
     | SLookbackDefault(s,_,_,_) -> s
     | SUnop(s,_,_) -> s
     | SCond(s,_,_,_) -> s
+    | SExprDud -> SVoid (* Duuud *) 
 
 and to_slit senv = function
     | LitInt(i) -> SLitInt(i)
@@ -100,10 +101,6 @@ and mut_to_scope = function
 
 and to_sbind env = function
     | Bind(m, t, s) -> SBind(to_styp env (Some t), s, mut_to_scope m)
-
-and translate_extern env ext
-    = { sxalias = ext.xalias; sxfname = ext.xfname; 
-        sxret_typ = to_styp env ext.xret_typ; sxformals = List.map (to_sbind env) ext.xformals }
 
 and translate_struct_defs env struct_def = 
     {ssname  = struct_def.sname; ssfields = List.map (to_sbind env) struct_def.fields }
@@ -162,19 +159,58 @@ and get_sexpr senv = function
                         SAccess(get_styp_from_sexpr se, se, str)
 
 
-and translate_letdecl senv = function
-    | LetDecl(b,e) -> SLetDecl(to_sbind senv b, get_sexpr senv e)
-    | StructDef(s) -> SStructDef(translate_struct_defs senv s)
-    | ExternDecl(e) -> SExternDecl(translate_extern senv e)
+
+
+and translate_letdecl senv globals = 
+    let global_mapper senv = function
+        | LetDecl(b,e) -> 
+                    let name = get_bind_name b
+                    and st = to_styp senv (Some (get_bind_typ b))
+                    in let new_bind = SBind(st, name, SGlobal)
+                    in let new_var = { id = name; scope = SGlobal;
+                                       svar_type = st }
+                    in let new_varmap = 
+                        if VarMap.mem name senv.variables
+                            then let varlist = VarMap.find name senv.variables
+                                 in VarMap.add name (new_var::varlist) senv.variables
+                            else VarMap.add name [new_var] senv.variables
+                    in let new_env = { variables = new_varmap; sfn_decl = senv.sfn_decl; 
+                                       sstruct_map = senv.sstruct_map } 
+                    in (SLetDecl(new_bind, get_sexpr senv e), new_env)
+        | StructDef(s) -> 
+                    let to_struct_binds senv b = 
+                            let name = get_bind_name b
+                            and t = get_bind_typ b
+                            in SBind(to_styp senv (Some t), name, SStructField)
+                    in let sdef  = {ssname = s.sname; ssfields = List.map (to_struct_binds senv) s.fields}
+                    in let new_structs = VarMap.add s.sname sdef senv.sstruct_map
+                    in let new_env = { variables = senv.variables; sfn_decl = senv.sfn_decl; 
+                                       sstruct_map = new_structs }
+                    in (SStructDef sdef, new_env) 
+        | ExternDecl(e) -> 
+                    let sret_type = to_styp senv e.xret_typ
+                    and new_formals = List.map (to_sbind senv) e.xformals (* they are all immutables *)
+                    in let new_extern = { sxalias = e.xalias; 
+                                          sxfname = e.xfname;
+                                          sxret_typ = sret_type;
+                                          sxformals = new_formals; }
+
+                    in let new_func = { skname = e.xalias; skret_typ = sret_type;
+                                        skformals = new_formals; sklocals = [];
+                                        skbody = []; skret_expr = (SExprDud, SVoid) } 
+                    in let new_fnmap = VarMap.add new_func.skname (SKnDecl new_func) senv.sfn_decl
+                    in let new_env = { variables = senv.variables; sfn_decl = new_fnmap; 
+                                       sstruct_map = senv.sstruct_map }
+                    in (SExternDecl new_extern, new_env)
+    in ([], senv)
 
 let if_letdecls = function
     | LetDecl(b, e) -> true
     | _ -> false
 
-
 let empty_senv = { variables = VarMap.empty; sfn_decl = VarMap.empty;
                    sstruct_map = VarMap.empty; }
 
 let translate_to_sast (ns, globals, functions) = 
-    let let_decls = List.map (translate_letdecl empty_senv) globals in 
+    let (sglobals, senv) = translate_letdecl empty_senv globals in 
     (ns, globals, functions)
