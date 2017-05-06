@@ -70,7 +70,7 @@ and to_slit senv = function
     | LitFloat(f) -> SLitFloat(f)
     | LitBool(b) -> SLitBool(b)
     | LitStr(s) -> SLitStr(s)
-    | LitKn(l) -> SLitKn(to_slambda l)
+    | LitKn(l) -> SLitKn(to_slambda senv l)
     | LitVector(el) -> SLitArray(List.map (get_sexpr senv) el)
     | LitArray(e) -> SLitArray(List.map (get_sexpr senv) e)
     | LitStruct(s,e) -> SLitStruct("aa", []) (*TODO: *) 
@@ -84,8 +84,13 @@ and slit_to_styp = function
     | SLitArray(elist) -> get_styp_from_sexpr (List.hd elist)
     | SLitStruct(name, slist) -> SStruct(name, []) (*TODO: Struct literal type translation *) 
 
+and to_sunop iorf = function
+    | LogNot -> SLogNot
+    | Neg -> if iorf then SNegi else SNegf
+    | Pos -> raise (Failure "Pos isnt supposed to exist in SAST") 
+
 (*TODO: *)
-and to_slambda l = 
+and to_slambda senv l = 
     { slret_typ = SInt; slformals = []; sllocals = []; slbody = [];
       slret_expr = (SLit(SInt, SLitInt(1)), SInt)} 
 
@@ -115,11 +120,46 @@ and get_sexpr senv = function
             let sbinop = (match get_styp_from_sexpr st1 with
                   | SInt -> to_sbin_op true bin_op
                   | SFloat -> to_sbin_op false bin_op
-                  | _ -> raise (Failure "Integer/Float binop on wrong type")) in 
+                  | _ -> raise (Failure "Not Integer/Float type on binop")) in 
             SBinop(get_styp_from_sexpr st1, st1, sbinop, get_sexpr senv e2)
-        | _ -> raise(Failure "u suxorz"))
-
-    | _ -> raise (Failure "u sux")
+        | LogAnd | LogOr -> SBinop(SBool, st1, to_sbin_op true bin_op, get_sexpr senv e2)
+        | Filter -> SBinop(SArray(get_styp_from_sexpr st1, None), st1, SBinopFn SFilter, get_sexpr senv e2)
+        | Map -> SBinop(SArray(get_styp_from_sexpr (get_sexpr senv e2), None),
+                               st1, SBinopFn SMap, get_sexpr senv e2)
+        | Index -> SBinop(get_styp_from_sexpr st1, st1, SBinopPtr SIndex, get_sexpr senv e2)
+        | For -> SBinop(SArray(get_styp_from_sexpr (get_sexpr senv e2), None), st1, SBinopFn SFor, get_sexpr senv e2)
+        | Do -> SBinop(get_styp_from_sexpr (get_sexpr senv e2), st1, SBinopFn SDo, get_sexpr senv e2))
+    | Assign(e1, e2) -> let st1 = get_sexpr senv e1 in 
+                        SAssign(get_styp_from_sexpr st1, st1, get_sexpr senv e2)
+    | Call(s, elist) -> (match s with
+        | Some s -> let f = VarMap.find s senv.sfn_decl in (match f with
+            | SGnDecl(gn) -> SGnCall(gn.sgret_typ, s, List.map (get_sexpr senv) elist)
+            | SKnDecl(kn) -> SKnCall(kn.skret_typ, s, List.map (get_sexpr senv) elist))
+        | None -> SGnCall(SInt, "_", []))
+    | Uniop(u, e) -> (match u with
+        | LogNot -> let st1 = get_sexpr senv e in 
+                    SUnop(get_styp_from_sexpr st1, to_sunop true u, st1)
+        | Neg -> let st1 = get_sexpr senv e in 
+                 let sunop = (match get_styp_from_sexpr st1 with
+                     | SInt -> to_sunop true u
+                     | SFloat -> to_sunop false u
+                     | _ -> raise (Failure "Not Integer/Float type on unnop"))
+                 in SUnop(get_styp_from_sexpr st1, sunop, st1)
+        | Pos -> get_sexpr senv e)
+    | LookbackDefault(e1, e2) -> 
+                    let se1 = get_sexpr senv e1
+                    and se2 = get_sexpr senv e2
+                    and i = (match e1 with
+        | Lookback(str, i) -> i
+        | _ -> raise (Failure "LookbackDefault not preceded by Lookback expression"))
+        in SLookbackDefault(get_styp_from_sexpr se1, i, se1, se2)
+    | Cond(e1, e2, e3) -> 
+                    let se1 = get_sexpr senv e1
+                    and se2 = get_sexpr senv e2
+                    and se3 = get_sexpr senv e3
+                    in SCond(get_styp_from_sexpr se2, se1, se2, se3)
+    | Access(e, str) -> let se = get_sexpr senv e in 
+                        SAccess(get_styp_from_sexpr se, se, str)
 
 
 and translate_letdecl senv = function
