@@ -1,0 +1,10 @@
+ns foo = {
+   int a;
+   ns bar = {
+      int a;
+   }
+}
+
+kn main() int {
+   0
+}
