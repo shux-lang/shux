@@ -1,0 +1,5 @@
+kn main() int {
+   int a = 2;
+   print("hello world!", a);
+   0
+}

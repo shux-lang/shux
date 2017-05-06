@@ -1,0 +1,5 @@
+kn main() int {
+   scalar x = 1.0;
+   x = false;
+   0
+}

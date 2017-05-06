@@ -1,0 +1,12 @@
+ns foo = {
+   let int x = 1;
+   let scalar y = 2.0;
+   let string z = "zzz";
+   kn bar(int x) int {
+      x+1
+   }
+}
+
+kn main() int {
+   0
+}

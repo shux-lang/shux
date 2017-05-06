@@ -27,7 +27,7 @@ Once you have the dependencies, just `cd` into the directory you want and `make`
 3. Make some changes: `git commit ...`
 4. Squash commits: `git rebase -i master`, then change everything except the first commit to `squash`
 5. Rebase on the latest master: `git checkout master && git pull origin master && git rebase master alice_feature_name`
-6. Run tests: `make test`
+6. Run tests: `make symlink && make && make tests`
 7. Push for code review: `git push -f origin alice_feature_name` (only use push -f on feature branches, not master)
 
 # Syntax Highlighting

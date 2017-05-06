@@ -1,0 +1,25 @@
+ns foo = {
+   let int x = 4;
+   let int y = 3;
+   let scalar z = 2.0;
+}
+
+ns bar = {
+   let int a = 2;
+   let int b = 3;
+   let scalar p = 42.0;
+   let string hi = "hello there!";
+}
+
+ns baz = {
+   let int qq = 5555;
+   let scalar d = 5.0;
+   let int x = 1;
+   let int y = 2;
+   let int z = 5;
+}
+
+kn main() int {
+   0
+}
+    

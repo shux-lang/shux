@@ -48,7 +48,7 @@ type slit =
   | SLitStr of string
   | SLitKn of slambda
   | SLitArray of sexpr list 
-  | SLitStruct of (string * sexpr) list
+  | SLitStruct of string * ((string * sexpr) list)
 
 and sexpr =
   | SLit of styp * slit
@@ -62,6 +62,7 @@ and sexpr =
   | SLookbackDefault of styp * int * sexpr * sexpr
   | SUnop of styp * sun_op * sexpr
   | SCond of styp * sexpr * sexpr * sexpr
+  | SExprDud
 
 and slambda = {
   slret_typ   : styp;

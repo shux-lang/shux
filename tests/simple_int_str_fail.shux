@@ -1,0 +1,5 @@
+kn main() int {
+   int x = 1;
+   x = "potato";
+   0
+}
