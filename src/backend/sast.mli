@@ -62,6 +62,7 @@ and sexpr =
   | SLookbackDefault of styp * int * sexpr * sexpr
   | SUnop of styp * sun_op * sexpr
   | SCond of styp * sexpr * sexpr * sexpr
+  | SExprDud
 
 and slambda = {
   slret_typ   : styp;
