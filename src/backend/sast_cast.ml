@@ -7,6 +7,10 @@ let map_tuple l p =
   let build e = (e, p)
   in List.map build l
 
+let map_opt f = function
+  | Some(x) -> Some(f x)
+  | None -> None
+
 let sast_to_cast let_decls f_decls =
   let prefix_x s = "extern_" ^ s    (* extern decl *)
   in let prefix_s s = "struct_" ^ s (* struct defn *)
@@ -69,7 +73,9 @@ let sast_to_cast let_decls f_decls =
       | (e, t) -> walk_expr e t
 
     in let walk_ret = function
-      | _ -> []
+      | Some(r, t) -> [CReturn(t, walk_stmt (r, t))]
+      | None -> []
+
     in CFnDecl { cfname = kn.skname; cret_typ = kn.skret_typ;
                   cformals = kn.skformals;
                   clocals = kn.sklocals;
@@ -140,12 +146,11 @@ let sast_to_cast let_decls f_decls =
           | SCond(t, i, f, e) -> SCond(t, lb i, lb f, lb e)
           | e -> e
         in (lb e, t)
-
       in { skname = prefix_gn gn.sgname; skret_typ = gn.sgret_typ;
         skformals = [ SBind(gns_typ, gns_arg, SLocalVar) ];
         sklocals = List.map prefix_var gn.sglocalvars; 
         skbody = inc_cnt :: List.map lookback gn.sgbody; 
-        skret_expr = lookback gn.sgret_expr; }
+        skret_expr = map_opt lookback gn.sgret_expr }
 
     in [ defn_cstruct; kn_to_fn gn_to_kn ]
 
