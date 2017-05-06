@@ -31,22 +31,22 @@ type llacc_typ =
  *)
 
 type llops_typ =
-  | LLBuildAdd of lltyp * lltyp
+  | LLAdd
 (*
-  | LLBuildFAdd
-  | LLBuildSub
-  | LLBuildFSub
-  | LLBuildMul
-  | LLBuildFMul
-  | LLBuildDiv (* signed *)
-  | LLBuildFDiv
+  | LLFAdd
+  | LLSub
+  | LLFSub
+  | LLMul
+  | LLFMul
+  | LLDiv (* signed *)
+  | LLFDiv
  *)
-
-type llcmp_typ =
-  | LLIEQ
-  | LLFEQ
-  | LLILT
+  | LLLT (* integer less than *)
+(*
   | LLFLT
+  | LLEQ
+  | LLFEQ
+ *)
 (* many left*)
 
 type llblock_term = (* a block must be terminated by either a jump or a return *)
@@ -55,12 +55,11 @@ type llblock_term = (* a block must be terminated by either a jump or a return *
   | LLBlockJmp of llreg (* register must be a branch label type *)
 
 type llstmt =
-  | LLBuildCmp of llcmp_typ * lltyp * lltyp
-  | LLBuildOp of llops_typ * lltyp * lltyp
+  | LLBuildBinOp of llops_typ * llreg * llreg * llreg
   | LLBuildAlloc of llreg * lltyp
   | LLBuildStore of llreg * llreg (* store from an actual register to a pointer typed register*)
   | LLBuildLoad of llreg * llreg (* load from left ptr register to right actual register*)
-  | LLBuildCall of llreg * llreg list * llreg (* 1 storing func def, 2 storing list of formals, 3 storing retval *)
+  | LLBuildCall of string * llreg list * llreg (* 1 storing func def, 2 storing list of formals, 3 storing retval *)
   | LLBuildPrintCall of llreg (* register storing the integer that you want to print *)
   | LLBuildTerm of llblock_term
 
@@ -68,7 +67,6 @@ type llstmt =
 type llblock = {
     llbname : string;
     llbbody : llstmt list;
-    llbterm  : llblock_term; (* string indicating which block to jump to *)
 }
 
 type llfunc_def = {
