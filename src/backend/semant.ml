@@ -16,7 +16,7 @@ module VarSet = Set.Make(struct
 		end)
 
 type struct_type = {
-  id : string;
+  struct_id : string;
   fields : (string * Ast.typ) list;
 }
 
@@ -42,28 +42,7 @@ type trans_env = {
 		new_variables : var list;
 }
 
-(* A bunch of generic helper functions *) 
-let rec get_styp = function
- | Int -> SInt
- | Float -> SFloat
- | String -> SString
- | Bool -> SBool
- | Struct(l) -> SStruct(l,[])
- | Array(t, n) -> SArray(get_styp t, n)
- | Vector(l) -> SArray(SFloat, Some(l))
- | Ptr -> SPtr
- | Void -> SVoid
 
-let rec get_typ = function
- | SInt -> Int
- | SFloat -> Float
- | SString -> String
- | SBool -> Bool
- | SStruct(l, bindings) -> Struct(l)
- | SArray(t, n) -> Array(get_typ t, n)
- | SPtr -> Ptr
- | SVoid -> Void
- 
 let get_sfield_name = function
  | StructField(id, _ ) -> id
 
@@ -354,7 +333,7 @@ let check_globals g =
                  let map_fields = function
                    | Bind(m, t, id) -> (id,t)
                  in let nfields = List.map map_fields s.fields in 
-                 let st = {id = s.sname; fields = nfields} in
+                 let st = {struct_id = s.sname; fields = nfields} in
                  check_global_inner { scope = tr_env.scope; 
                                       structs = VarMap.add s.sname st tr_env.structs;
                                       fn_map = tr_env.fn_map; 
@@ -449,8 +428,8 @@ let check_body f env =
 
 (* checks if main is defined *)
 let check_main functions = 
-    let check_if_main b f = 
-        if b then b
+        let check_if_main b f = 
+                if b then b
         else if f.fname = "main" && f.fn_typ = Kn then true else b in
     List.fold_left check_if_main false functions
 
