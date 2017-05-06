@@ -21,7 +21,7 @@ type lllit =
 
 type llreg =
   | LLRegLabel of lltyp * string(* register can store a name and an lltyp value *)
-  | LLRegLit of lllit
+  | LLRegLit of lltyp * lllit
 
 (* might not be used
 type llacc_typ =
@@ -49,6 +49,11 @@ type llcmp_typ =
   | LLFLT
 (* many left*)
 
+type llblock_term = (* a block must be terminated by either a jump or a return *)
+  | LLBlockReturn of llreg
+  | LLBlockBr of llreg * llreg * llreg (* 1st of boolean, 2nd and 3 of label type *)
+  | LLBlockJmp of llreg (* register must be a branch label type *)
+
 type llstmt =
   | LLBuildCmp of llcmp_typ * lltyp * lltyp
   | LLBuildOp of llops_typ * lltyp * lltyp
@@ -57,11 +62,8 @@ type llstmt =
   | LLBuildLoad of llreg * llreg (* load from left ptr register to right actual register*)
   | LLBuildCall of llreg * llreg list * llreg (* 1 storing func def, 2 storing list of formals, 3 storing retval *)
   | LLBuildPrintCall of llreg (* register storing the integer that you want to print *)
+  | LLBuildTerm of llblock_term
 
-type llblock_term = (* a block must be terminated by either a jump or a return *)
-  | LLBlockReturn of llreg
-  | LLBlockBr of llreg * llreg * llreg (* 1st of boolean, 2nd and 3 of label type *)
-  | LLBlockJmp of llreg (* register must be a branch label type *)
 
 type llblock = {
     llbname : string;
@@ -71,11 +73,11 @@ type llblock = {
 
 type llfunc_def = {
     llfname : string;
-    llfformals : lltyp list;
-    (*llfreturn : lltyp;*)
-    llflocals : lltyp list;
-    llfbody : llblock list;
+    llfformals : llreg list;
+    llflocals : llreg list;
+    llfbody : llstmt list;
+    llfreturn : lltyp;
+    llfblocks : llblock list;
 }
 
 type llprog = llfunc_def list
-
