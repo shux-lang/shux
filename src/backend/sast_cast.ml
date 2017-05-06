@@ -64,10 +64,11 @@ let sast_to_cast let_decls f_decls =
         | SAssign(t, l, r) -> walk_l ((walk_expr l)::ass) r
         | e -> walk_r e
       in CExpr(typ, walk_l [] expr)
-
+    and walk_struct typ expr =
+      CStmtDud
     and walk_stmt = function
       | (e, SArray(t, n)) -> walk_loop t n e
-      | (e, SStruct(id, _)) -> CStmtDud (* TODO: struct assignment? *)
+      | (e, SStruct(id, _)) -> walk_struct id e
       | (e, SPtr) -> assert false
       | (e, SVoid) -> assert false
       | (e, t) -> walk_expr e t
