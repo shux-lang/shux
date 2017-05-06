@@ -160,9 +160,9 @@ and get_sexpr senv = function
 
 
 
-
+(* this translates letdecls and also builds an environment for further translation *) 
 and translate_letdecl senv globals = 
-    let global_mapper senv = function
+    let global_mapper (sglobals, senv)= function
         | LetDecl(b,e) -> 
                     let name = get_bind_name b
                     and st = to_styp senv (Some (get_bind_typ b))
@@ -176,7 +176,7 @@ and translate_letdecl senv globals =
                             else VarMap.add name [new_var] senv.variables
                     in let new_env = { variables = new_varmap; sfn_decl = senv.sfn_decl; 
                                        sstruct_map = senv.sstruct_map } 
-                    in (SLetDecl(new_bind, get_sexpr senv e), new_env)
+                    in (SLetDecl(new_bind, get_sexpr senv e)::sglobals, new_env)
         | StructDef(s) -> 
                     let to_struct_binds senv b = 
                             let name = get_bind_name b
@@ -186,7 +186,7 @@ and translate_letdecl senv globals =
                     in let new_structs = VarMap.add s.sname sdef senv.sstruct_map
                     in let new_env = { variables = senv.variables; sfn_decl = senv.sfn_decl; 
                                        sstruct_map = new_structs }
-                    in (SStructDef sdef, new_env) 
+                    in ((SStructDef sdef)::sglobals, new_env) 
         | ExternDecl(e) -> 
                     let sret_type = to_styp senv e.xret_typ
                     and new_formals = List.map (to_sbind senv) e.xformals (* they are all immutables *)
@@ -201,8 +201,8 @@ and translate_letdecl senv globals =
                     in let new_fnmap = VarMap.add new_func.skname (SKnDecl new_func) senv.sfn_decl
                     in let new_env = { variables = senv.variables; sfn_decl = new_fnmap; 
                                        sstruct_map = senv.sstruct_map }
-                    in (SExternDecl new_extern, new_env)
-    in ([], senv)
+                    in ((SExternDecl new_extern)::sglobals, new_env)
+    in let (sglob, new_env) = List.fold_left global_mapper ([], senv) globals in (List.rev sglob, new_env)
 
 let if_letdecls = function
     | LetDecl(b, e) -> true
