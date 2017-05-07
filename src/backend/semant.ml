@@ -94,7 +94,10 @@ let rec  type_of_lit tr_env = function
     else let err_msg = "Struct " ^ id ^ "is not defined"
                        in raise (Failure err_msg)
 
-   | LitVector(l) -> Vector (List.length l)
+   | LitVector(l) -> let vector_check v = 
+                         if check_expr tr_env v = Float then true
+                         else raise (Failure "Vector literals need to consist entirely of floats")
+                      in ignore(List.map vector_check l); Vector(List.length l)
    | LitArray(l) ->
       let arr_length = List.length l in
 			let rec array_check arr typ = 
