@@ -347,7 +347,13 @@ let check_globals g =
                                  else StringMap.add name name m
                              in ignore(List.fold_left check_unique StringMap.empty s.fields);
                  let map_fields = function
-                   | Bind(m, t, id) -> (id,t)
+                   | Bind(m, t, id) -> (match t with
+                                           | Array(t, i) -> (match i with
+                                               | Some i -> (id,t)
+                                               | None -> let err_msg = "Array " ^ id ^ " initialized with no fixed " 
+                                                                       ^ "size in struct " ^ id 
+                                                                          in raise (Failure err_msg))
+                                           | _ -> (id,t))
                  in let nfields = List.map map_fields s.fields in 
                  let st = {struct_id = s.sname; fields = nfields} in
                  check_global_inner { scope = tr_env.scope; 
