@@ -20,7 +20,7 @@ let sast_to_cast let_decls f_decls =
   in let prefix_gns s = "gns_" ^ s  (* gn struct *)
 
   in let kn_to_fn kn =
-    let rec walk_expr e typ =
+    let rec walk_expr typ expr =
       let lit = function
         | SLitInt(i) -> CLitInt(i)
         | SLitFloat(f) -> CLitFloat(f)
@@ -43,8 +43,9 @@ let sast_to_cast let_decls f_decls =
         | SUnop(t, o, e) -> CUnop(t, o, walk e)
         | SCond(t, i, f, e) -> CCond(t, walk i, walk f, walk e)
         | _ -> assert false
-      in CExpr(typ, walk e)
+      in CExpr(typ, walk expr)
 
+      (*
     and walk_loop typ num expr =
       let lit = function
         | SLitArray(es) -> CLitArray(List.map walk_stmt (map_tuple es typ))
@@ -61,26 +62,26 @@ let sast_to_cast let_decls f_decls =
         | SAssign(t, l, r) -> assert false          (* m-value *)
         | _ -> CExprDud
       in let rec walk_l ass = function
-        | SAssign(t, l, r) -> walk_l ((walk_expr l)::ass) r
+        | SAssign(t, l, r) -> walk_l ((walk_expr t l)::ass) r
         | e -> walk_r e
       in let num = match num with
         | Some(x) -> CLit(SInt, CLitInt x)
         | None -> assert false
       in CLoop(typ, num, [], CStVal typ)
    (*   in CExpr(typ, walk_l [] expr) *)
-
+*)
     and walk_struct typ expr =
       CStmtDud
     and walk_stmt = function
-      | (e, SArray(t, n)) -> walk_loop t n e
+      | (e, SArray(t, n)) -> assert false (*walk_loop t n e *)
       | (e, SStruct(id, _)) -> walk_struct id e
       | (e, SPtr) -> assert false
       | (e, SVoid) -> assert false
-      | (e, t) -> walk_expr e t
+      | (e, t) -> walk_expr t e
 
     in let walk_ret = function
-      | Some(r, t) -> [CReturn(t, walk_stmt (r, t))]
-      | None -> []
+      | Some(r, t) -> [CReturn(Some (t, walk_stmt (r, t)))]
+      | None -> [CReturn None]
 
     in CFnDecl { cfname = kn.skname; cret_typ = kn.skret_typ;
                   cformals = kn.skformals;
