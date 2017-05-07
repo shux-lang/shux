@@ -238,10 +238,16 @@ and check_expr tr_env expr =
                                 | Id(l) -> l (* for namespace *) 
                                 | _ -> "") 
           in
-
          (* check if namespace *) 
-          if VarMap.mem (fname ^ "_" ^ str) tr_env.scope
-			    then let x = List.hd (VarMap.find (fname ^ "_" ^ str) tr_env.scope) in x.var_type else
+          let ns_name = fname ^ "_" ^ str in 
+         (* ns variables *) 
+          if VarMap.mem ns_name tr_env.scope
+			    then let x = List.hd (VarMap.find ns_name tr_env.scope) in x.var_type else
+        (* ns function *) 
+        (* TODO:  won't actually work *) 
+         if VarMap.mem ns_name tr_env.fn_map
+          then let fn = VarMap.find ns_name tr_env.fn_map in convert_ret_typ fn.ret_typ
+        else
          (* check if struct *) 
           let t1 = check_expr tr_env id in
           (match t1 with
