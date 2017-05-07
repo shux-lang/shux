@@ -328,5 +328,5 @@ lit_elements:
   | expr                                    { [$1] }
 
 id_ns:
-  | ID ARROW id_ns                          { $3::$1 }
+  | ID ARROW id_ns                          { $1::$3 }
   | ID                                      { [$1] }
