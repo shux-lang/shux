@@ -54,7 +54,7 @@ and cstmt =
  *  }
  *  /* pop LStack */
  *)
-  | CReturn of ctyp * cstmt option
+  | CReturn of (ctyp * cstmt) option
 (* return cstmt
  *)
   | CStmtDud
