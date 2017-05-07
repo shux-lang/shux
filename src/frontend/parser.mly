@@ -124,7 +124,7 @@ kns:
   | kn                                      { $1 }
 
 kn:
-  | id                                      { $1 }
+  | ID                                      { Id($1) }
   | lambda                                  { Lit($1) }
 
 lambda:
@@ -138,7 +138,7 @@ iter_expr:
   | unit_expr                               { $1 }
 
 gn_call:
-  | ID LPAREN actuals RPAREN                { Call(Some($1), $3) }
+  | id_ns LPAREN actuals RPAREN             { Call(Some($1), $3) }
   | UNDERSCORE                              { Call(None, []) }
 
 unit_expr:
@@ -187,7 +187,7 @@ unary_expr:
 
 postfix_expr:
   | postfix_expr LBRACK expr RBRACK         { Binop($1, Index, $3) }
-  | ID LPAREN actuals RPAREN                { Call(Some($1), $3) }
+  | id_ns LPAREN actuals RPAREN             { Call(Some($1), $3) }
   | postfix_expr DOT ID                     { Access($1, $3) }
   | primary_expr                            { $1 }
 
@@ -198,7 +198,7 @@ primary_expr:
 
 id_expr:
   | ID DOTDOT INT_LIT                       { Lookback($1, $3) }
-  | id                                      { $1 }
+  | ID                                      { Id($1) }
 
 
 /* function argument rules */
@@ -327,10 +327,6 @@ lit_elements:
   | lit_elements COMMA expr                 { $3::$1 }
   | expr                                    { [$1] }
 
-
-/* Type wrappers */
-id:
-  | ID                                      { Id($1) }
 id_ns:
-  | ID DOT id_ns                            { $1::$3 }
+  | ID FUNC id_ns                           { $3::$1 }
   | ID                                      { [$1] }
