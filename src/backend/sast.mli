@@ -29,6 +29,8 @@ type sbin_op_p =
 
 type sbin_op_fn =
   | SFilter | SMap
+
+type sbin_op_gn =
   | SFor | SDo
 
 type sbin_op = 
@@ -37,6 +39,7 @@ type sbin_op =
   | SBinopBool of sbin_op_b
   | SBinopPtr of sbin_op_p
   | SBinopFn of sbin_op_fn
+  | SBinopGn of sbin_op_gn
 
 type sun_op = 
   | SLogNot | SNegi | SNegf

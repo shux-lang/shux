@@ -18,8 +18,8 @@ type clit =
   | CLitFloat of float
   | CLitBool of bool
   | CLitStr of string
-  | CLitArray of cexpr list
-  | CLitStruct of (string * cexpr) list
+  | CLitArray of cstmt list
+  | CLitStruct of (string * cstmt) list
   | CLitDud
 
 and cexpr =
