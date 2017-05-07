@@ -111,8 +111,8 @@ let sast_to_cast let_decls f_decls =
     and walk_stmt (e, t) = walk_l [] t e
 
     in let walk_ret = function
-      | Some(r, t) -> [CReturn(Some (t, walk_stmt (r, t)))]
-      | None -> [CReturn None]
+      | Some x -> [] 
+      | None -> []
 
     in let fn_decl kn = CFnDecl 
       { cfname = kn.skname; cret_typ = kn.skret_typ;
