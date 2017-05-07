@@ -1,4 +1,4 @@
-vector<2> g = (0.0, -9.81);
+let vector<2> g = (0.0, -9.81);
 
 kn main() int {
    scalar g_val = g[1];

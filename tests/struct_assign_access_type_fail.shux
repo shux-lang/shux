@@ -4,7 +4,7 @@ struct particle {
 }
 
 kn main() int {
-   struct particle dummy = particle { .x=1; .y=2 };
+   var struct particle dummy = particle { .x=1; .y=2 };
    dummy.x = 4.0;
    0
 }

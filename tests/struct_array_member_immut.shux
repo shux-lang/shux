@@ -4,6 +4,6 @@ struct foo {
 
 kn main() int {
    struct foo my_foo = foo { .a=[2,3] };
-   my_foo.a = 5; /* should be invalid */
+   my_foo.a = [1,2]; /* should be invalid */
    0
 }

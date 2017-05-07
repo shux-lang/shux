@@ -94,7 +94,10 @@ let rec  type_of_lit tr_env = function
     else let err_msg = "Struct " ^ id ^ "is not defined"
                        in raise (Failure err_msg)
 
-   | LitVector(l) -> Vector (List.length l)
+   | LitVector(l) -> let vector_check v = 
+                         if check_expr tr_env v = Float then true
+                         else raise (Failure "Vector literals need to consist entirely of floats")
+                      in ignore(List.map vector_check l); Vector(List.length l)
    | LitArray(l) ->
       let arr_length = List.length l in
 			let rec array_check arr typ = 
@@ -232,10 +235,20 @@ and check_expr tr_env expr =
      expr")
    | Lookback(str, i) -> check_expr tr_env (Id str)  
    | Access(id, str) -> let fname = (match id with
-                                | Id(l) -> l
-                                | _ -> raise (Failure "Access needs to be to an
-                                                      ID")) 
+                                | Id(l) -> l (* for namespace *) 
+                                | _ -> "") 
           in
+         (* check if namespace *) 
+          let ns_name = fname ^ "_" ^ str in 
+         (* ns variables *) 
+          if VarMap.mem ns_name tr_env.scope
+			    then let x = List.hd (VarMap.find ns_name tr_env.scope) in x.var_type else
+        (* ns function *) 
+        (* TODO:  won't actually work *) 
+         if VarMap.mem ns_name tr_env.fn_map
+          then let fn = VarMap.find ns_name tr_env.fn_map in convert_ret_typ fn.ret_typ
+        else
+         (* check if struct *) 
           let t1 = check_expr tr_env id in
           (match t1 with
              | Struct(id) -> if VarMap.mem id tr_env.structs
@@ -344,7 +357,17 @@ let check_globals g =
                                  else StringMap.add name name m
                              in ignore(List.fold_left check_unique StringMap.empty s.fields);
                  let map_fields = function
-                   | Bind(m, t, id) -> (id,t)
+                   | Bind(m, t, id) -> if VarMap.mem (s.sname ^ "_" ^ id) tr_env.scope then
+                                          let err_msg = "Namespace/struct field contention for struct " 
+                                                        ^ s.sname ^ " and field " ^ id in raise(Failure err_msg)
+                                       else
+                                       (match t with
+                                           | Array(t, i) -> (match i with
+                                               | Some i -> (id,t)
+                                               | None -> let err_msg = "Array " ^ id ^ " initialized with no fixed " 
+                                                                       ^ "size in struct " ^ id 
+                                                                          in raise (Failure err_msg))
+                                           | _ -> (id,t))
                  in let nfields = List.map map_fields s.fields in 
                  let st = {struct_id = s.sname; fields = nfields} in
                  check_global_inner { scope = tr_env.scope; 
@@ -463,6 +486,7 @@ let check_functions functions run_env =
 (* entry point *) 
 let check (ns, globals, functions) = 
 	let flat_ns = flatten_ns ns in
-	let global_env = check_globals (globals @ (fst flat_ns)) in
+  let globs_with_ns = (fst flat_ns) @ globals in 
+	let global_env = check_globals globs_with_ns in
   ignore (check_functions (functions @ (snd flat_ns)) global_env);
-	([], globals @ fst flat_ns, functions @ snd flat_ns)
+	([], fst flat_ns @ globals, functions @ snd flat_ns)
