@@ -1,4 +1,4 @@
-kn foo(int[2] a) int {
+gn foo(int[2] a) int {
    a[0]
 }
 
