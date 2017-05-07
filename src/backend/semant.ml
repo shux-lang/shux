@@ -235,13 +235,11 @@ and check_expr tr_env expr =
      expr")
    | Lookback(str, i) -> check_expr tr_env (Id str)  
    | Access(id, str) -> let fname = (match id with
-                                | Id(l) -> l
-                                | _ -> raise (Failure "Access needs to be to an
-                                                      ID")) 
+                                | Id(l) -> l (* for namespace *) 
+                                | _ -> "") 
           in
 
          (* check if namespace *) 
-          print_string (fname ^ "_" ^ str);
           if VarMap.mem (fname ^ "_" ^ str) tr_env.scope
 			    then let x = List.hd (VarMap.find (fname ^ "_" ^ str) tr_env.scope) in x.var_type else
          (* check if struct *) 
@@ -485,4 +483,4 @@ let check (ns, globals, functions) =
   let globs_with_ns = (fst flat_ns) @ globals in 
 	let global_env = check_globals globs_with_ns in
   ignore (check_functions (functions @ (snd flat_ns)) global_env);
-	([], globals @ fst flat_ns, functions @ snd flat_ns)
+	([], fst flat_ns @ globals, functions @ snd flat_ns)
