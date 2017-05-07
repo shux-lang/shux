@@ -1,5 +1,5 @@
 type sscope = (* replacing Mutable vs Immutable *)
-  | SLocalVal | SLocalVar | SGlobal | SStructField
+  | SLocalVal | SLocalVar | SGlobal | SStructField | SKnCall
 
 type styp =
   | SInt

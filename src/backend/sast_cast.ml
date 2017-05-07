@@ -46,7 +46,6 @@ let sast_to_cast let_decls f_decls =
         | _ -> assert false
       in CExpr(typ, walk expr)
 
-      (*
     and walk_loop typ num expr =
       let lit = function
         | SLitArray(es) -> CLitArray(List.map walk_stmt (map_tuple es typ))
@@ -62,19 +61,19 @@ let sast_to_cast let_decls f_decls =
         | SCond(t, i, f, e) -> assert false         (* r-value *)
         | SAssign(t, l, r) -> assert false          (* m-value *)
         | _ -> CExprDud
+
+
       in let rec walk_l ass = function
-        | SAssign(t, l, r) -> walk_l ((walk_expr t l)::ass) r
+        | SAssign(t, l, r) -> walk_l (l :: ass) r
         | e -> walk_r e
       in let num = match num with
         | Some(x) -> CLit(SInt, CLitInt x)
         | None -> assert false
-      in CLoop(typ, num, [], CStVal typ)
-   (*   in CExpr(typ, walk_l [] expr) *)
-*)
+      in CBlock(typ, [])
     and walk_struct typ expr =
       CStmtDud
     and walk_stmt = function
-      | (e, SArray(t, n)) -> assert false (*walk_loop t n e *)
+      | (e, SArray(t, n)) -> walk_loop t n e
       | (e, SStruct(id, _)) -> walk_struct id e
       | (e, SPtr) | (e, SVoid) -> assert false
       | (e, t) -> walk_expr t e
@@ -105,7 +104,7 @@ let sast_to_cast let_decls f_decls =
         | SAccess(_, e, _) -> fish acc (p ^ "a") e
         | _ -> acc
       in let rec bait p = function
-        | SLit(t, SLitKn(l)) -> SId(t, prefix_lambda kn.skname p, SGlobal) (* should this be a global here? *)
+        | SLit(t, SLitKn(l)) -> SId(t, prefix_lambda kn.skname p, SKnCall) (* should this be a global here? *)
         | SBinop(t, l, o, r) -> SBinop(t, bait (p ^ "l") l, o, bait (p ^ "r") r)
         | SAssign(t, l, r) -> SAssign(t, bait (p ^ "l") l, bait (p ^ "r") r)
         | SCond(ty, i, t, e) -> SCond(ty, bait (p ^ "i") i, bait (p ^ "t") t, bait (p ^ "e") e)
@@ -172,7 +171,7 @@ let sast_to_cast let_decls f_decls =
           | SGlobal as s -> SId(t, id, s) (* global prefixing will happen in walk_kn *)
           | SLocalVar as s -> SId(t, prefix_gnv id, s)
           | SLocalVal -> lb_st t id 0
-          | SStructField -> assert false
+          | SStructField | SKnCall -> assert false
 
         in let rec lb = function
           | SId(t, id, s) -> sid t id s
