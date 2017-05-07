@@ -124,7 +124,7 @@ kns:
   | kn                                      { $1 }
 
 kn:
-  | ID                                      { Id($1) }
+  | id_ns                                      { Id($1) }
   | lambda                                  { Lit($1) }
 
 lambda:
@@ -197,8 +197,8 @@ primary_expr:
   | id_expr                                 { $1 }
 
 id_expr:
-  | ID DOTDOT INT_LIT                       { Lookback($1, $3) }
-  | ID                                      { Id($1) }
+  | id_ns DOTDOT INT_LIT                       { Lookback($1, $3) }
+  | id_ns                                      { Id($1) }
 
 
 /* function argument rules */

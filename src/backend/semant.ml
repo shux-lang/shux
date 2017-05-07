@@ -65,6 +65,11 @@ let compare_ast_typ l r = match(l,r) with
    | (Array(t1, None), Array(t2, Some i)) -> t1=t2
    | (l,r) -> l=r
 
+let flatten_ns_list ns_list = 
+    let rec flatten_ns_rec flat = function
+        | [] -> flat
+        | hd::tl -> flatten_ns_rec (flat ^ "_" ^ hd) tl
+    in flatten_ns_rec (List.hd ns_list) (List.tl ns_list)
 
 (* check expression 
 tr_env: current translation environment
@@ -77,21 +82,22 @@ let rec  type_of_lit tr_env = function
    | LitStr(l) -> String
    | LitBool(l) -> Bool
    | LitStruct(id, l) -> 
-    if VarMap.mem id tr_env.structs then
-        let s = VarMap.find id tr_env.structs in
+    let nid = flatten_ns_list id in 
+    if VarMap.mem nid tr_env.structs then
+        let s = VarMap.find nid tr_env.structs in
         if List.length s.fields != List.length l
         then let err_msg = "Wrong number of fields in struct "
-                ^ id ^ ". Expected: " ^ string_of_int (List.length s.fields) ^ 
+                ^ nid ^ ". Expected: " ^ string_of_int (List.length s.fields) ^ 
                 " Got: " ^ string_of_int (List.length l) in raise(Failure err_msg)
         else 
             let match_lits = match_sfields tr_env l in
             let match_fields b sfield = b && match_lits sfield in
                 if (List.fold_left match_fields true s.fields) then 
-                    Struct(id)
+                    Struct([nid])
                 else 
                     let err_msg = "Struct literal doesn't match struct defined" ^ 
-                                  "as" ^ id in raise(Failure err_msg)
-    else let err_msg = "Struct " ^ id ^ "is not defined"
+                                  "as" ^ nid in raise(Failure err_msg)
+    else let err_msg = "Struct " ^ nid ^ "is not defined"
                        in raise (Failure err_msg)
 
    | LitVector(l) -> let vector_check v = 
@@ -113,7 +119,7 @@ let rec  type_of_lit tr_env = function
 and check_expr tr_env expr =
 	match expr with
 	 | Lit(a) -> type_of_lit tr_env a
-   | Id(var) -> 
+   | Id(nvar) -> let var = flatten_ns_list nvar in
       if VarMap.mem var tr_env.scope
 			then let x = List.hd (VarMap.find var tr_env.scope) in x.var_type
 			else raise (Failure ("Variable " ^ var ^ " has not been declared"))
@@ -141,7 +147,7 @@ and check_expr tr_env expr =
        in
             if (match e2 with
             | Binop(kn, _, _) -> (match kn with
-              | Id(n) ->
+              | Id(nn) -> let n = flatten_ns_list nn in
                   if VarMap.mem n tr_env.fn_map then
                       let k = VarMap.find n tr_env.fn_map in
                       if k.fn_typ = Kn 
@@ -189,18 +195,19 @@ and check_expr tr_env expr =
                 else raise (Failure "Cannot assign to immutable type")
         in
    (match e1 with 
-       | Id l -> ignore (match_typ e1 e2); get_mutability l
+       | Id l -> ignore (match_typ e1 e2); get_mutability (flatten_ns_list l)
        | Assign(l1,l2) -> match_typ e1 e2
        | Access(x,y)-> match_typ e1 e2 
        | Binop(idx1, Index, _) -> (match idx1 with
-           | Id(l) -> ignore (get_mutability l)
+           | Id(l) -> ignore (get_mutability (flatten_ns_list l))
            | _ -> raise (Failure "Semant not implemented for indexing into non-ids"));
        match_typ e1 e2
        | _ -> raise (Failure "Assign can only be done against an id or struct field")
    )              
 
    | Call(str, elist) -> (match(str) with
-       | Some s -> if VarMap.mem s tr_env.fn_map then
+       | Some ns -> let s = flatten_ns_list ns in
+                    if VarMap.mem s tr_env.fn_map then
                       let fn = VarMap.find s tr_env.fn_map and
                       tlist = List.map (check_expr tr_env) elist
                       in
@@ -235,24 +242,14 @@ and check_expr tr_env expr =
      expr")
    | Lookback(str, i) -> check_expr tr_env (Id str)  
    | Access(id, str) -> let fname = (match id with
-                                | Id(l) -> l (* for namespace *) 
+                                | Id(l) -> flatten_ns_list l (* for namespace *) 
                                 | _ -> "") 
           in
-         (* check if namespace *) 
-          let ns_name = fname ^ "_" ^ str in 
-         (* ns variables *) 
-          if VarMap.mem ns_name tr_env.scope
-			    then let x = List.hd (VarMap.find ns_name tr_env.scope) in x.var_type else
-        (* ns function *) 
-        (* TODO:  won't actually work *) 
-         if VarMap.mem ns_name tr_env.fn_map
-          then let fn = VarMap.find ns_name tr_env.fn_map in convert_ret_typ fn.ret_typ
-        else
-         (* check if struct *) 
+         (* check structs *) 
           let t1 = check_expr tr_env id in
           (match t1 with
-             | Struct(id) -> if VarMap.mem id tr_env.structs
-                then 
+             | Struct(nid) -> let id = flatten_ns_list nid in 
+                        if VarMap.mem id tr_env.structs then
                         let s = VarMap.find id tr_env.structs in
                         let find_field tuple field = 
                                 if (fst tuple)="NONE" then
@@ -488,5 +485,5 @@ let check (ns, globals, functions) =
 	let flat_ns = flatten_ns ns in
   let globs_with_ns = (fst flat_ns) @ globals in 
 	let global_env = check_globals globs_with_ns in
-  ignore (check_functions (functions @ (snd flat_ns)) global_env);
-	([], fst flat_ns @ globals, functions @ snd flat_ns)
+  ignore (check_functions ((snd flat_ns) @ functions) global_env);
+	([], fst flat_ns @ globals, snd flat_ns @ functions)

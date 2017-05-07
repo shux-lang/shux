@@ -17,7 +17,7 @@ let string_of_opt f s = string_of_opt_default "" f s
 let rec string_of_id = function
   | [] -> ""
   | [s] -> s
-  | s::l -> s ^ "." ^ string_of_id l
+  | s::l -> s ^ "->" ^ string_of_id l
 
 let rec _string_of_typ = function
   | Int -> "int"
@@ -123,8 +123,8 @@ and string_of_lit = function
 
 and string_of_expr = function
  | Lit l -> string_of_lit l
- | Id s -> s
- | Lookback(s, i) -> s ^ ".." ^ string_of_int i
+ | Id s -> string_of_id s
+ | Lookback(s, i) -> string_of_id s ^ ".." ^ string_of_int i
  | Access(e, i) -> string_of_expr e ^ "." ^ i
  | Uniop(o, e) -> string_of_uniop_expr string_of_expr o e
  | Assign(l, r) -> string_of_asn_expr string_of_expr l r
