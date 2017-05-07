@@ -22,7 +22,8 @@ let rec to_styp senv = function
 | String -> SString
 | Bool -> SBool
 | Vector(i) -> SArray(SFloat, Some i)
-| Struct(s) -> let sstruct_binds = (VarMap.find s senv.sstruct_map).ssfields 
+| Struct(ns) ->  let s = flatten_ns_list ns in
+                 let sstruct_binds = (VarMap.find s senv.sstruct_map).ssfields 
 																	 in SStruct(s, sstruct_binds)
 | Array(t,i) -> let n_styp = to_styp senv (Some t) in  SArray(n_styp, i)
 | Ptr -> SPtr
@@ -112,9 +113,10 @@ and translate_struct_defs env struct_def =
 (*TODO: how the fuck is this going to work ayy lmao *) 
 and get_sexpr senv = function
 | Lit(a) -> let sliteral = to_slit senv a in SLit(slit_to_styp sliteral, sliteral)
-| Id(s) -> let v = List.hd (VarMap.find s senv.variables)
+| Id(ns) -> let s = flatten_ns_list ns
+       in let v = List.hd (VarMap.find s senv.variables)
 			 in SId(v.svar_type, s, v.scope)
-| Lookback(str, i) -> SLookback(SInt, str, i)
+| Lookback(str, i) -> SLookback(SInt, flatten_ns_list str, i)
 | Binop(e1, bin_op, e2) -> 
 let st1 = get_sexpr senv e1 in (match bin_op with
 | Add | Sub | Mul | Div | Mod | Exp | Eq | Lt | Gt | Neq | Leq | Geq -> 
@@ -133,8 +135,9 @@ let st1 = get_sexpr senv e1 in (match bin_op with
 | Assign(e1, e2) -> let st1 = get_sexpr senv e1 in 
 								SAssign(get_styp_from_sexpr st1, st1, get_sexpr senv e2)
 | Call(s, elist) -> (match s with
-| Some s -> let sexpr_list = List.map (get_sexpr senv) elist
-						in let call_formals = List.map (fun x -> (x, get_styp_from_sexpr x)) sexpr_list
+| Some ns -> let s = flatten_ns_list ns in 
+             let sexpr_list = List.map (get_sexpr senv) elist
+					 	 in let call_formals = List.map (fun x -> (x, get_styp_from_sexpr x)) sexpr_list
 		in let f = VarMap.find s senv.sfn_decl in (match f with 
 		| SGnDecl(gn) -> SGnCall(gn.sgret_typ, s, call_formals)
 		| SKnDecl(kn) -> SKnCall(kn.skret_typ, s, call_formals))
@@ -218,7 +221,7 @@ in let rec hoist_body (vdecls, local_exprs) = function
 | [] -> (List.rev vdecls, List.rev local_exprs)
 | VDecl(b,e)::tl -> (match e with 
 		| Some e -> let id = get_bind_name b
-								in let asn = Assign(Id(id), e)
+								in let asn = Assign(Id([id]), e)
 								in hoist_body (VDecl(b,Some e)::vdecls, asn::local_exprs) tl
 		| None -> hoist_body (VDecl(b,e)::vdecls, local_exprs) tl)
 | Expr(e)::tl -> hoist_body (vdecls, e::local_exprs) tl
