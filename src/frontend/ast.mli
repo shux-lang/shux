@@ -52,8 +52,8 @@ and struct_field = StructField of string * expr
 
 and expr =
   | Lit of lit
-  | Id of string
-  | Lookback of string * int
+  | Id of string list
+  | Lookback of string list * int
   | Binop of expr * bin_op * expr
   | Assign of expr * expr
   | Call of string list option * expr list

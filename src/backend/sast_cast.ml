@@ -66,7 +66,7 @@ let sast_to_cast let_decls f_decls =
       in let num = match num with
         | Some(x) -> CLit(SInt, CLitInt x)
         | None -> assert false
-      in CLoop(typ, num, [], CStVal typ)
+      in CLoop(typ, num, CExpr (SPtr, CExprDud))
    (*   in CExpr(typ, walk_l [] expr) *)
 
     and walk_struct typ expr =
@@ -79,7 +79,7 @@ let sast_to_cast let_decls f_decls =
       | (e, t) -> walk_expr e t
 
     in let walk_ret = function
-      | Some(r, t) -> [CReturn(t, walk_stmt (r, t))]
+      | Some(r, t) -> [CReturn(t, Some (walk_stmt (r, t)))]
       | None -> []
 
     in CFnDecl { cfname = kn.skname; cret_typ = kn.skret_typ;
