@@ -16,6 +16,7 @@ let sast_to_cast let_decls f_decls =
   in let prefix_s s = "struct_" ^ s (* struct defn *)
   in let prefix_l s = "let_" ^ s    (* let decl *)
   in let prefix_kn s = "kn_" ^ s    (* kn function *)
+  in let prefix_lambda s i = "lambda_" ^ i ^ "_" ^ s
   in let prefix_gn s = "gn_" ^ s    (* gn function *)
   in let prefix_gns s = "gns_" ^ s  (* gn struct *)
 
@@ -75,18 +76,51 @@ let sast_to_cast let_decls f_decls =
     and walk_stmt = function
       | (e, SArray(t, n)) -> assert false (*walk_loop t n e *)
       | (e, SStruct(id, _)) -> walk_struct id e
-      | (e, SPtr) -> assert false
-      | (e, SVoid) -> assert false
+      | (e, SPtr) | (e, SVoid) -> assert false
       | (e, t) -> walk_expr t e
 
     in let walk_ret = function
       | Some(r, t) -> [CReturn(Some (t, walk_stmt (r, t)))]
       | None -> [CReturn None]
 
-    in [ CFnDecl { cfname = kn.skname; cret_typ = kn.skret_typ;
-                  cformals = kn.skformals;
-                  clocals = kn.sklocals;
-                  cbody = List.map walk_stmt kn.skbody @ walk_ret kn.skret_expr } ]
+    in let fn_decl kn = CFnDecl 
+      { cfname = kn.skname; cret_typ = kn.skret_typ;
+        cformals = kn.skformals; clocals = kn.sklocals;
+        cbody = List.map walk_stmt kn.skbody @ walk_ret kn.skret_expr }
+
+    in let rec hoist_lambdas kn =
+      let hoist n { slret_typ; slformals; sllocals; slbody; slret_expr } = hoist_lambdas
+        { skname = prefix_lambda kn.skname n; skret_typ = slret_typ;
+          skformals = slformals; sklocals = sllocals; skbody = slbody; 
+          skret_expr = Some slret_expr }
+
+      in let rec fish acc p = function
+        | SLit(_, SLitKn(l)) -> (hoist p l) :: acc
+        | SBinop(_, l, _, r) -> fish [] (p ^ "l") l @ fish acc (p ^ "r") r
+        | SAssign(_, l, r) -> fish [] (p ^ "l") l @ fish acc (p ^ "r") r
+        | SCond(_, i, t, e) -> fish [] (p ^ "i") i @ fish [] (p ^ "t") t @ fish acc (p ^ "e") e
+        | SUnop(_, _, e) -> fish acc (p ^ "u") e
+        | SKnCall(_, _, a) -> (List.concat (List.map (fish [] (p ^ "k")) (List.map fst a))) @ acc
+        | SGnCall(_, _, a) -> (List.concat (List.map (fish [] (p ^ "g")) (List.map fst a))) @ acc
+        | SAccess(_, e, _) -> fish acc (p ^ "a") e
+        | _ -> acc
+      in let rec bait p = function
+        | SLit(t, SLitKn(l)) -> SId(t, prefix_lambda kn.skname p, SGlobal) (* should this be a global here? *)
+        | SBinop(t, l, o, r) -> SBinop(t, bait (p ^ "l") l, o, bait (p ^ "r") r)
+        | SAssign(t, l, r) -> SAssign(t, bait (p ^ "l") l, bait (p ^ "r") r)
+        | SCond(ty, i, t, e) -> SCond(ty, bait (p ^ "i") i, bait (p ^ "t") t, bait (p ^ "e") e)
+        | SUnop(t, o, e) -> SUnop(t, o, bait (p ^ "u") e)
+        | SKnCall(t, s, a) -> SKnCall(t, s, List.map (fun (a, t) -> (bait (p ^ "k") a, t)) a)
+        | SGnCall(t, s, a) -> SGnCall(t, s, List.map (fun (a, t) -> (bait (p ^ "g") a, t)) a)
+        | SAccess(t, e, s) -> SAccess(t, bait (p ^ "a") e, s)
+        | s -> s
+
+      in let walk_stmt (lambdas, body, p) (e, t) =
+        (fish lambdas p e, ((bait p e), t) :: body, p ^ "x")
+      in let (lambdas, body, _) = List.fold_left walk_stmt ([], [], "z") kn.skbody
+      in let body = List.rev body
+      in List.rev (fn_decl {kn with skbody = body} :: List.concat lambdas)
+    in hoist_lambdas kn
 
   in let walk_kn kn =
      kn_to_fn {kn with skname = prefix_kn kn.skname }
@@ -154,10 +188,10 @@ let sast_to_cast let_decls f_decls =
           | e -> e
         in (lb e, t)
       in { skname = prefix_gn gn.sgname; skret_typ = gn.sgret_typ;
-        skformals = [ SBind(gns_typ, gns_arg, SLocalVar) ];
-        sklocals = List.map prefix_var gn.sglocalvars; 
-        skbody = inc_cnt :: List.map lookback gn.sgbody; 
-        skret_expr = map_opt lookback gn.sgret_expr }
+            skformals = [ SBind(gns_typ, gns_arg, SLocalVar) ];
+            sklocals = List.map prefix_var gn.sglocalvars; 
+            skbody = inc_cnt :: List.map lookback gn.sgbody; 
+            skret_expr = map_opt lookback gn.sgret_expr }
 
     in defn_cstruct :: kn_to_fn gn_to_kn
 
