@@ -238,7 +238,7 @@ and translate_kn_decl senv kn =
 
 and translate_gn_decl senv gn = 
     { sgname = ""; sgret_typ = SPtr; sgmax_iter = 0; sgformals = [];
-      sglocalvals = []; sglocalvars = []; sgbody = []; sgret_expr = (SExprDud, SPtr) } 
+      sglocalvals = []; sglocalvars = []; sgbody = []; sgret_expr = Some (SExprDud, SPtr) } 
 
 and translate_fndecls senv sfn_decls = function
     | [] -> List.rev sfn_decls
