@@ -90,7 +90,7 @@ let sast_to_cast let_decls f_decls =
           | SId(t, n, s) -> CId(t, n)
           | SAccess(t, e, f) -> CAccess(t, tr e, f)
           | SBinop(t, l, SBinopPtr SIndex, r) -> CBinop(t, tr l, CBinopPtr SIndex, tr r)
-          | _ -> assert false
+          | _ -> assert false (* not an l-value *)
         in let fold_assign r l =
           CAssign(typ, tr l, r)
         in CExpr(typ, List.fold_left fold_assign (CBlockVal typ) ass)
