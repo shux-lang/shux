@@ -14,13 +14,18 @@ let string_of_opt_default d f = function
 
 let string_of_opt f s = string_of_opt_default "" f s
 
+let rec string_of_access_list = function
+  | [] -> ""
+  | [s] -> s
+  | s::l -> s ^ "." ^ string_of_access_list l
+
 let rec _string_of_typ = function
   | Int -> "int"
   | Float -> "float"
   | String -> "string"
   | Bool -> "bool" 
   | Ptr -> "_ptr"
-  | Struct t -> "struct " ^ t 
+  | Struct t -> "struct " ^ string_of_access_list t 
   | Array(t, i) -> _string_of_typ t ^ "[" ^ (match i with Some(n) -> string_of_int n | None -> "") ^ "]"
   | Vector t -> "vector<" ^ string_of_int t ^ ">"
   | Void -> "__void__" (* should not be used *)
@@ -114,7 +119,7 @@ and string_of_lit = function
   | LitKn(l) -> string_of_lambda l
   | LitVector(l) -> string_of_list string_of_expr l "<" ", " ">" true
   | LitArray(l) -> string_of_list string_of_expr l "[" ", " "]" true
-  | LitStruct(id, l) -> id ^ string_of_list string_of_struct_field l "{" ";\n" "}" true
+  | LitStruct(id, l) -> string_of_access_list id ^ string_of_list string_of_struct_field l "{" ";\n" "}" true
 
 and string_of_expr = function
  | Lit l -> string_of_lit l
