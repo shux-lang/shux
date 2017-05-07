@@ -353,7 +353,11 @@ let check_globals g =
                                  else StringMap.add name name m
                              in ignore(List.fold_left check_unique StringMap.empty s.fields);
                  let map_fields = function
-                   | Bind(m, t, id) -> (match t with
+                   | Bind(m, t, id) -> if VarMap.mem (s.sname ^ "_" ^ id) tr_env.scope then
+                                          let err_msg = "Namespace/struct field contention for struct " 
+                                                        ^ s.sname ^ " and field " ^ id in raise(Failure err_msg)
+                                       else
+                                       (match t with
                                            | Array(t, i) -> (match i with
                                                | Some i -> (id,t)
                                                | None -> let err_msg = "Array " ^ id ^ " initialized with no fixed " 
