@@ -5,7 +5,7 @@ type typ =
   | Float
   | String
   | Bool
-  | Struct of string (* struct identifier *)
+  | Struct of string list (* struct identifier *)
   | Array of typ * int option
   | Vector of int (* number of elements in vector *)
   | Ptr
