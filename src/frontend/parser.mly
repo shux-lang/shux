@@ -272,7 +272,7 @@ typ:
   | unit_t                                  { $1 }
 
 unit_t:
-  | STRUCT ID                               { Struct($2) } /* user defined structs */
+  | STRUCT id_ns                            { Struct($2) } /* user defined structs */
   | primitive_t                             { $1 }
 
 primitive_t:
@@ -306,8 +306,8 @@ lit:
   | INT_LIT                                 { LitInt($1) }
 
 struct_lit:  
-  | ID LBRACE struct_lit_fields RBRACE         { LitStruct($1, $3) }
-  | ID LBRACE RBRACE                           { LitStruct($1, []) }
+  | id_ns LBRACE struct_lit_fields RBRACE   { LitStruct($1, $3) }
+  | id_ns LBRACE RBRACE                     { LitStruct($1, []) }
 
 struct_lit_fields:
   | struct_lit_field SEMI struct_lit_fields { $1::$3 }
@@ -331,3 +331,6 @@ lit_elements:
 /* Type wrappers */
 id:
   | ID                                      { Id($1) }
+id_ns:
+  | ID DOT id_ns                            { $1::$3 }
+  | ID                                      { [$1] }
