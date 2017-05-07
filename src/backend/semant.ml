@@ -239,6 +239,12 @@ and check_expr tr_env expr =
                                 | _ -> raise (Failure "Access needs to be to an
                                                       ID")) 
           in
+
+         (* check if namespace *) 
+          print_string (fname ^ "_" ^ str);
+          if VarMap.mem (fname ^ "_" ^ str) tr_env.scope
+			    then let x = List.hd (VarMap.find (fname ^ "_" ^ str) tr_env.scope) in x.var_type else
+         (* check if struct *) 
           let t1 = check_expr tr_env id in
           (match t1 with
              | Struct(id) -> if VarMap.mem id tr_env.structs
@@ -472,6 +478,7 @@ let check_functions functions run_env =
 (* entry point *) 
 let check (ns, globals, functions) = 
 	let flat_ns = flatten_ns ns in
-	let global_env = check_globals (globals @ (fst flat_ns)) in
+  let globs_with_ns = (fst flat_ns) @ globals in 
+	let global_env = check_globals globs_with_ns in
   ignore (check_functions (functions @ (snd flat_ns)) global_env);
 	([], globals @ fst flat_ns, functions @ snd flat_ns)
