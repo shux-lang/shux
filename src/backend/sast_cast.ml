@@ -84,29 +84,36 @@ let sast_to_cast let_decls f_decls =
       *)
     let rec walk_m expr =
       [CStmtDud]
-    and assign ass typ =
-      let unit_assign =
-        let rec tr = function
-          | SId(t, n, s) -> CId(t, n)
-          | SAccess(t, e, f) -> CAccess(t, tr e, f)
-          | SBinop(t, l, SBinopPtr SIndex, r) -> CBinop(t, tr l, CBinopPtr SIndex, tr r)
-          | _ -> assert false (* not an l-value *)
-        in let fold_assign r l =
+    and lvalue_tr ass typ =
+      let rec tr = function
+        | SId(t, n, s) -> CId(t, n)
+        | SAccess(t, e, f) -> CAccess(t, tr e, f)
+        | SBinop(t, l, SBinopPtr SIndex, r) -> CBinop(t, tr l, CBinopPtr SIndex, tr r)
+        | _ -> assert false (* not an l-value *)
+
+      in let unit_assign =
+        let fold_assign r l =
           CAssign(typ, tr l, r)
         in CExpr(typ, List.fold_left fold_assign (CBlockVal typ) ass)
+
       in let array_assign t n =
-        CStmtDud
+        let dud fn = ()
+        in CLoop(t, CLit(SInt, (CLitInt n)), CStmtDud)
+        (* TODO: roughly, CLoop(t, n, ass) with shit to make the types work *)
+
       in let struct_assign i b =
         CStmtDud
+
       in match typ with
-        | SArray(t, n) -> array_assign t n
+        | SArray(t, Some n) -> array_assign t n
+        | SArray(t, None) -> assert false (* this should not be allowed? *)
         | SStruct(id, bs) -> struct_assign id bs
         | SPtr | SVoid -> assert false
         | _ -> unit_assign
 
     and walk_l ass typ = function
       | SAssign(t, l, r) -> walk_l (l :: ass) typ r
-      | e -> CBlock(typ, assign ass typ :: walk_m e)
+      | e -> CBlock(typ, lvalue_tr ass typ :: walk_m e)
 
     and walk_stmt (e, t) = walk_l [] t e
 
