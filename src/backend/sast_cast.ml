@@ -83,10 +83,10 @@ let sast_to_cast let_decls f_decls =
       | Some(r, t) -> [CReturn(Some (t, walk_stmt (r, t)))]
       | None -> [CReturn None]
 
-    in CFnDecl { cfname = kn.skname; cret_typ = kn.skret_typ;
+    in [ CFnDecl { cfname = kn.skname; cret_typ = kn.skret_typ;
                   cformals = kn.skformals;
                   clocals = kn.sklocals;
-                  cbody = List.map walk_stmt kn.skbody @ walk_ret kn.skret_expr }
+                  cbody = List.map walk_stmt kn.skbody @ walk_ret kn.skret_expr } ]
 
   in let walk_kn kn =
      kn_to_fn {kn with skname = prefix_kn kn.skname }
@@ -159,13 +159,13 @@ let sast_to_cast let_decls f_decls =
         skbody = inc_cnt :: List.map lookback gn.sgbody; 
         skret_expr = map_opt lookback gn.sgret_expr }
 
-    in [ defn_cstruct; kn_to_fn gn_to_kn ]
+    in defn_cstruct :: kn_to_fn gn_to_kn
 
   in let walk_fns f_decls =
     let rec walk = function
       | [] -> []
       | SGnDecl(g)::t -> let r = walk_gn g in r @ walk t
-      | SKnDecl(k)::t -> let r = walk_kn k in r :: walk t
+      | SKnDecl(k)::t -> let r = walk_kn k in r @ walk t
     in walk f_decls
   in let walk_static let_decls =
     let interp_expr = function (* TODO: write interpretor for compile-time evaluation *)
