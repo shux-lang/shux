@@ -92,14 +92,16 @@ let sast_to_cast let_decls f_decls =
         | _ -> assert false (* not an l-value *)
 
       in let unit_assign =
-        let fold_assign r l =
+        let fold_ass r l =
           CAssign(typ, tr l, r)
-        in CExpr(typ, List.fold_left fold_assign (CBlockVal typ) ass)
+        in CExpr(typ, List.fold_left fold_ass (CBlockVal typ) ass)
 
       in let array_assign t n =
-        let dud fn = ()
-        in CLoop(t, CLit(SInt, (CLitInt n)), CStmtDud)
-        (* TODO: roughly, CLoop(t, n, ass) with shit to make the types work *)
+        let index_curr t a = CBinop(t, a, CBinopPtr SIndex, CLoopCtr)
+        in let get_val = index_curr t (CBlockVal t)
+        in let fold_ass r l =
+          CAssign(t, index_curr t (tr l), r)
+        in CLoop(t, CLit(SInt, (CLitInt n)), CExpr(t, List.fold_left fold_ass get_val ass))
 
       in let struct_assign i b =
         CStmtDud
