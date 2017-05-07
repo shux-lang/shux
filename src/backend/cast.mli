@@ -38,8 +38,25 @@ and cexpr =
 and cstmt =
   | CExpr of ctyp * cexpr
   | CBlock of ctyp * cstmt list
+(*  ctyp tmp; { /* push tmp to BStack */
+ *    cstmt ...
+ *    CBlockVal := tmp /* peek BStack */
+ *  }
+ *  /* pop BStack */
+ *)
   | CLoop of ctyp * cexpr (* int *) * cstmt
-  | CReturn of ctyp * cstmt
+(*  int cond = cexpr;
+ *  int ctr;
+ *  /* push (ctr, cond) to LStack */
+ *  for (ctr = 0; ctr < cexpr; ctr++) {
+ *    cstmt
+ *    CLoopCtr := ctr /* fst (peek LStack) */
+ *  }
+ *  /* pop LStack */
+ *)
+  | CReturn of ctyp * cstmt option
+(* return cstmt
+ *)
   | CStmtDud
 
 type cfn_decl = {
