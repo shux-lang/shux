@@ -3,7 +3,7 @@ type lltyp =
   | LLInt (* i32 *)
   | LLFloat (* double_type *)
   | LLConstString (* name and content, only used for representing strings, simply i8* *)
-  | LLArray of lltyp * int
+  | LLArray of lltyp * int option
   | LLStruct of string
   | LLVoid (* only used for declaring function types *)
 

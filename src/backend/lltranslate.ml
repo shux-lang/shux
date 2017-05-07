@@ -24,31 +24,49 @@ let translate structs funcs =
       LLRegLabel (typ, str) -> typ
     | LLRegLit (typ, lit) -> typ in
 
-  let rec lltyp_of = function
-      LLBool -> i1_t
-    | LLInt  -> i32_t
-    | LLFloat -> L.double_type the_context
-    | LLConstString -> str_t
-    | LLVoid -> void_t
-    | LLArray (typ, len) -> L.array_type (lltyp_of typ) len
-    | LLStruct str -> i1_t
+  (* Define all the structs *)
+
+  let rec lleasytyp_of = function (* TODO compromise *)
+        LLBool -> i1_t
+      | LLInt  -> i32_t
+      | LLFloat -> L.double_type the_context
+      | LLConstString -> str_t
+      | LLVoid -> void_t
+      | LLArray (typ, len) ->
+         (match len with
+            Some real_len -> L.array_type (lleasytyp_of typ) real_len
+          | None -> assert false
+         )
+      | LLStruct str -> i1_t
   in
 
-  let combine lit = lltyp_of (extract_type lit) in
-
-  (* Define all the structs *)
   let define_structs = (* a map from struct name to struct type *)
-    let define_struct map struc=
+    let define_struct map struc =
       let (struct_name, typelist) = struc in
       let struct_typ = L.named_struct_type the_context struct_name in
-      ignore (L.struct_set_body struct_typ (Array.of_list (List.map lltyp_of typelist)) false);
+      ignore (L.struct_set_body struct_typ (Array.of_list (List.map lleasytyp_of typelist)) false);
       StringMap.add struct_name struct_typ map
     in
     List.fold_left define_struct StringMap.empty structs
   in
 
+  let rec lltyp_of = function (* TODO compromise *)
+    | LLStruct str -> StringMap.find str define_structs
+    | a -> lleasytyp_of a
+  in
+
   let get_struct_by_name struct_name =
-    StringMap.find struct_name define_structs in
+      StringMap.find struct_name define_structs
+  in
+
+  let combine lit =
+    let llast_typ = extract_type lit in
+    (match llast_typ with
+       LLStruct str -> L.pointer_type (lltyp_of llast_typ)
+     | LLArray (typ, len) -> L.pointer_type (lltyp_of typ)
+     | _ -> lltyp_of llast_typ
+    )
+  in
 
   (* Define the printf function *)
   let printf_t = L.var_arg_function_type i32_t [| str_t |] in
@@ -84,9 +102,19 @@ let translate structs funcs =
       let build_formals = (* this is a map from formal name to its stack ptr *)
         let build_formal map formal_def formal_param =
           let (formal_type,formal_name) = get_reg_typ_name formal_def in
-          let formal_ptr = L.build_alloca (lltyp_of formal_type) formal_name builder in
-          ignore(L.build_store formal_param formal_ptr builder);
-          StringMap.add formal_name formal_ptr map in
+          (match formal_type with
+             LLArray (typ, len) ->
+             let double_ptr = L.build_alloca (L.type_of formal_param) "alloc_ptr_arr_formal" builder in
+             ignore(L.build_store formal_param double_ptr builder);
+             StringMap.add formal_name double_ptr map
+           | LLStruct struct_name ->
+              let double_ptr = L.build_alloca (L.type_of formal_param) "alloc_ptr_struct_formal" builder in
+              ignore(L.build_store formal_param double_ptr builder);
+              StringMap.add formal_name double_ptr map
+           | _ -> let formal_ptr = L.build_alloca (lltyp_of formal_type) formal_name builder in
+                  ignore(L.build_store formal_param formal_ptr builder);
+                  StringMap.add formal_name formal_ptr map
+          ) in
         List.fold_left2 build_formal StringMap.empty func.llfformals formals_list
       in
 
