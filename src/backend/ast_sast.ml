@@ -47,8 +47,8 @@ and to_sbin_op iorf = function
 | LogOr -> SBinopBool SLogOr
 | Filter -> SBinopFn SFilter
 | Map -> SBinopFn SMap
-| For -> SBinopFn SFor
-| Do -> SBinopFn SDo
+| For -> SBinopGn SFor
+| Do -> SBinopGn SDo
 | Index -> SBinopPtr SIndex
 
 and get_styp_from_sexpr = function
@@ -128,8 +128,8 @@ let st1 = get_sexpr senv e1 in (match bin_op with
 | Map -> SBinop(SArray(get_styp_from_sexpr (get_sexpr senv e2), None),
 											 st1, SBinopFn SMap, get_sexpr senv e2)
 | Index -> SBinop(get_styp_from_sexpr st1, st1, SBinopPtr SIndex, get_sexpr senv e2)
-| For -> SBinop(SArray(get_styp_from_sexpr (get_sexpr senv e2), None), st1, SBinopFn SFor, get_sexpr senv e2)
-| Do -> SBinop(get_styp_from_sexpr (get_sexpr senv e2), st1, SBinopFn SDo, get_sexpr senv e2))
+| For -> SBinop(SArray(get_styp_from_sexpr (get_sexpr senv e2), None), st1, SBinopGn SFor, get_sexpr senv e2)
+| Do -> SBinop(get_styp_from_sexpr (get_sexpr senv e2), st1, SBinopGn SDo, get_sexpr senv e2))
 | Assign(e1, e2) -> let st1 = get_sexpr senv e1 in 
 								SAssign(get_styp_from_sexpr st1, st1, get_sexpr senv e2)
 | Call(s, elist) -> (match s with
