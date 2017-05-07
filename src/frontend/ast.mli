@@ -56,7 +56,7 @@ and expr =
   | Lookback of string * int
   | Binop of expr * bin_op * expr
   | Assign of expr * expr
-  | Call of string option * expr list
+  | Call of string list option * expr list
   | Uniop of un_op * expr
   | LookbackDefault of expr * expr
   | Cond of expr * expr * expr (* technically Ternop *)

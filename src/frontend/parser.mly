@@ -6,7 +6,7 @@
 %token SEMI COMMA DOTDOT DOT PLUS MINUS TIMES DIVIDE MOD EXPONENT
 %token ASSIGN ADD_ASN SUB_ASN MUL_ASN DIV_ASN MOD_ASN EXP_ASN
 %token LOG_AND LOG_OR LOG_NOT LT GT EQ NEQ LEQ GEQ
-%token QUES COLON FILTER MAP FUNC IF THEN ELIF ELSE FOR WHILE DO UNDERSCORE
+%token QUES COLON FILTER MAP ARROW IF THEN ELIF ELSE FOR WHILE DO UNDERSCORE
 %token NS GN KN STRUCT LET EXTERN VAR INT_T FLOAT_T STRING_T BOOL_T VECTOR_T PTR_T
 
 %token <bool> BOOL_LIT
@@ -128,9 +128,9 @@ kn:
   | lambda                                  { Lit($1) }
 
 lambda:
-  | LPAREN formals RPAREN FUNC 
+  | LPAREN formals RPAREN ARROW 
     LBRACE statements ret_expr RBRACE       { LitKn({lformals = $2; lbody = List.rev $6; lret_expr = $7}) } 
-  | LPAREN formals RPAREN FUNC 
+  | LPAREN formals RPAREN ARROW 
     LBRACE ret_expr RBRACE                  { LitKn({lformals = $2; lbody = []; lret_expr = $6}) } 
 
 iter_expr:
@@ -328,5 +328,5 @@ lit_elements:
   | expr                                    { [$1] }
 
 id_ns:
-  | ID FUNC id_ns                           { $3::$1 }
+  | ID ARROW id_ns                          { $3::$1 }
   | ID                                      { [$1] }
