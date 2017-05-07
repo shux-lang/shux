@@ -25,8 +25,8 @@ type clit =
 and cexpr =
   | CLit of ctyp * clit
   | CId of ctyp * string
-  | CLoopCurr of ctyp           (* access the value yielded by an iterator *)
-  | CStVal of ctyp              (* assign the value of stmt *)
+  | CLoopCtr                    (* access the counter inside a CLoop *)
+  | CBlockVal of ctyp           (* access the temp value of a CBlock *)
   | CBinop of ctyp * cexpr * cbin_op * cexpr
   | CAccess of ctyp * cexpr * string
   | CAssign of ctyp * cexpr * cexpr
@@ -37,9 +37,26 @@ and cexpr =
 
 and cstmt =
   | CExpr of ctyp * cexpr
-  | CBlock of ctyp * cstmt list * cexpr
-  | CLoop of ctyp * cexpr (* int *) * cstmt list * cexpr
-  | CReturn of ctyp * cstmt
+  | CBlock of ctyp * cstmt list
+(*  ctyp tmp; { /* push tmp to BStack */
+ *    cstmt ...
+ *    CBlockVal := tmp /* peek BStack */
+ *  }
+ *  /* pop BStack */
+ *)
+  | CLoop of ctyp * cexpr (* int *) * cstmt
+(*  int cond = cexpr;
+ *  int ctr;
+ *  /* push (ctr, cond) to LStack */
+ *  for (ctr = 0; ctr < cexpr; ctr++) {
+ *    cstmt
+ *    CLoopCtr := ctr /* fst (peek LStack) */
+ *  }
+ *  /* pop LStack */
+ *)
+  | CReturn of ctyp * cstmt option
+(* return cstmt
+ *)
   | CStmtDud
 
 type cfn_decl = {
