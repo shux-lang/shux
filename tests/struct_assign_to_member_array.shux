@@ -3,7 +3,7 @@ struct foo {
 }
 
 kn main() int {
-   struct foo my_foo = foo { .a=[2,3] };
-   my_foo.a = 5; /* this should be allowed */
+   var struct foo my_foo = foo { .a=[2,3] };
+   my_foo.a = [1,2]; /* this should be allowed */
    0
 }
