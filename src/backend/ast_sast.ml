@@ -24,13 +24,12 @@ let rec to_styp senv = function
         | Vector(i) -> SArray(SFloat, Some i)
         | Struct(s) -> let sstruct_binds = (VarMap.find s senv.sstruct_map).ssfields 
                                            in SStruct(s, sstruct_binds)
-        | Array(t,i) -> let n_styp = to_styp senv (Some t) in
-                        SArray(n_styp, i)
+        | Array(t,i) -> let n_styp = to_styp senv (Some t) in  SArray(n_styp, i)
         | Ptr -> SPtr
         | Void -> SVoid)
     | None -> SVoid
 
-    (* iorf: true for int, false for float *) 
+(* iorf: true for int, false for float *) 
 and to_sbin_op iorf = function
   | Add -> if iorf then SBinopInt SAddi else SBinopFloat SAddf 
   | Sub -> if iorf then SBinopInt SSubi else SBinopFloat SSubf
@@ -64,13 +63,14 @@ and get_styp_from_sexpr = function
     | SLookbackDefault(s,_,_,_) -> s
     | SUnop(s,_,_) -> s
     | SCond(s,_,_,_) -> s
+    | SExprDud -> SVoid (* Duuud *) 
 
 and to_slit senv = function
     | LitInt(i) -> SLitInt(i)
     | LitFloat(f) -> SLitFloat(f)
     | LitBool(b) -> SLitBool(b)
     | LitStr(s) -> SLitStr(s)
-    | LitKn(l) -> SLitKn(to_slambda l)
+    | LitKn(l) -> SLitKn(to_slambda senv l)
     | LitVector(el) -> SLitArray(List.map (get_sexpr senv) el)
     | LitArray(e) -> SLitArray(List.map (get_sexpr senv) e)
     | LitStruct(s,e) -> SLitStruct("aa", []) (*TODO: *) 
@@ -84,8 +84,13 @@ and slit_to_styp = function
     | SLitArray(elist) -> get_styp_from_sexpr (List.hd elist)
     | SLitStruct(name, slist) -> SStruct(name, []) (*TODO: Struct literal type translation *) 
 
+and to_sunop iorf = function
+    | LogNot -> SLogNot
+    | Neg -> if iorf then SNegi else SNegf
+    | Pos -> raise (Failure "Pos isnt supposed to exist in SAST") 
+
 (*TODO: *)
-and to_slambda l = 
+and to_slambda senv l = 
     { slret_typ = SInt; slformals = []; sllocals = []; slbody = [];
       slret_expr = (SLit(SInt, SLitInt(1)), SInt)} 
 
@@ -93,12 +98,13 @@ and mut_to_scope = function
     | Mutable -> SLocalVar
     | Immutable -> SLocalVal
 
+and get_sfn_name = function
+    | SGnDecl(g) -> g.sgname
+    | SKnDecl(k) -> k.skname
+
+
 and to_sbind env = function
     | Bind(m, t, s) -> SBind(to_styp env (Some t), s, mut_to_scope m)
-
-and translate_extern env ext
-    = { sxalias = ext.xalias; sxfname = ext.xfname; 
-        sxret_typ = to_styp env ext.xret_typ; sxformals = List.map (to_sbind env) ext.xformals }
 
 and translate_struct_defs env struct_def = 
     {ssname  = struct_def.sname; ssfields = List.map (to_sbind env) struct_def.fields }
@@ -115,26 +121,144 @@ and get_sexpr senv = function
             let sbinop = (match get_styp_from_sexpr st1 with
                   | SInt -> to_sbin_op true bin_op
                   | SFloat -> to_sbin_op false bin_op
-                  | _ -> raise (Failure "Integer/Float binop on wrong type")) in 
+                  | _ -> raise (Failure "Not Integer/Float type on binop")) in 
             SBinop(get_styp_from_sexpr st1, st1, sbinop, get_sexpr senv e2)
-        | _ -> raise(Failure "u suxorz"))
+        | LogAnd | LogOr -> SBinop(SBool, st1, to_sbin_op true bin_op, get_sexpr senv e2)
+        | Filter -> SBinop(SArray(get_styp_from_sexpr st1, None), st1, SBinopFn SFilter, get_sexpr senv e2)
+        | Map -> SBinop(SArray(get_styp_from_sexpr (get_sexpr senv e2), None),
+                               st1, SBinopFn SMap, get_sexpr senv e2)
+        | Index -> SBinop(get_styp_from_sexpr st1, st1, SBinopPtr SIndex, get_sexpr senv e2)
+        | For -> SBinop(SArray(get_styp_from_sexpr (get_sexpr senv e2), None), st1, SBinopFn SFor, get_sexpr senv e2)
+        | Do -> SBinop(get_styp_from_sexpr (get_sexpr senv e2), st1, SBinopFn SDo, get_sexpr senv e2))
+    | Assign(e1, e2) -> let st1 = get_sexpr senv e1 in 
+                        SAssign(get_styp_from_sexpr st1, st1, get_sexpr senv e2)
+    | Call(s, elist) -> (match s with
+        | Some s -> let sexpr_list = List.map (get_sexpr senv) elist
+                    in let call_formals = List.map (fun x -> (x, get_styp_from_sexpr x)) sexpr_list
+            in let f = VarMap.find s senv.sfn_decl in (match f with 
+            | SGnDecl(gn) -> SGnCall(gn.sgret_typ, s, call_formals)
+            | SKnDecl(kn) -> SKnCall(kn.skret_typ, s, call_formals))
+        | None -> SGnCall(SInt, "_", []))
+    | Uniop(u, e) -> (match u with
+        | LogNot -> let st1 = get_sexpr senv e in 
+                    SUnop(get_styp_from_sexpr st1, to_sunop true u, st1)
+        | Neg -> let st1 = get_sexpr senv e in 
+                 let sunop = (match get_styp_from_sexpr st1 with
+                     | SInt -> to_sunop true u
+                     | SFloat -> to_sunop false u
+                     | _ -> raise (Failure "Not Integer/Float type on unnop"))
+                 in SUnop(get_styp_from_sexpr st1, sunop, st1)
+        | Pos -> get_sexpr senv e)
+    | LookbackDefault(e1, e2) -> 
+                    let se1 = get_sexpr senv e1
+                    and se2 = get_sexpr senv e2
+                    and i = (match e1 with
+        | Lookback(str, i) -> i
+        | _ -> raise (Failure "LookbackDefault not preceded by Lookback expression"))
+        in SLookbackDefault(get_styp_from_sexpr se1, i, se1, se2)
+    | Cond(e1, e2, e3) -> 
+                    let se1 = get_sexpr senv e1
+                    and se2 = get_sexpr senv e2
+                    and se3 = get_sexpr senv e3
+                    in SCond(get_styp_from_sexpr se2, se1, se2, se3)
+    | Access(e, str) -> let se = get_sexpr senv e in 
+                        SAccess(get_styp_from_sexpr se, se, str)
 
-    | _ -> raise (Failure "u sux")
 
 
-and translate_letdecl senv = function
-    | LetDecl(b,e) -> SLetDecl(to_sbind senv b, get_sexpr senv e)
-    | StructDef(s) -> SStructDef(translate_struct_defs senv s)
-    | ExternDecl(e) -> SExternDecl(translate_extern senv e)
+(* this translates letdecls and also builds an environment for further translation *) 
+and translate_letdecl senv globals = 
+    let global_mapper (sglobals, senv) = function
+        | LetDecl(b,e) -> 
+                    let name = get_bind_name b
+                    and st = to_styp senv (Some (get_bind_typ b))
+                    in let new_bind = SBind(st, name, SGlobal)
+                    in let new_var = { id = name; scope = SGlobal;
+                                       svar_type = st }
+                    in let new_varmap = 
+                        if VarMap.mem name senv.variables
+                            then let varlist = VarMap.find name senv.variables
+                                 in VarMap.add name (new_var::varlist) senv.variables
+                            else VarMap.add name [new_var] senv.variables
+                    in let new_env = { variables = new_varmap; sfn_decl = senv.sfn_decl; 
+                                       sstruct_map = senv.sstruct_map } 
+                    in (SLetDecl(new_bind, get_sexpr senv e)::sglobals, new_env)
+        | StructDef(s) -> 
+                    let to_struct_binds senv b = 
+                            let name = get_bind_name b
+                            and t = get_bind_typ b
+                            in SBind(to_styp senv (Some t), name, SStructField)
+                    in let sdef  = {ssname = s.sname; ssfields = List.map (to_struct_binds senv) s.fields}
+                    in let new_structs = VarMap.add s.sname sdef senv.sstruct_map
+                    in let new_env = { variables = senv.variables; sfn_decl = senv.sfn_decl; 
+                                       sstruct_map = new_structs }
+                    in ((SStructDef sdef)::sglobals, new_env) 
+        | ExternDecl(e) -> 
+                    let sret_type = to_styp senv e.xret_typ
+                    and new_formals = List.map (to_sbind senv) e.xformals (* they are all immutables *)
+                    in let new_extern = { sxalias = e.xalias; 
+                                          sxfname = e.xfname;
+                                          sxret_typ = sret_type;
+                                          sxformals = new_formals; }
+
+                    in let new_func = { skname = e.xalias; skret_typ = sret_type;
+                                        skformals = new_formals; sklocals = [];
+                                        skbody = []; skret_expr = None } 
+                    in let new_fnmap = VarMap.add new_func.skname (SKnDecl new_func) senv.sfn_decl
+                    in let new_env = { variables = senv.variables; sfn_decl = new_fnmap; 
+                                       sstruct_map = senv.sstruct_map }
+                    in ((SExternDecl new_extern)::sglobals, new_env)
+    in let (sglob, new_env) = List.fold_left global_mapper ([], senv) globals in (List.rev sglob, new_env)
+
+and translate_kn_decl senv kn = 
+    let name = kn.fname 
+    and ret_typ = to_styp senv kn.ret_typ
+    and knformals = List.map (fun (Bind(m,t,s)) -> SBind(to_styp senv (Some t), s, SLocalVal)) kn.formals
+    in let rec hoist_body (vdecls, local_exprs) = function
+        | [] -> (List.rev vdecls, List.rev local_exprs)
+        | VDecl(b,e)::tl -> (match e with 
+            | Some e -> let id = get_bind_name b
+                        in let asn = Assign(Id(id), e)
+                        in hoist_body (VDecl(b,Some e)::vdecls, asn::local_exprs) tl
+            | None -> hoist_body (VDecl(b,e)::vdecls, local_exprs) tl)
+        | Expr(e)::tl -> hoist_body (vdecls, e::local_exprs) tl
+    in let vdecl_to_local senv = function
+        | VDecl(b,e) -> to_sbind senv b
+        | Expr(e) -> raise (Failure "hoisting failed. vdecl_to_local should only accept VDecl") 
+    in let (vdecls, local_exprs) = hoist_body ([],[]) kn.body
+    in let klocals = List.map (vdecl_to_local senv) vdecls
+    in let body_intermediate = List.map (get_sexpr senv) local_exprs
+    in let kbody = List.map (fun x -> (x, get_styp_from_sexpr x)) body_intermediate
+    in (match kn.ret_expr with
+        | Some x -> let kret_expr = (get_sexpr senv x, ret_typ)
+                    in { skname = name; skret_typ = ret_typ; skformals = knformals;
+                         sklocals = klocals; skbody = kbody; skret_expr = Some kret_expr } 
+        | None -> { skname = name; skret_typ = ret_typ; skformals = knformals;
+                    sklocals = klocals; skbody = kbody; skret_expr = None })
+
+and translate_gn_decl senv gn = 
+    { sgname = ""; sgret_typ = SPtr; sgmax_iter = 0; sgformals = [];
+      sglocalvals = []; sglocalvars = []; sgbody = []; sgret_expr = (SExprDud, SPtr) } 
+
+and translate_fndecls senv sfn_decls = function
+    | [] -> List.rev sfn_decls
+    | hd::tl -> let translate_decl senv f = 
+               (match f.fn_typ with
+                   | Kn -> SKnDecl (translate_kn_decl senv f)
+                   | Gn -> SGnDecl (translate_gn_decl senv f))
+      in let new_fn = translate_decl senv hd
+      in let new_fnmap = VarMap.add (get_sfn_name new_fn) new_fn senv.sfn_decl
+      in let new_senv = { variables = senv.variables; sfn_decl = new_fnmap;
+                          sstruct_map = senv.sstruct_map } 
+      in translate_fndecls new_senv (new_fn::sfn_decls) tl
 
 let if_letdecls = function
     | LetDecl(b, e) -> true
     | _ -> false
 
-
 let empty_senv = { variables = VarMap.empty; sfn_decl = VarMap.empty;
                    sstruct_map = VarMap.empty; }
 
 let translate_to_sast (ns, globals, functions) = 
-    let let_decls = List.map (translate_letdecl empty_senv) globals in 
+    let (sglobals, senv) = translate_letdecl empty_senv globals in 
     (ns, globals, functions)
