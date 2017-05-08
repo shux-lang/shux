@@ -110,7 +110,7 @@ and to_sbind env = function
 and translate_struct_defs env struct_def = 
     {ssname  = struct_def.sname; ssfields = List.map (to_sbind env) struct_def.fields }
 
-(*TODO: how the fuck is this going to work ayy lmao *) 
+(* translate expr -> sexpr. uses senv for bookkeeping *)
 and get_sexpr senv = function
     | Lit(a) -> let sliteral = to_slit senv a in SLit(slit_to_styp sliteral, sliteral)
     | Id(ns) -> let s = flatten_ns_list ns
@@ -213,12 +213,14 @@ and translate_letdecl senv globals =
 						in ((SExternDecl new_extern)::sglobals, new_env)
     in let (sglob, new_env) = List.fold_left global_mapper ([], senv) globals in (List.rev sglob, new_env)
 
+(* used in kn and fn translations *) 
+and translate_fn_formals formals senv = 
+   List.map (fun (Bind(m,t,s)) -> SBind(to_styp senv (Some t), s, SLocalVal)) formals
+
 and translate_kn_decl senv kn = 
     let name = kn.fname 
     and ret_typ = to_styp senv kn.ret_typ
-    and knformals = List.map 
-       (fun (Bind(m,t,s)) -> SBind(to_styp senv (Some t), s, SLocalVal)) 
-       kn.formals
+    and knformals = translate_fn_formals kn.formals senv
     in let rec hoist_body (vdecls, local_exprs) = function
         | [] -> (List.rev vdecls, List.rev local_exprs)
         | VDecl(b,e)::tl -> (match e with 
@@ -242,6 +244,23 @@ and translate_kn_decl senv kn =
 				        		sklocals = klocals; skbody = kbody; skret_expr = None })
 
 and translate_gn_decl senv gn = 
+    let name = gn.fname
+    and ret_typ = to_styp senv gn.ret_typ
+    and gnformals = translate_fn_formals gn.formals senv
+    in let rec hoist_body (vals, vars, exprs) = function
+        | [] -> (List.rev vals, List.rev vars, List.rev exprs)
+        | VDecl(b,e)::tl -> let mut = get_bind_mut b in 
+            (match e with
+              | Some e -> let id = get_bind_name b
+                          in let asn = Assign(Id([id]), e)
+                          in if mut = Mutable then
+                               hoist_body (vals, VDecl(b, Some e)::vars, asn::exprs) tl
+                          else hoist_body (VDecl(b, Some e)::vals, vars, asn::exprs) tl
+             | None -> if mut = Mutable then
+                            hoist_body(vals, VDecl(b, e)::vars, exprs) tl
+                       else hoist_body(VDecl(b, e)::vals, vars, exprs) tl)
+        | Expr(e)::tl -> hoist_body (vals, vars, e::exprs) tl
+    in
 { sgname = ""; sgret_typ = SPtr; sgmax_iter = 0; sgformals = [];
       sglocalvals = []; sglocalvars = []; sgbody = []; sgret_expr = Some (SExprDud, SPtr) } 
 
