@@ -214,30 +214,32 @@ let global_mapper (sglobals, senv) = function
 in let (sglob, new_env) = List.fold_left global_mapper ([], senv) globals in (List.rev sglob, new_env)
 
 and translate_kn_decl senv kn = 
-let name = kn.fname 
-and ret_typ = to_styp senv kn.ret_typ
-and knformals = List.map (fun (Bind(m,t,s)) -> SBind(to_styp senv (Some t), s, SLocalVal)) kn.formals
-in let rec hoist_body (vdecls, local_exprs) = function
-| [] -> (List.rev vdecls, List.rev local_exprs)
-| VDecl(b,e)::tl -> (match e with 
-		| Some e -> let id = get_bind_name b
-								in let asn = Assign(Id([id]), e)
-								in hoist_body (VDecl(b,Some e)::vdecls, asn::local_exprs) tl
-		| None -> hoist_body (VDecl(b,e)::vdecls, local_exprs) tl)
-| Expr(e)::tl -> hoist_body (vdecls, e::local_exprs) tl
-in let vdecl_to_local senv = function
-| VDecl(b,e) -> to_sbind senv b
-| Expr(e) -> raise (Failure "hoisting failed. vdecl_to_local should only accept VDecl") 
-in let (vdecls, local_exprs) = hoist_body ([],[]) kn.body
-in let klocals = List.map (vdecl_to_local senv) vdecls
-in let body_intermediate = List.map (get_sexpr senv) local_exprs
-in let kbody = List.map (fun x -> (x, get_styp_from_sexpr x)) body_intermediate
-in (match kn.ret_expr with
-| Some x -> let kret_expr = (get_sexpr senv x, ret_typ)
-						in { skname = name; skret_typ = ret_typ; skformals = knformals;
-								 sklocals = klocals; skbody = kbody; skret_expr = Some kret_expr } 
-| None -> { skname = name; skret_typ = ret_typ; skformals = knformals;
-						sklocals = klocals; skbody = kbody; skret_expr = None })
+    let name = kn.fname 
+    and ret_typ = to_styp senv kn.ret_typ
+    and knformals = List.map 
+       (fun (Bind(m,t,s)) -> SBind(to_styp senv (Some t), s, SLocalVal)) 
+       kn.formals
+    in let rec hoist_body (vdecls, local_exprs) = function
+        | [] -> (List.rev vdecls, List.rev local_exprs)
+        | VDecl(b,e)::tl -> (match e with 
+		        | Some e -> let id = get_bind_name b
+						     		    in let asn = Assign(Id([id]), e)
+								        in hoist_body (VDecl(b,Some e)::vdecls, asn::local_exprs) tl
+		        | None -> hoist_body (VDecl(b,e)::vdecls, local_exprs) tl)
+        | Expr(e)::tl -> hoist_body (vdecls, e::local_exprs) tl
+    in let vdecl_to_local senv = function
+        | VDecl(b,e) -> to_sbind senv b
+        | Expr(e) -> raise (Failure "hoisting failed. vdecl_to_local should only accept VDecl") 
+    in let (vdecls, local_exprs) = hoist_body ([],[]) kn.body
+    in let klocals = List.map (vdecl_to_local senv) vdecls
+    in let body_intermediate = List.map (get_sexpr senv) local_exprs
+    in let kbody = List.map (fun x -> (x, get_styp_from_sexpr x)) body_intermediate
+    in (match kn.ret_expr with
+        | Some x -> let kret_expr = (get_sexpr senv x, ret_typ)
+						        in { skname = name; skret_typ = ret_typ; skformals = knformals;
+								         sklocals = klocals; skbody = kbody; skret_expr = Some kret_expr } 
+        | None -> { skname = name; skret_typ = ret_typ; skformals = knformals;
+				        		sklocals = klocals; skbody = kbody; skret_expr = None })
 
 and translate_gn_decl senv gn = 
 { sgname = ""; sgret_typ = SPtr; sgmax_iter = 0; sgformals = [];
