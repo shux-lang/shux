@@ -34,11 +34,11 @@ and cexpr =
   | CAssign of ctyp * cexpr * cexpr
   | CCall of ctyp * string * cstmt list
   | CUnop of ctyp * cun_op * cexpr
-  | CCond of ctyp * cexpr * cexpr * cexpr
   | CExprDud
 
 and cstmt =
   | CExpr of ctyp * cexpr
+  | CCond of ctyp * (* if *) cstmt * (* then *) cstmt * (* else *) cstmt * (* merge *) cstmt
   | CPushAnon of ctyp * cstmt
 (*  ctyp tmp; { /* push tmp to AStack */
  *    cstmt where CPeekAnon := tmp /* peek AStack */

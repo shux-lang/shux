@@ -41,8 +41,10 @@ let sast_to_cast let_decls f_decls =
         let rec walk_r acc rtyp rexpr =
           let emit t v = (* set sanon register to the value of v *)
             CExpr(t, CAssign(t, sanon, v))
-          in let push_anon t e last =  (* push new sanon of type t onto stack, walk e *)
+          in let push_anon t e last =  (* push new sanon of type t onto stack, walk e, then do last *)
             CPushAnon(t, CBlock(List.rev (last :: walk_anon e t (CPeekAnon t)))) (* TODO: check order *)
+          in let push_anon_nop t e =  (* push new sanon of type t onto stack, walk e *)
+            CPushAnon(t, CBlock(List.rev (walk_anon e t (CPeekAnon t)))) (* TODO: check order *)
           in let walk_primitive =
             let lit t l =
               let tr_lit = match l with
@@ -69,14 +71,14 @@ let sast_to_cast let_decls f_decls =
 
             in let walk_binop t l o r =
               let tr_binop = match o with
-                  | SBinopInt o -> CBinopInt o
-                  | SBinopFloat o -> CBinopFloat o
-                  | SBinopBool o -> CBinopBool o
-
-                  (* change of type *)
-                  | SBinopPtr o -> CBinopPtr o
-                  | SBinopGn SDo -> CBinopPtr SIndex (* do x y() := (for x y())[x-1] *)
-                  | _ -> assert false
+                (* same type *)
+                | SBinopInt o -> CBinopInt o
+                | SBinopFloat o -> CBinopFloat o
+                | SBinopBool o -> CBinopBool o
+                (* change of type *)
+                | SBinopPtr o -> CBinopPtr o
+                | SBinopGn SDo -> CBinopPtr SIndex (* do x y() := (for x y())[x-1] *)
+                | _ -> assert false
 
               in let primitive = (* operators whose temp value don't change type *)
                 let acc = walk_r acc t l (* leaves sanon register coontaining result of l *)
@@ -109,14 +111,27 @@ let sast_to_cast let_decls f_decls =
               in let eval_struct = push_anon st_t e emit_access
               in eval_struct :: acc
 
+            in let walk_cond t iff the els =
+              let cond_t = styp_of_sexpr iff
+              in let cond_t = if cond_t=SBool then cond_t else assert false
+              in let eval_iff = push_anon_nop cond_t iff
+              in let eval_the = push_anon_nop cond_t the
+              in let eval_els = push_anon_nop cond_t els
+              in let eval_merge = CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t))
+              in let eval_cond = CCond(t, eval_iff, eval_the, eval_els, eval_merge)
+              in eval_cond :: acc
+
+            in let walk_call t i a =
+              acc
+
             in match rexpr with
               | SLit(t, l) -> lit t l
               | SId(t, n, _) -> id t n (* don't care about scope *)
               | SUnop(t, o, e) -> walk_unop t o e
               | SBinop(t, l, o, r) -> walk_binop t l o r
               | SAccess (t, e, s) -> walk_access t e s
-              | SCond(ty, i, t, e) -> assert false
-              | SKnCall(t, i, a) -> assert false
+              | SCond(t, iff, the, els) -> walk_cond t iff the els
+              | SKnCall(t, i, a) -> walk_call t i a
 
               (* requires new nested walk *)
               | SAssign(t, l, r) -> walk_assign t l r 
