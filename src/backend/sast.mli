@@ -56,7 +56,6 @@ type slit =
 and sexpr =
   | SLit of styp * slit
   | SId of styp * string * sscope
-  | SLoopCtr
   | SLookback of styp * string * int
   | SAccess of styp * sexpr * string
   | SBinop of styp * sexpr * sbin_op * sexpr
@@ -66,6 +65,7 @@ and sexpr =
   | SLookbackDefault of styp * int * sexpr * sexpr
   | SUnop of styp * sun_op * sexpr
   | SCond of styp * sexpr * sexpr * sexpr
+  | SLoopCtr (* CLoopCtr, useful for recursion *)
   | SExprDud
 
 and slambda = {

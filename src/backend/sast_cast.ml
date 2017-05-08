@@ -155,10 +155,10 @@ let sast_to_cast let_decls f_decls =
 
     let walk_stmt (e, t) = 
       let walk sexpr styp sanon =
-        let walk_m expr =
+        let walk_r rtyp rexpr =
           [ CStmtDud ]
 
-        in let walk_l typ expr =
+        in let walk_l ltyp lexpr =
           let rec lvalue_tr typ ass anon =
             let unit_assign =
               let rec tr = function
@@ -198,38 +198,30 @@ let sast_to_cast let_decls f_decls =
                 List.map translate for_each_field
               in CBlock translate_each_field
 
-              (*
-        let index_curr t a = CBinop(t, a, CBinopPtr SIndex, CLoopCtr)
-        in let get_val = index_curr t v
-        in let fold_ass r l =
-          CAssign(t, index_curr t (tr l), r)
-        in [ CLoop(t, CLit(SInt, (CLitInt n)), CExpr(t, List.fold_left fold_ass get_val ass)) ]
-*)
-
-
             in match typ with
               | SArray(t, Some n) -> array_assign t n
               | SArray(_, None) -> assert false (* this should not be allowed? *)
               | SStruct(i, b) -> struct_assign i b
               | SPtr | SVoid -> assert false
               | _ -> unit_assign
+
           in let rec walk ass = function
-            | SAssign(t, l, r) when t=typ -> walk (l :: ass) r
+            | SAssign(t, l, r) when t=ltyp -> walk (l :: ass) r
             | SAssign(_, _, _) -> assert false
-            | e -> lvalue_tr typ ass sanon :: walk_m e
-          in walk [] expr
+            | e -> lvalue_tr ltyp ass sanon :: walk_r ltyp e
+          in walk [] lexpr
 
         in walk_l styp sexpr
       in CPushAnon(t, CBlock(walk e t (CPeekAnon t)))
 
     in let walk_ret = function
-      | Some x -> [] 
-      | None -> []
+      | Some (e, t) -> CReturn (Some (t, (walk_stmt (e, t)))) 
+      | None -> CReturn None
 
     in let fn_decl kn = CFnDecl 
       { cfname = kn.skname; cret_typ = kn.skret_typ;
         cformals = kn.skformals; clocals = kn.sklocals;
-        cbody = List.map walk_stmt kn.skbody @ walk_ret kn.skret_expr }
+        cbody = List.rev (walk_ret kn.skret_expr :: List.map walk_stmt kn.skbody) }
 
     in let rec hoist_lambdas kn =
       let hoist n { slret_typ; slformals; sllocals; slbody; slret_expr } = hoist_lambdas
