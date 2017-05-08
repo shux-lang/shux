@@ -26,6 +26,7 @@ type var = {
 	id : string;
   mut : Ast.mut;
 	var_type : Ast.typ;
+	initialized : bool;
 }
 
 type trans_env = {
@@ -44,13 +45,20 @@ type trans_env = {
 		new_variables : var list;
 }
 
+let flatten_ns_list ns_list = 
+    let rec flatten_ns_rec flat = function
+        | [] -> flat
+        | hd::tl -> flatten_ns_rec (flat ^ "_" ^ hd) tl
+    in flatten_ns_rec (List.hd ns_list) (List.tl ns_list)
 
 let get_sfield_name = function
  | StructField(id, _ ) -> id
 
 let get_bind_typ = function
-   | Bind(_,t,_) -> t
-
+   | Bind(_,t,_) -> (match t with
+       | Struct(str_list) -> Struct([flatten_ns_list str_list])
+       | _ -> t)
+ 
 let get_bind_name = function
    | Bind(_,_,s) -> s
 
@@ -65,12 +73,22 @@ let compare_ast_typ l r = match(l,r) with
    | (Array(t1, None), Array(t2, Some i)) -> t1=t2
    | (l,r) -> l=r
 
-let flatten_ns_list ns_list = 
-    let rec flatten_ns_rec flat = function
-        | [] -> flat
-        | hd::tl -> flatten_ns_rec (flat ^ "_" ^ hd) tl
-    in flatten_ns_rec (List.hd ns_list) (List.tl ns_list)
+(* ensure that arrays are initialized properly when declared *) 
+let check_array_init = function
+    | Array(t,i) -> (match i with
+        | Some i -> true
+        | None -> raise (Failure "Arrays need to have sizes to be initialized."))
+    | _ -> true
 
+(* called within the assign expression to initialize variable in env *)
+let initialize_var name env = 
+    let var_list = VarMap.find name env.scope
+    in let var = List.hd var_list
+    in let new_var = { id = var.id; mut=var.mut; var_type = var.var_type;
+                   initialized = true; }
+    in let new_scope = VarMap.add name (new_var :: List.tl var_list) env.scope
+    in { scope = new_scope; structs = env.structs; fn_map = env.fn_map;
+         new_variables = env.new_variables } 
 (* check expression 
 tr_env: current translation environment
 expr: expression to be checked 
@@ -97,7 +115,7 @@ let rec  type_of_lit tr_env = function
                 else 
                     let err_msg = "Struct literal doesn't match struct defined" ^ 
                                   "as" ^ nid in raise(Failure err_msg)
-    else let err_msg = "Struct " ^ nid ^ "is not defined"
+    else let err_msg = "Struct " ^ nid ^ " is not defined"
                        in raise (Failure err_msg)
 
    | LitVector(l) -> let vector_check v = 
@@ -120,9 +138,14 @@ and check_expr tr_env expr =
 	match expr with
 	 | Lit(a) -> type_of_lit tr_env a
    | Id(nvar) -> let var = flatten_ns_list nvar in
-      if VarMap.mem var tr_env.scope
-			then let x = List.hd (VarMap.find var tr_env.scope) in x.var_type
-			else raise (Failure ("Variable " ^ var ^ " has not been declared"))
+      if VarMap.mem var tr_env.scope then
+          let found_var = List.hd (VarMap.find var tr_env.scope)
+          in if found_var.initialized 
+              then found_var.var_type
+          else 
+              raise (Failure ("Variable " ^ var ^ " has not been initialized"))
+			else 
+          raise (Failure ("Variable " ^ var ^ " has not been declared"))
    | Binop(e1, op, e2) -> 
       let t1 = check_expr tr_env e1 in
       let t2 = check_expr tr_env e2 in
@@ -183,8 +206,15 @@ and check_expr tr_env expr =
       | For -> Array(t2, None) (*For returns an array of the return type of gn *)
       | Do -> t2 (* Do simply returns the final value of the gn *))
    | Assign(e1, e2) -> 
+            (* need to short circuit the initialization checker here *)
         let match_typ exp1 exp2 = 
-            let t1 = check_expr tr_env exp1 and
+            let t1 = (match exp1 with
+                | Id(l) -> let flat_name = flatten_ns_list l
+                           in if VarMap.mem flat_name tr_env.scope
+                           then let var = List.hd (VarMap.find flat_name tr_env.scope)
+                           in var.var_type
+                           else raise ( Failure ("Variable " ^ flat_name ^ " is not defined")) 
+                | _ -> check_expr tr_env exp1) and
                 t2 = check_expr tr_env exp2 in
             if t1 = t2 then t1 
             else raise (Failure "Assignment types don't match. shux can't
@@ -285,7 +315,9 @@ match_sfields env lit struct_field =
          if get_sfield_name lit = (fst struct_field) then
 				    if get_typ lit = (snd struct_field) then
 						    true
-						 else raise (Failure "Type mismatch in struct literal")
+						 else let err_msg = "Type mismatch in struct literal: " ^ _string_of_typ (get_typ lit) 
+                                 ^ " doesn't match " ^ _string_of_typ (snd struct_field) 
+                                   in raise (Failure err_msg)
 			   else
              false
     in List.fold_left (fun b x -> match_lit b x struct_field) false lit
@@ -332,7 +364,7 @@ let check_globals g =
               | Bind(mut, typ, s) -> 
                let t2 = check_expr tr_env expr in
                if compare_ast_typ typ t2 then
-                       let v = { id = s; var_type = typ; mut=mut} in
+                       let v = { id = s; var_type = typ; mut=mut; initialized = true} in
                       let vlist = if VarMap.mem s tr_env.scope then
                               v :: VarMap.find s tr_env.scope else [v] in 
                       check_global_inner { scope = VarMap.add s vlist tr_env.scope; 
@@ -359,7 +391,7 @@ let check_globals g =
                                                         ^ s.sname ^ " and field " ^ id in raise(Failure err_msg)
                                        else
                                        (match t with
-                                           | Array(t, i) -> (match i with
+                                           | Array(typ, i) -> (match i with
                                                | Some i -> (id,t)
                                                | None -> let err_msg = "Array " ^ id ^ " initialized with no fixed " 
                                                                        ^ "size in struct " ^ id 
@@ -420,7 +452,7 @@ let check_body f env =
            let formal_name = get_bind_name formal and
                formal_type = get_bind_typ formal and
                m = Immutable
-           in let v = { id = formal_name; var_type = formal_type; mut = m }
+           in let v = { id = formal_name; var_type = formal_type; mut = m; initialized=true }
            in push_variable_env v env
     in let formal_env = 
        List.fold_left place_formal env (check_formals f.formals env) in
@@ -433,19 +465,28 @@ let check_body f env =
                              t2 = get_bind_typ b and
                              var_name = get_bind_name b 
                              and m = get_bind_mut b in
+               (* ensure that arrays cannot be initialized without sizes *)
+               let _ = check_array_init t2 in 
                if compare_ast_typ t2 t1 then
-                   let v = { id = var_name; var_type = t2; mut = m }
+                   let v = { id = var_name; var_type = t2; mut = m; initialized = true}
                    in push_variable_env v env                  
                else let err_msg = "Type " ^ _string_of_typ t1 ^ " cannot be assigned" 
                                   ^ " to type " ^ _string_of_typ t2
                    in raise(Failure err_msg)
-           | None -> let t = get_bind_typ b and (*TODO: ensure uniqueness.. *) 
+           | None -> let t = get_bind_typ b and (*TODO: ensure uniqueness.. *)
+                         (* ensure that arrays cannot be initialized without sizes *) 
                          var_name = get_bind_name b and
                          m = get_bind_mut b 
-           in let v = { id = var_name; var_type = t; mut = m}
+           in let _ = check_array_init t
+           in let v = { id = var_name; var_type = t; mut = m; initialized = false}
            in push_variable_env v env ) 
-        | Expr(e) -> ignore (check_expr env e); env in
-       let ret_typ = convert_ret_typ f.ret_typ
+        | Expr(e) -> let _ = check_expr env e in
+            (match e with
+            | Assign(e1, e2) -> (match e2 with
+                | Id(l) -> initialize_var (flatten_ns_list l) env
+                | _ -> env)
+            | _ -> env)
+       in let ret_typ = convert_ret_typ f.ret_typ
        and tr = (match ret with
           | Some r -> check_expr (List.fold_left check_stmt formal_env body) r
           | None -> Void)
