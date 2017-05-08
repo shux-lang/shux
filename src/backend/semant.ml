@@ -80,6 +80,14 @@ let check_array_init = function
         | None -> raise (Failure "Arrays need to have sizes to be initialized."))
     | _ -> true
 
+(* ensure that a variable isnt part of new_variables when its defined *) 
+let check_var_notdef var env = 
+    let check_var v b new_var = 
+       if b then 
+          if v.id = new_var.id then false else b
+       else false in
+    List.fold_left (check_var var) true env.new_variables
+ 
 (* called within the assign expression to initialize variable in env *)
 let initialize_var name env = 
     let var_list = VarMap.find name env.scope
@@ -88,13 +96,29 @@ let initialize_var name env =
                    initialized = true; }
     in let new_scope = VarMap.add name (new_var :: List.tl var_list) env.scope
     in { scope = new_scope; structs = env.structs; fn_map = env.fn_map;
-         new_variables = env.new_variables } 
+         new_variables = env.new_variables }
+
+(* return new trans env with var v added *) 
+let push_variable_env v env = 
+    if not (check_var_notdef v env)
+        then let err_msg = v.id ^ " defined more than once in scope." in 
+                 raise (Failure err_msg) 
+    else let new_scope = 
+        if VarMap.mem v.id env.scope then
+            let oldvarlist = VarMap.find v.id env.scope
+            in VarMap.add v.id (v::oldvarlist) env.scope
+        else 
+            VarMap.add v.id [v] env.scope
+    in { scope = new_scope; structs = env.structs; fn_map = env.fn_map;
+         new_variables = v::env.new_variables } 
+
+ 
 (* check expression 
 tr_env: current translation environment
 expr: expression to be checked 
 
 returns the type of the expression *) 
-let rec  type_of_lit tr_env = function
+let rec type_of_lit tr_env = function
    | LitInt(l) -> Int
    | LitFloat(l) -> Float
    | LitStr(l) -> String
@@ -130,9 +154,7 @@ let rec  type_of_lit tr_env = function
         if nxt_typ != typ then raise (Failure ("Array types not consistent."))
         else array_check (List.tl arr) (check_expr tr_env (List.hd arr)) in
       array_check (List.tl l) (check_expr tr_env (List.hd l)) 
-   | LitKn(l) -> let x = l.lret_expr in match x with
-      | Some x -> check_expr tr_env x
-      | None -> Void
+   | LitKn(l) -> lambda_checker l tr_env
 
 and check_expr tr_env expr =
 	match expr with
@@ -297,6 +319,47 @@ and check_expr tr_env expr =
              | _ -> raise (Failure "Can't access field of a type that's not a
                            struct"))
 
+(* function checker for lambdas *)
+(* returns the type of lambda *) 
+(* basically a duplication of the code for check_body *) 
+and lambda_checker l env = 
+    let formal_var = List.hd l.lformals
+    in let formal_name = get_bind_name formal_var
+    in let formal_type = get_bind_typ formal_var
+    in let m = Immutable 
+    in let v = { id = formal_name; var_type = formal_type; mut = m; initialized = true } 
+    in let formal_env = push_variable_env v env
+    in let body = l.lbody
+    in let ret = l.lret_expr
+    in
+    let check_stmt env = function
+        | VDecl(b,e) -> (match e with
+            | Some e -> let t1 = check_expr env e
+                        and t2 = get_bind_typ b
+                        and var_name = get_bind_name b
+                        and m = get_bind_mut b in
+            let _ = check_array_init t2 in
+            if compare_ast_typ t2 t1 then
+                let v = {id = var_name; var_type = t2; mut = m; initialized = true }
+                        in push_variable_env v env
+                else raise (Failure "Type mismatch in lambda body")
+            | None  -> let t = get_bind_typ b
+                       and var_name = get_bind_name b
+                       and m = get_bind_mut b
+                    in let _ = check_array_init t
+                    in let v = { id = var_name; var_type = t; mut = m; initialized = true }
+                    in push_variable_env v env)
+        | Expr(e) -> let _ = check_expr env e in
+            (match e with
+            | Assign(e1,e2) -> (match e2 with 
+                | Id(l) -> initialize_var (flatten_ns_list l) env
+                | _ -> env)
+            | _ -> env)
+     in (match ret with
+        | Some r -> check_expr (List.fold_left check_stmt formal_env body) r
+        | None -> Void)
+
+
 and get_sfield_typ tr_env = function
  | StructField(_, expr) -> check_expr tr_env expr
 
@@ -418,28 +481,7 @@ let check_globals g =
                        fn_map = VarMap.empty; new_variables = []} in
    check_global_inner env_default g
 
-(* ensure that a variable isnt part of new_variables when its defined *) 
-let check_var_notdef var env = 
-    let check_var v b new_var = 
-       if b then 
-          if v.id = new_var.id then false else b
-       else false in
-    List.fold_left (check_var var) true env.new_variables
-       
-(* return new trans env with var v added *) 
-let push_variable_env v env = 
-    if not (check_var_notdef v env)
-        then let err_msg = v.id ^ " defined more than once in scope." in 
-                 raise (Failure err_msg) 
-    else let new_scope = 
-        if VarMap.mem v.id env.scope then
-            let oldvarlist = VarMap.find v.id env.scope
-            in VarMap.add v.id (v::oldvarlist) env.scope
-        else 
-            VarMap.add v.id [v] env.scope
-    in { scope = new_scope; structs = env.structs; fn_map = env.fn_map;
-         new_variables = v::env.new_variables } 
-
+      
 let check_body f env = 
     let check_formals formals env = 
         let check_formal env old_formals formal = 
