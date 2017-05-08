@@ -292,7 +292,12 @@ and check_expr tr_env expr =
         else raise (Failure "Ternary operator return type mismatch")
      else raise (Failure "Ternary operator conditional needs to be a boolean
      expr")
-   | Lookback(str, i) -> check_expr tr_env (Id str)  
+   | Lookback(nstr, i) -> let str = flatten_ns_list nstr in
+          if VarMap.mem str tr_env.scope then
+              let found_var = List.hd (VarMap.find str tr_env.scope)
+              in if found_var.mut = Immutable then found_var.var_type
+                 else raise (Failure "Lookback not allowed for mutable types")
+          else raise (Failure ("Name " ^ str ^ " is not defined in lookback expression."))
    | Access(id, str) -> let fname = (match id with
                                 | Id(l) -> flatten_ns_list l (* for namespace *) 
                                 | _ -> "") 
