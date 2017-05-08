@@ -16,10 +16,12 @@ let sast_to_cast let_decls f_decls =
   in let prefix_s s = "struct_" ^ s (* struct defn *)
   in let prefix_l s = "let_" ^ s    (* let decl *)
   in let prefix_kn s = "kn_" ^ s    (* kn function *)
+  in let prefix_lambda s i = "lambda_" ^ i ^ "_" ^ s
   in let prefix_gn s = "gn_" ^ s    (* gn function *)
   in let prefix_gns s = "gns_" ^ s  (* gn struct *)
 
   in let kn_to_fn kn =
+    (*
     let rec walk_expr typ expr =
       let lit = function
         | SLitInt(i) -> CLitInt(i)
@@ -45,7 +47,6 @@ let sast_to_cast let_decls f_decls =
         | _ -> assert false
       in CExpr(typ, walk expr)
 
-      (*
     and walk_loop typ num expr =
       let lit = function
         | SLitArray(es) -> CLitArray(List.map walk_stmt (map_tuple es typ))
@@ -61,32 +62,200 @@ let sast_to_cast let_decls f_decls =
         | SCond(t, i, f, e) -> assert false         (* r-value *)
         | SAssign(t, l, r) -> assert false          (* m-value *)
         | _ -> CExprDud
+
+
       in let rec walk_l ass = function
-        | SAssign(t, l, r) -> walk_l ((walk_expr t l)::ass) r
+        | SAssign(t, l, r) -> walk_l (l :: ass) r
         | e -> walk_r e
       in let num = match num with
         | Some(x) -> CLit(SInt, CLitInt x)
         | None -> assert false
-      in CLoop(typ, num, CExpr (SPtr, CExprDud))
-   (*   in CExpr(typ, walk_l [] expr) *)
-*)
+      in CBlock(typ, [])
     and walk_struct typ expr =
       CStmtDud
+      (*
+
     and walk_stmt = function
-      | (e, SArray(t, n)) -> assert false (*walk_loop t n e *)
+      | (e, SArray(t, n)) -> walk_loop t n e
       | (e, SStruct(id, _)) -> walk_struct id e
-      | (e, SPtr) -> assert false
-      | (e, SVoid) -> assert false
+      | (e, SPtr) | (e, SVoid) -> assert false
       | (e, t) -> walk_expr t e
+*)
+      *)
+      (*
+    and lduudvalue_tr ass typ =
+      let rec tr = function
+        | SId(t, n, s) -> CId(t, n)
+        | SAccess(t, e, f) -> CAccess(t, tr e, f)
+        | SBinop(t, l, SBinopPtr SIndex, r) -> CBinop(t, tr l, CBinopPtr SIndex, tr r)
+        | _ -> assert false (* not an l-value *)
+
+      in let unit_assign =
+        let fold_ass r l =
+          CAssign(typ, tr l, r)
+        in [ CExpr(typ, List.fold_left fold_ass (CBlockVal t) ass) ]
+
+      in let array_assign t n v =
+        let index_curr t a = CBinop(t, a, CBinopPtr SIndex, CLoopCtr)
+        in let get_val = index_curr t v
+        in let fold_ass r l =
+          CAssign(t, index_curr t (tr l), r)
+        in [ CLoop(t, CLit(SInt, (CLitInt n)), CExpr(t, List.fold_left fold_ass get_val ass)) ]
+
+      in let struct_assign i bs =
+
+        (*
+         *
+         * for each binding:
+           * assign each element of Access(ass.member, binding) with Access(CBlockVal, binding)
+        let map_ass SBind(t, n, _) =
+        in List.map map_ass bs
+
+        let map_ass SBind(ty, n, _) = match ty with
+          | SArray(t, Some n) -> array_assign t n (SAccess(ty, CBlockVal (SStruct(i, b)), n)
+*)
+        [ CStmtDud ]
+      in match typ with
+        | SArray(t, Some n) -> array_assign t n (CBlockVal t)
+        | SArray(_, None) -> assert false (* this should not be allowed? *)
+        | SStruct(id, bs) -> struct_assign id bs
+        | SPtr | SVoid -> assert false
+        | _ -> unit_assign
+*)
+      (**
+    and lvalue_tr ass typ bval = 
+      let unit_assign =
+        let rec tr = function
+          | SId(t, n, s) -> CId(t, n)
+          | SAccess(t, e, f) -> CAccess(t, tr e, f)
+          | SBinop(t, l, SBinopPtr SIndex, r) -> CBinop(t, tr l, CBinopPtr SIndex, tr r)
+          | _ -> assert false (* not an l-value *)
+        in let fold_ass rs l =
+          CAssign(typ, tr l, rs)
+        in [ CExpr(typ, List.fold_left fold_ass bval ass) ]
+
+      in let array_assign t n =
+        let index_curr t a = CBinop(t, a, CBinopPtr SIndex, SLoopCtr)
+        in let get_val = 
+      in match typ with
+        | SArray(t, Some n) -> assert false
+        | SArray(_, None) -> assert false (* this should not be allowed? *)
+        | SStruct(id, bs) -> assert false
+        | SPtr | SVoid -> assert false
+        | _ -> unit_assign
+
+    and walk_l ass typ = function
+      | SAssign(t, l, r) -> walk_l (l :: ass) typ r
+      | e -> CBlock(typ, lvalue_tr ass typ (CBlockVal typ) @ walk_m e)
+    in let walk_m =
+      [ CStmtDud ]
+    let rec walk_m expr =
+      [CStmtDud]
+    *)
+
+    let walk_stmt (e, t) = 
+      let walk sexpr styp sanon =
+        let walk_r rtyp rexpr =
+          [ CStmtDud ]
+
+        in let walk_l ltyp lexpr =
+          let rec lvalue_tr typ ass anon =
+            let unit_assign =
+              let rec tr = function
+                | SId(t, n, s) -> CId(t, n)
+                | SAccess(t, e, f) -> CAccess(t, tr e, f)
+                | SBinop(t, l, SBinopPtr SIndex, r) -> CBinop(t, tr l, CBinopPtr SIndex, tr r)
+                | SLoopCtr -> CLoopCtr
+                | _ -> assert false (* not an l-value *)
+              in let fold_ass rs l =
+                CAssign(typ, tr l, rs)
+              in CExpr(typ, List.fold_left fold_ass anon ass)
+
+            in let array_assign t n =
+              let index t a = CBinop(t, a, CBinopPtr SIndex, CLoopCtr)
+              in let get_anon = index t anon
+              in let get_cond = CLit(SInt, (CLitInt n))
+              in let map_ass a =
+                 SBinop(t, a, SBinopPtr SIndex, SLoopCtr)
+              in let get_index =
+                List.map map_ass ass
+              in CLoop(get_cond, lvalue_tr typ get_index get_anon)
+
+            in let struct_assign id binds =
+              let map_binds (SBind(t, n, _)) =
+                let map_ass a =
+                  SAccess(t, a, n)
+                in let access_ass = 
+                  List.map map_ass ass
+                in let access_anon =
+                  CAccess(t, anon, n)
+                in (t, access_ass, access_anon)
+              in let for_each_field =
+                List.map map_binds binds
+              in let translate (t, ass, anon) =
+                lvalue_tr t ass anon
+              in let translate_each_field =
+                List.map translate for_each_field
+              in CBlock translate_each_field
+
+            in match typ with
+              | SArray(t, Some n) -> array_assign t n
+              | SArray(_, None) -> assert false (* this should not be allowed? *)
+              | SStruct(i, b) -> struct_assign i b
+              | SPtr | SVoid -> assert false
+              | _ -> unit_assign
+
+          in let rec walk ass = function
+            | SAssign(t, l, r) when t=ltyp -> walk (l :: ass) r
+            | SAssign(_, _, _) -> assert false
+            | e -> lvalue_tr ltyp ass sanon :: walk_r ltyp e
+          in walk [] lexpr
+
+        in walk_l styp sexpr
+      in CPushAnon(t, CBlock(walk e t (CPeekAnon t)))
 
     in let walk_ret = function
-      | Some x -> [] 
-      | None -> []
+      | Some (e, t) -> CReturn (Some (t, (walk_stmt (e, t)))) 
+      | None -> CReturn None
 
-    in CFnDecl { cfname = kn.skname; cret_typ = kn.skret_typ;
-                  cformals = kn.skformals;
-                  clocals = kn.sklocals;
-                  cbody = List.map walk_stmt kn.skbody @ walk_ret kn.skret_expr }
+    in let fn_decl kn = CFnDecl 
+      { cfname = kn.skname; cret_typ = kn.skret_typ;
+        cformals = kn.skformals; clocals = kn.sklocals;
+        cbody = List.rev (walk_ret kn.skret_expr :: List.map walk_stmt kn.skbody) }
+
+    in let rec hoist_lambdas kn =
+      let hoist n { slret_typ; slformals; sllocals; slbody; slret_expr } = hoist_lambdas
+        { skname = prefix_lambda kn.skname n; skret_typ = slret_typ;
+          skformals = slformals; sklocals = sllocals; skbody = slbody; 
+          skret_expr = Some slret_expr }
+
+      in let rec fish acc p = function
+        | SLit(_, SLitKn(l)) -> (hoist p l) :: acc
+        | SBinop(_, l, _, r) -> fish [] (p ^ "l") l @ fish acc (p ^ "r") r
+        | SAssign(_, l, r) -> fish [] (p ^ "l") l @ fish acc (p ^ "r") r
+        | SCond(_, i, t, e) -> fish [] (p ^ "i") i @ fish [] (p ^ "t") t @ fish acc (p ^ "e") e
+        | SUnop(_, _, e) -> fish acc (p ^ "u") e
+        | SKnCall(_, _, a) -> (List.concat (List.map (fish [] (p ^ "k")) (List.map fst a))) @ acc
+        | SGnCall(_, _, a) -> (List.concat (List.map (fish [] (p ^ "g")) (List.map fst a))) @ acc
+        | SAccess(_, e, _) -> fish acc (p ^ "a") e
+        | _ -> acc
+      in let rec bait p = function
+        | SLit(t, SLitKn(l)) -> SId(t, prefix_lambda kn.skname p, SKnCall) (* should this be a global here? *)
+        | SBinop(t, l, o, r) -> SBinop(t, bait (p ^ "l") l, o, bait (p ^ "r") r)
+        | SAssign(t, l, r) -> SAssign(t, bait (p ^ "l") l, bait (p ^ "r") r)
+        | SCond(ty, i, t, e) -> SCond(ty, bait (p ^ "i") i, bait (p ^ "t") t, bait (p ^ "e") e)
+        | SUnop(t, o, e) -> SUnop(t, o, bait (p ^ "u") e)
+        | SKnCall(t, s, a) -> SKnCall(t, s, List.map (fun (a, t) -> (bait (p ^ "k") a, t)) a)
+        | SGnCall(t, s, a) -> SGnCall(t, s, List.map (fun (a, t) -> (bait (p ^ "g") a, t)) a)
+        | SAccess(t, e, s) -> SAccess(t, bait (p ^ "a") e, s)
+        | s -> s
+
+      in let walk_stmt (lambdas, body, p) (e, t) =
+        (fish lambdas p e, ((bait p e), t) :: body, p ^ "x")
+      in let (lambdas, body, _) = List.fold_left walk_stmt ([], [], "z") kn.skbody
+      in let body = List.rev body
+      in List.rev (fn_decl {kn with skbody = body} :: List.concat lambdas)
+    in hoist_lambdas kn
 
   in let walk_kn kn =
      kn_to_fn {kn with skname = prefix_kn kn.skname }
@@ -138,7 +307,7 @@ let sast_to_cast let_decls f_decls =
           | SGlobal as s -> SId(t, id, s) (* global prefixing will happen in walk_kn *)
           | SLocalVar as s -> SId(t, prefix_gnv id, s)
           | SLocalVal -> lb_st t id 0
-          | SStructField -> assert false
+          | SStructField | SKnCall -> assert false
 
         in let rec lb = function
           | SId(t, id, s) -> sid t id s
@@ -154,18 +323,18 @@ let sast_to_cast let_decls f_decls =
           | e -> e
         in (lb e, t)
       in { skname = prefix_gn gn.sgname; skret_typ = gn.sgret_typ;
-        skformals = [ SBind(gns_typ, gns_arg, SLocalVar) ];
-        sklocals = List.map prefix_var gn.sglocalvars; 
-        skbody = inc_cnt :: List.map lookback gn.sgbody; 
-        skret_expr = map_opt lookback gn.sgret_expr }
+            skformals = [ SBind(gns_typ, gns_arg, SLocalVar) ];
+            sklocals = List.map prefix_var gn.sglocalvars; 
+            skbody = inc_cnt :: List.map lookback gn.sgbody; 
+            skret_expr = map_opt lookback gn.sgret_expr }
 
-    in [ defn_cstruct; kn_to_fn gn_to_kn ]
+    in defn_cstruct :: kn_to_fn gn_to_kn
 
   in let walk_fns f_decls =
     let rec walk = function
       | [] -> []
       | SGnDecl(g)::t -> let r = walk_gn g in r @ walk t
-      | SKnDecl(k)::t -> let r = walk_kn k in r :: walk t
+      | SKnDecl(k)::t -> let r = walk_kn k in r @ walk t
     in walk f_decls
   in let walk_static let_decls =
     let interp_expr = function (* TODO: write interpretor for compile-time evaluation *)
