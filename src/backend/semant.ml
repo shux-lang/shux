@@ -80,6 +80,15 @@ let check_array_init = function
         | None -> raise (Failure "Arrays need to have sizes to be initialized."))
     | _ -> true
 
+(* called within the assign expression to initialize variable in env *)
+let initialize_var name env = 
+    let var_list = VarMap.find name env.scope
+    in let var = List.hd var_list
+    in let new_var = { id = var.id; mut=var.mut; var_type = var.var_type;
+                   initialized = true; }
+    in let new_scope = VarMap.add name (new_var :: List.tl var_list) env.scope
+    in { scope = new_scope; structs = env.structs; fn_map = env.fn_map;
+         new_variables = env.new_variables } 
 (* check expression 
 tr_env: current translation environment
 expr: expression to be checked 
@@ -197,8 +206,15 @@ and check_expr tr_env expr =
       | For -> Array(t2, None) (*For returns an array of the return type of gn *)
       | Do -> t2 (* Do simply returns the final value of the gn *))
    | Assign(e1, e2) -> 
+            (* need to short circuit the initialization checker here *)
         let match_typ exp1 exp2 = 
-            let t1 = check_expr tr_env exp1 and
+            let t1 = (match exp1 with
+                | Id(l) -> let flat_name = flatten_ns_list l
+                           in if VarMap.mem flat_name tr_env.scope
+                           then let var = List.hd (VarMap.find flat_name tr_env.scope)
+                           in var.var_type
+                           else raise ( Failure ("Variable " ^ flat_name ^ " is not defined")) 
+                | _ -> check_expr tr_env exp1) and
                 t2 = check_expr tr_env exp2 in
             if t1 = t2 then t1 
             else raise (Failure "Assignment types don't match. shux can't
@@ -464,8 +480,13 @@ let check_body f env =
            in let _ = check_array_init t
            in let v = { id = var_name; var_type = t; mut = m; initialized = false}
            in push_variable_env v env ) 
-        | Expr(e) -> ignore (check_expr env e); env in
-       let ret_typ = convert_ret_typ f.ret_typ
+        | Expr(e) -> let _ = check_expr env e in
+            (match e with
+            | Assign(e1, e2) -> (match e2 with
+                | Id(l) -> initialize_var (flatten_ns_list l) env
+                | _ -> env)
+            | _ -> env)
+       in let ret_typ = convert_ret_typ f.ret_typ
        and tr = (match ret with
           | Some r -> check_expr (List.fold_left check_stmt formal_env body) r
           | None -> Void)
@@ -478,6 +499,7 @@ let check_body f env =
                    ^ _string_of_typ ret_typ ^ 
                    " but returns type " ^ _string_of_typ tr
                    in raise (Failure err_msg)
+
 (* checks if main is defined *)
 let check_main functions = 
         let check_if_main b f = 
