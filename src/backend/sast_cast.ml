@@ -137,7 +137,7 @@ let sast_to_cast let_decls f_decls =
               | SId(t, n, _) -> id t n (* don't care about scope *)
               | SUnop(t, o, e) -> walk_unop t o e
               | SBinop(t, l, o, r) -> walk_binop t l o r
-              | SAccess (t, e, s) -> walk_access t e s
+              | SAccess(t, e, s) -> walk_access t e s
               | SCond(t, iff, the, els) -> walk_cond t iff the els
               | SKnCall(t, i, a) -> walk_call t i a
               | SAssign(t, l, r) -> walk_assign t l r (* requires new nested walk *)
@@ -174,13 +174,32 @@ let sast_to_cast let_decls f_decls =
               let emit_r = CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t)) (* by reference *)
               in push_anon t r emit_r :: acc
 
+            in let walk_binop t l o r =
+              acc
+
+            in let walk_cond t iff the els =
+              let cond_t = styp_of_sexpr iff
+              in let cond_t = if cond_t=SBool then cond_t else assert false
+              in let eval_iff = push_anon_nop cond_t iff
+              in let eval_the = push_anon_nop cond_t the
+              in let eval_els = push_anon_nop cond_t els
+              in let eval_merge = CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t))
+              in let eval_cond = CCond(t, eval_iff, eval_the, eval_els, eval_merge)
+              in eval_cond :: acc
+
+            in let walk_access t e s =
+              acc
+
+            in let walk_call t i a =
+              acc
+
             in match rexpr with
               | SLit(t, l) -> lit t l
               | SId(t, n, _) -> id t n
-              | SBinop(t, l, o, r) -> assert false
-              | SAccess (t, e, s) -> assert false
-              | SCond(t, iff, the, els) -> assert false
-              | SKnCall(t, i, a) -> assert false
+              | SBinop(t, l, o, r) -> walk_binop t l o r
+              | SAccess(t, e, s) -> walk_access t e s
+              | SCond(t, iff, the, els) -> walk_cond t iff the els
+              | SKnCall(t, i, a) -> walk_call t i a
               | SAssign(t, l, r) -> walk_assign t l r
 
               (* no array type unary operators *)
