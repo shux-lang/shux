@@ -285,7 +285,9 @@ match_sfields env lit struct_field =
          if get_sfield_name lit = (fst struct_field) then
 				    if get_typ lit = (snd struct_field) then
 						    true
-						 else raise (Failure "Type mismatch in struct literal")
+						 else let err_msg = "Type mismatch in struct literal: " ^ _string_of_typ (get_typ lit) 
+                                 ^ " doesn't match " ^ _string_of_typ (snd struct_field) 
+                                   in raise (Failure err_msg)
 			   else
              false
     in List.fold_left (fun b x -> match_lit b x struct_field) false lit
@@ -359,7 +361,7 @@ let check_globals g =
                                                         ^ s.sname ^ " and field " ^ id in raise(Failure err_msg)
                                        else
                                        (match t with
-                                           | Array(t, i) -> (match i with
+                                           | Array(typ, i) -> (match i with
                                                | Some i -> (id,t)
                                                | None -> let err_msg = "Array " ^ id ^ " initialized with no fixed " 
                                                                        ^ "size in struct " ^ id 
