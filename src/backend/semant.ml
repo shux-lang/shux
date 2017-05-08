@@ -285,8 +285,11 @@ and check_expr tr_env expr =
       | LogNot -> if check_expr tr_env e = Bool then Bool else 
          raise (Failure "Logical not only applies to booleans"))
    | LookbackDefault(e1, e2) -> 
-          if (check_expr tr_env e2) == Int then check_expr tr_env e1 else
-          raise (Failure "Lookback indexing needs to be an integer")
+          let t1 = check_expr tr_env e1
+          and t2 = check_expr tr_env e2
+          in if t1 = t2 then t1 
+          else raise (Failure ("Lookback variable has type " ^ _string_of_typ t1 ^
+                               " but lookback default returns " ^ _string_of_typ t2)) 
    | Cond(e1, e2, e3) -> if check_expr tr_env e1 = Bool then
         let t2 = check_expr tr_env e2 in if t2 = check_expr tr_env e3 then t2
         else raise (Failure "Ternary operator return type mismatch")

@@ -28,7 +28,7 @@ let _ =
   let check_ast = Semant.check ast in
   let sast = Ast_sast.translate_to_sast check_ast in
 	match action with
-		| Ast -> print_string (Astprint.string_of_program sast)
+		| Ast -> print_string (Astprint.string_of_program ast)
 		| LLVM -> 
-				let code = Codegen.translate sast in
+				let code = Codegen.translate ast in
     		print_string (Llvm.string_of_llmodule code)

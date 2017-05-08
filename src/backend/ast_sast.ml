@@ -65,6 +65,7 @@ and get_styp_from_sexpr = function
     | SUnop(s,_,_) -> s
     | SCond(s,_,_,_) -> s
     | SExprDud -> SVoid (* Duuud *) 
+    | SLoopCtr -> SVoid (* john please *) 
 
 and to_slit senv = function
     | LitInt(i) -> SLitInt(i)
@@ -260,10 +261,23 @@ and translate_gn_decl senv gn =
                             hoist_body(vals, VDecl(b, e)::vars, exprs) tl
                        else hoist_body(VDecl(b, e)::vals, vars, exprs) tl)
         | Expr(e)::tl -> hoist_body (vals, vars, e::exprs) tl
-    in
-{ sgname = ""; sgret_typ = SPtr; sgmax_iter = 0; sgformals = [];
-      sglocalvals = []; sglocalvars = []; sgbody = []; sgret_expr = Some (SExprDud, SPtr) } 
-
+    in let vdecl_to_local senv = function
+        | VDecl(b,e) -> to_sbind senv b
+        | Expr(e) -> raise (Failure "hoisting failed. vdecl_to_local should only accept VDecl") 
+    in let (vals, vars, expr) = hoist_body ([], [], []) gn.body
+    in let gvals = List.map (vdecl_to_local senv) vals
+    in let gvars = List.map (vdecl_to_local senv) vars
+    in let body_intermediate = List.map (get_sexpr senv) expr
+    in let gbody = List.map (fun x -> (x, get_styp_from_sexpr x)) body_intermediate
+    in (match gn.ret_expr with
+       | Some x -> let gret_expr = (get_sexpr senv x, ret_typ)
+          in { sgname = name; sgret_typ = ret_typ; sgmax_iter = 0; sgformals = gnformals;
+               sglocalvals = gvals; sglocalvars = gvars; sgbody = gbody; 
+               sgret_expr = Some gret_expr } 
+       | None -> { sgname = name; sgret_typ = ret_typ; sgmax_iter = 0; sgformals = gnformals;
+               sglocalvals = gvals; sglocalvars = gvars; sgbody = gbody; 
+               sgret_expr = None })
+           
 and translate_fndecls senv sfn_decls = function
     | [] -> List.rev sfn_decls
     | hd::tl -> let translate_decl senv f = 
@@ -285,4 +299,5 @@ let empty_senv = { variables = VarMap.empty; sfn_decl = VarMap.empty;
 
 let translate_to_sast (ns, globals, functions) = 
     let (sglobals, senv) = translate_letdecl empty_senv globals in 
-    (ns, globals, functions)
+    let sfn_list = translate_fndecls senv [] functions in
+    (sglobals, sfn_list)
