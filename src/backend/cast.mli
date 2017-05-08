@@ -27,16 +27,18 @@ and cexpr =
   | CId of ctyp * string
   | CLoopCtr                    (* access the counter inside a CLoop *)
   | CPeekAnon of ctyp           (* access the temp value of a CBlock *)
+  | CPeek2Anon of ctyp           (* access the temp value of a CBlock *)
+  | CPeek3Anon of ctyp           (* access the temp value of a CBlock *)
   | CBinop of ctyp * cexpr * cbin_op * cexpr
   | CAccess of ctyp * cexpr * string
   | CAssign of ctyp * cexpr * cexpr
   | CCall of ctyp * string * cstmt list
   | CUnop of ctyp * cun_op * cexpr
-  | CCond of ctyp * cexpr * cexpr * cexpr
   | CExprDud
 
 and cstmt =
   | CExpr of ctyp * cexpr
+  | CCond of ctyp * (* if *) cstmt * (* then *) cstmt * (* else *) cstmt * (* merge *) cstmt
   | CPushAnon of ctyp * cstmt
 (*  ctyp tmp; { /* push tmp to AStack */
  *    cstmt where CPeekAnon := tmp /* peek AStack */
