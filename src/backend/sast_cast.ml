@@ -82,85 +82,58 @@ let sast_to_cast let_decls f_decls =
       | (e, t) -> walk_expr t e
 *)
       *)
-      (*
-    and lduudvalue_tr ass typ =
-      let rec tr = function
-        | SId(t, n, s) -> CId(t, n)
-        | SAccess(t, e, f) -> CAccess(t, tr e, f)
-        | SBinop(t, l, SBinopPtr SIndex, r) -> CBinop(t, tr l, CBinopPtr SIndex, tr r)
-        | _ -> assert false (* not an l-value *)
-
-      in let unit_assign =
-        let fold_ass r l =
-          CAssign(typ, tr l, r)
-        in [ CExpr(typ, List.fold_left fold_ass (CBlockVal t) ass) ]
-
-      in let array_assign t n v =
-        let index_curr t a = CBinop(t, a, CBinopPtr SIndex, CLoopCtr)
-        in let get_val = index_curr t v
-        in let fold_ass r l =
-          CAssign(t, index_curr t (tr l), r)
-        in [ CLoop(t, CLit(SInt, (CLitInt n)), CExpr(t, List.fold_left fold_ass get_val ass)) ]
-
-      in let struct_assign i bs =
-
-        (*
-         *
-         * for each binding:
-           * assign each element of Access(ass.member, binding) with Access(CBlockVal, binding)
-        let map_ass SBind(t, n, _) =
-        in List.map map_ass bs
-
-        let map_ass SBind(ty, n, _) = match ty with
-          | SArray(t, Some n) -> array_assign t n (SAccess(ty, CBlockVal (SStruct(i, b)), n)
-*)
-        [ CStmtDud ]
-      in match typ with
-        | SArray(t, Some n) -> array_assign t n (CBlockVal t)
-        | SArray(_, None) -> assert false (* this should not be allowed? *)
-        | SStruct(id, bs) -> struct_assign id bs
-        | SPtr | SVoid -> assert false
-        | _ -> unit_assign
-*)
-      (**
-    and lvalue_tr ass typ bval = 
-      let unit_assign =
-        let rec tr = function
-          | SId(t, n, s) -> CId(t, n)
-          | SAccess(t, e, f) -> CAccess(t, tr e, f)
-          | SBinop(t, l, SBinopPtr SIndex, r) -> CBinop(t, tr l, CBinopPtr SIndex, tr r)
-          | _ -> assert false (* not an l-value *)
-        in let fold_ass rs l =
-          CAssign(typ, tr l, rs)
-        in [ CExpr(typ, List.fold_left fold_ass bval ass) ]
-
-      in let array_assign t n =
-        let index_curr t a = CBinop(t, a, CBinopPtr SIndex, SLoopCtr)
-        in let get_val = 
-      in match typ with
-        | SArray(t, Some n) -> assert false
-        | SArray(_, None) -> assert false (* this should not be allowed? *)
-        | SStruct(id, bs) -> assert false
-        | SPtr | SVoid -> assert false
-        | _ -> unit_assign
-
-    and walk_l ass typ = function
-      | SAssign(t, l, r) -> walk_l (l :: ass) typ r
-      | e -> CBlock(typ, lvalue_tr ass typ (CBlockVal typ) @ walk_m e)
-    in let walk_m =
-      [ CStmtDud ]
-    let rec walk_m expr =
-      [CStmtDud]
-    *)
-
     let walk_stmt (e, t) = 
       let walk sexpr styp sanon =
         let walk_r rtyp rexpr =
-          [ CStmtDud ]
+          let walk_primitive =
+            let lit = function
+              | SLitInt i -> CLitInt i
+              | SLitFloat f -> CLitFloat f
+              | SLitBool b -> CLitBool b
+              | SLitStr s -> CLitStr s
+              | _ -> assert false
+            in let binop = function
+              | SBinopInt o -> CBinopInt o
+              | SBinopFloat o -> CBinopFloat o
+              | SBinopBool o -> CBinopBool o
+
+              (* change of type *)
+              | SBinopPtr o -> assert false
+              | SBinopGn SDo -> assert false
+              | _ -> assert false
+            in let rec walk = function
+              | SLit(t, l) -> CLit(t, lit l)
+              | SId(t, n, _) -> CId(t, n)
+              | SBinop(t, l, o, r) -> CBinop(t, walk l, binop o, walk r)
+              | SUnop(t, o, e) -> CUnop(t, o, walk e)
+
+              (* involves change of types *)
+              | SCond(ty, i, t, e) -> CExprDud
+              | SKnCall(t, i, a) -> CExprDud
+              | SAccess (t, e, s) -> CExprDud
+
+              (* requires new nested walk *)
+              | SAssign(t, l, r) -> CExprDud
+
+
+              | SGnCall(t, i, a) -> assert false
+              | _ -> assert false
+            in [ CStmtDud ]
+
+          in let walk_array =
+            [ CStmtDud ]
+
+          in let walk_struct =
+            [ CStmtDud ]
+
+          in match rtyp with
+            | SArray(t, n) -> walk_array
+            | SStruct(i, b) -> walk_struct
+            | _ -> walk_primitive
 
         in let walk_l ltyp lexpr =
           let rec lvalue_tr typ ass anon =
-            let unit_assign =
+            let primitive_assign =
               let rec tr = function
                 | SId(t, n, s) -> CId(t, n)
                 | SAccess(t, e, f) -> CAccess(t, tr e, f)
@@ -203,7 +176,7 @@ let sast_to_cast let_decls f_decls =
               | SArray(_, None) -> assert false (* this should not be allowed? *)
               | SStruct(i, b) -> struct_assign i b
               | SPtr | SVoid -> assert false
-              | _ -> unit_assign
+              | _ -> primitive_assign
 
           in let rec walk ass = function
             | SAssign(t, l, r) when t=ltyp -> walk (l :: ass) r
