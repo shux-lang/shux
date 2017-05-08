@@ -82,9 +82,8 @@ let sast_to_cast let_decls f_decls =
       | (e, t) -> walk_expr t e
 *)
       *)
-    let rec walk_m expr =
-      [CStmtDud]
-    and lvalue_tr ass typ =
+      (*
+    and lduudvalue_tr ass typ =
       let rec tr = function
         | SId(t, n, s) -> CId(t, n)
         | SAccess(t, e, f) -> CAccess(t, tr e, f)
@@ -94,30 +93,118 @@ let sast_to_cast let_decls f_decls =
       in let unit_assign =
         let fold_ass r l =
           CAssign(typ, tr l, r)
-        in CExpr(typ, List.fold_left fold_ass (CBlockVal typ) ass)
+        in [ CExpr(typ, List.fold_left fold_ass (CBlockVal t) ass) ]
 
-      in let array_assign t n =
+      in let array_assign t n v =
         let index_curr t a = CBinop(t, a, CBinopPtr SIndex, CLoopCtr)
-        in let get_val = index_curr t (CBlockVal t)
+        in let get_val = index_curr t v
         in let fold_ass r l =
           CAssign(t, index_curr t (tr l), r)
-        in CLoop(t, CLit(SInt, (CLitInt n)), CExpr(t, List.fold_left fold_ass get_val ass))
+        in [ CLoop(t, CLit(SInt, (CLitInt n)), CExpr(t, List.fold_left fold_ass get_val ass)) ]
 
-      in let struct_assign i b =
-        CStmtDud
+      in let struct_assign i bs =
 
+        (*
+         *
+         * for each binding:
+           * assign each element of Access(ass.member, binding) with Access(CBlockVal, binding)
+        let map_ass SBind(t, n, _) =
+        in List.map map_ass bs
+
+        let map_ass SBind(ty, n, _) = match ty with
+          | SArray(t, Some n) -> array_assign t n (SAccess(ty, CBlockVal (SStruct(i, b)), n)
+*)
+        [ CStmtDud ]
       in match typ with
-        | SArray(t, Some n) -> array_assign t n
-        | SArray(t, None) -> assert false (* this should not be allowed? *)
+        | SArray(t, Some n) -> array_assign t n (CBlockVal t)
+        | SArray(_, None) -> assert false (* this should not be allowed? *)
         | SStruct(id, bs) -> struct_assign id bs
+        | SPtr | SVoid -> assert false
+        | _ -> unit_assign
+*)
+      (**
+    and lvalue_tr ass typ bval = 
+      let unit_assign =
+        let rec tr = function
+          | SId(t, n, s) -> CId(t, n)
+          | SAccess(t, e, f) -> CAccess(t, tr e, f)
+          | SBinop(t, l, SBinopPtr SIndex, r) -> CBinop(t, tr l, CBinopPtr SIndex, tr r)
+          | _ -> assert false (* not an l-value *)
+        in let fold_ass rs l =
+          CAssign(typ, tr l, rs)
+        in [ CExpr(typ, List.fold_left fold_ass bval ass) ]
+
+      in let array_assign t n =
+        let index_curr t a = CBinop(t, a, CBinopPtr SIndex, SLoopCtr)
+        in let get_val = 
+      in match typ with
+        | SArray(t, Some n) -> assert false
+        | SArray(_, None) -> assert false (* this should not be allowed? *)
+        | SStruct(id, bs) -> assert false
         | SPtr | SVoid -> assert false
         | _ -> unit_assign
 
     and walk_l ass typ = function
       | SAssign(t, l, r) -> walk_l (l :: ass) typ r
-      | e -> CBlock(typ, lvalue_tr ass typ :: walk_m e)
+      | e -> CBlock(typ, lvalue_tr ass typ (CBlockVal typ) @ walk_m e)
+    in let walk_m =
+      [ CStmtDud ]
+    let rec walk_m expr =
+      [CStmtDud]
+    *)
 
-    and walk_stmt (e, t) = walk_l [] t e
+    let walk_stmt (e, t) = 
+      let walk sexpr styp sanon =
+        let walk_m expr =
+          [ CStmtDud ]
+
+        in let walk_l typ expr =
+          let rec lvalue_tr ass anon =
+            let unit_assign =
+              let rec tr = function
+                | SId(t, n, s) -> CId(t, n)
+                | SAccess(t, e, f) -> CAccess(t, tr e, f)
+                | SBinop(t, l, SBinopPtr SIndex, r) -> CBinop(t, tr l, CBinopPtr SIndex, tr r)
+                | SLoopCtr -> CLoopCtr
+                | _ -> assert false (* not an l-value *)
+              in let fold_ass rs l =
+                CAssign(typ, tr l, rs)
+              in CExpr(typ, List.fold_left fold_ass anon ass)
+
+            in let array_assign t n =
+              let index t a = CBinop(t, a, CBinopPtr SIndex, CLoopCtr)
+              in let get_anon = index t anon
+              in let get_cond = CLit(SInt, (CLitInt n))
+              in let map_ass a =
+                 SBinop(t, a, SBinopPtr SIndex, SLoopCtr)
+              in let get_index =
+                List.map map_ass ass
+              in CLoop(get_cond, lvalue_tr get_index get_anon)
+
+            in let struct_assign id binds =
+              CStmtDud
+              (*
+        let index_curr t a = CBinop(t, a, CBinopPtr SIndex, CLoopCtr)
+        in let get_val = index_curr t v
+        in let fold_ass r l =
+          CAssign(t, index_curr t (tr l), r)
+        in [ CLoop(t, CLit(SInt, (CLitInt n)), CExpr(t, List.fold_left fold_ass get_val ass)) ]
+*)
+
+
+            in match typ with
+              | SArray(t, Some n) -> array_assign t n
+              | SArray(_, None) -> assert false (* this should not be allowed? *)
+              | SStruct(i, b) -> struct_assign i b
+              | SPtr | SVoid -> assert false
+              | _ -> unit_assign
+          in let rec walk ass = function
+            | SAssign(t, l, r) -> walk (l :: ass) r
+            | e -> lvalue_tr ass sanon :: walk_m e
+          in walk [] expr
+
+        in walk_l styp sexpr
+      in CPushAnon(t, CBlock(walk e t (CPeekAnon t)))
 
     in let walk_ret = function
       | Some x -> [] 

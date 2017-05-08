@@ -56,6 +56,7 @@ type slit =
 and sexpr =
   | SLit of styp * slit
   | SId of styp * string * sscope
+  | SLoopCtr
   | SLookback of styp * string * int
   | SAccess of styp * sexpr * string
   | SBinop of styp * sexpr * sbin_op * sexpr
