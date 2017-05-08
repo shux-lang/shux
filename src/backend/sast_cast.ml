@@ -159,7 +159,7 @@ let sast_to_cast let_decls f_decls =
           [ CStmtDud ]
 
         in let walk_l typ expr =
-          let rec lvalue_tr ass anon =
+          let rec lvalue_tr typ ass anon =
             let unit_assign =
               let rec tr = function
                 | SId(t, n, s) -> CId(t, n)
@@ -179,10 +179,25 @@ let sast_to_cast let_decls f_decls =
                  SBinop(t, a, SBinopPtr SIndex, SLoopCtr)
               in let get_index =
                 List.map map_ass ass
-              in CLoop(get_cond, lvalue_tr get_index get_anon)
+              in CLoop(get_cond, lvalue_tr typ get_index get_anon)
 
             in let struct_assign id binds =
-              CStmtDud
+              let map_binds (SBind(t, n, _)) =
+                let map_ass a =
+                  SAccess(t, a, n)
+                in let access_ass = 
+                  List.map map_ass ass
+                in let access_anon =
+                  CAccess(t, anon, n)
+                in (t, access_ass, access_anon)
+              in let for_each_field =
+                List.map map_binds binds
+              in let translate (t, ass, anon) =
+                lvalue_tr t ass anon
+              in let translate_each_field =
+                List.map translate for_each_field
+              in CBlock translate_each_field
+
               (*
         let index_curr t a = CBinop(t, a, CBinopPtr SIndex, CLoopCtr)
         in let get_val = index_curr t v
@@ -199,8 +214,9 @@ let sast_to_cast let_decls f_decls =
               | SPtr | SVoid -> assert false
               | _ -> unit_assign
           in let rec walk ass = function
-            | SAssign(t, l, r) -> walk (l :: ass) r
-            | e -> lvalue_tr ass sanon :: walk_m e
+            | SAssign(t, l, r) when t=typ -> walk (l :: ass) r
+            | SAssign(_, _, _) -> assert false
+            | e -> lvalue_tr typ ass sanon :: walk_m e
           in walk [] expr
 
         in walk_l styp sexpr
