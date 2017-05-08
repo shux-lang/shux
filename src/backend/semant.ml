@@ -73,6 +73,13 @@ let compare_ast_typ l r = match(l,r) with
    | (Array(t1, None), Array(t2, Some i)) -> t1=t2
    | (l,r) -> l=r
 
+(* ensure that arrays are initialized properly when declared *) 
+let check_array_init = function
+    | Array(t,i) -> (match i with
+        | Some i -> true
+        | None -> raise (Failure "Arrays need to have sizes to be initialized."))
+    | _ -> true
+
 (* check expression 
 tr_env: current translation environment
 expr: expression to be checked 
@@ -442,15 +449,19 @@ let check_body f env =
                              t2 = get_bind_typ b and
                              var_name = get_bind_name b 
                              and m = get_bind_mut b in
+               (* ensure that arrays cannot be initialized without sizes *)
+               let _ = check_array_init t2 in 
                if compare_ast_typ t2 t1 then
                    let v = { id = var_name; var_type = t2; mut = m; initialized = true}
                    in push_variable_env v env                  
                else let err_msg = "Type " ^ _string_of_typ t1 ^ " cannot be assigned" 
                                   ^ " to type " ^ _string_of_typ t2
                    in raise(Failure err_msg)
-           | None -> let t = get_bind_typ b and (*TODO: ensure uniqueness.. *) 
+           | None -> let t = get_bind_typ b and (*TODO: ensure uniqueness.. *)
+                         (* ensure that arrays cannot be initialized without sizes *) 
                          var_name = get_bind_name b and
                          m = get_bind_mut b 
+           in let _ = check_array_init t
            in let v = { id = var_name; var_type = t; mut = m; initialized = false}
            in push_variable_env v env ) 
         | Expr(e) -> ignore (check_expr env e); env in
@@ -467,7 +478,6 @@ let check_body f env =
                    ^ _string_of_typ ret_typ ^ 
                    " but returns type " ^ _string_of_typ tr
                    in raise (Failure err_msg)
-
 (* checks if main is defined *)
 let check_main functions = 
         let check_if_main b f = 
