@@ -41,10 +41,14 @@ let sast_to_cast let_decls f_decls =
         let rec walk_r acc rtyp rexpr =
           let emit t v = (* set sanon register to the value of v *)
             CExpr(t, CAssign(t, sanon, v))
-          in let push_anon t e last =  (* push new sanon of type t onto stack, walk e, then do last *)
-            CPushAnon(t, CBlock(List.rev (last :: walk_anon e t (CPeekAnon t)))) (* TODO: check order *)
-          in let push_anon_nop t e =  (* push new sanon of type t onto stack, walk e *)
-            CPushAnon(t, CBlock(List.rev (walk_anon e t (CPeekAnon t)))) (* TODO: check order *)
+          in let push_anon t e last =  
+            (* push new sanon of type t onto stack, walk e, then do last *)
+            (* TODO: check order *)
+            CPushAnon(t, CBlock(List.rev (last :: walk_anon e t (CPeekAnon t))))
+          in let push_anon_nop t e =
+            (* push new sanon of type t onto stack, walk e *)
+            (* TODO: check order *)
+            CPushAnon(t, CBlock(List.rev (walk_anon e t (CPeekAnon t))))
           in let walk_primitive =
             let lit t l =
               let tr_lit = match l with
@@ -63,6 +67,13 @@ let sast_to_cast let_decls f_decls =
             in let walk_assign t l r =
               let emit_r = CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t))
               in push_anon t r emit_r :: acc
+
+            in let walk_call t i a =
+              let map_act (e, t) =
+                push_anon_nop t e
+              in let eval_call =
+                CCall(t, i, List.map map_act a)
+              in emit t eval_call :: acc
 
             in let walk_unop t o e =
               let acc = walk_r acc t e (* leaves sanon register containing result *)
@@ -121,9 +132,6 @@ let sast_to_cast let_decls f_decls =
               in let eval_cond = CCond(t, eval_iff, eval_the, eval_els, eval_merge)
               in eval_cond :: acc
 
-            in let walk_call t i a =
-              acc
-
             in match rexpr with
               | SLit(t, l) -> lit t l
               | SId(t, n, _) -> id t n (* don't care about scope *)
@@ -132,16 +140,54 @@ let sast_to_cast let_decls f_decls =
               | SAccess (t, e, s) -> walk_access t e s
               | SCond(t, iff, the, els) -> walk_cond t iff the els
               | SKnCall(t, i, a) -> walk_call t i a
+              | SAssign(t, l, r) -> walk_assign t l r (* requires new nested walk *)
 
-              (* requires new nested walk *)
-              | SAssign(t, l, r) -> walk_assign t l r 
-
-              (* should never be naked *)
+              (* should never be called like this *)
               | SGnCall(_, _, _) -> assert false
               | _ -> assert false
 
           in let walk_array =
-            [ CStmtDud ]
+            let deref = CBinopPtr SIndex
+
+            in let lit t l =
+              let l = match l with
+                | SLitArray l -> l
+                | _ -> assert false
+              in let assign e i =
+                let i = CLit(SInt, CLitInt i)
+                in let access =
+                  CBinop(t, CPeek2Anon rtyp, deref, i)
+                in let emit =
+                  CExpr(t, CAssign(t, access, CPeekAnon t))
+                in push_anon t e emit
+              in let for_each (acc, i) e =
+                (assign e i :: acc, i + 1)
+              in let (eval_lit, _) =
+                List.fold_left for_each (acc, 0) l
+              in eval_lit @ acc
+
+            in let id t n =
+              let id = CId(t, n)
+              in emit t id :: acc (* by reference *)
+
+            in let walk_assign t l r =
+              let emit_r = CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t)) (* by reference *)
+              in push_anon t r emit_r :: acc
+
+            in match rexpr with
+              | SLit(t, l) -> lit t l
+              | SId(t, n, _) -> id t n
+              | SBinop(t, l, o, r) -> assert false
+              | SAccess (t, e, s) -> assert false
+              | SCond(t, iff, the, els) -> assert false
+              | SKnCall(t, i, a) -> assert false
+              | SAssign(t, l, r) -> walk_assign t l r
+
+              (* no array type unary operators *)
+              | SUnop(t, o, e) -> assert false
+              (* should never be called like this *)
+              | SGnCall(_, _, _) -> assert false
+              | _ -> assert false
 
           in let walk_struct =
             [ CStmtDud ]
