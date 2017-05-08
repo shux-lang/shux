@@ -164,8 +164,8 @@ and check_expr tr_env expr =
           then raise (Failure "Can't do binop on incompatible types.") else Bool
        | LogAnd | LogOr -> if t1 != t2 || t1 != Bool
           then raise (Failure "Logical and/or only applies to bools.") else Bool
-       | Filter | Map as fm -> let t = (match t1 with 
-            | Array(v, i) -> v 
+       | Filter | Map as fm -> let (t,i) = (match t1 with 
+            | Array(v, i) -> (v, i) 
             | _ -> raise (Failure "Left hand needs to be [] for map/filter"))
        in
             if (match e2 with
@@ -190,9 +190,9 @@ and check_expr tr_env expr =
                          | _ -> raise (Failure "Filter not given a lambda :("))
             | _ -> raise (Failure "Filter not given a lambda :((("))
             then (match fm with
-             | Filter -> if t2 = Bool then Array(t, None) else
+             | Filter -> if t2 = Bool then Array(t, i) else
                      raise (Failure "Filter kernel needs to return Bool")
-             | Map -> if t = t2 then Array(t, None) else 
+             | Map -> if t = t2 then Array(t, i) else 
                      raise (Failure "Map kernel return type needs to match
                                    array")
              | _ -> raise (Failure "The OCaml compiler has a strict type system."))
