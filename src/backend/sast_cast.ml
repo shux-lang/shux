@@ -11,6 +11,21 @@ let map_opt f = function
   | Some(x) -> Some(f x)
   | None -> None
 
+let styp_of_sexpr = function
+  | SLit(t, _) -> t
+  | SId(t, _, _) -> t
+  | SLookback(t, _, _) -> t
+  | SAccess(t, _, _) -> t
+  | SBinop(t, _, _, _) -> t
+  | SAssign(t, _, _) -> t
+  | SKnCall(t, _, _) -> t
+  | SGnCall(t, _, _) -> t
+  | SLookbackDefault(t, _, _, _) -> t
+  | SUnop(t, _, _) -> t
+  | SCond(t, _, _, _) -> t
+  | SLoopCtr -> assert false (* SInt *)
+  | SExprDud -> assert false (* SVoid *)
+
 let sast_to_cast let_decls f_decls =
   let prefix_x s = "extern_" ^ s    (* extern decl *)
   in let prefix_s s = "struct_" ^ s (* struct defn *)
@@ -21,69 +36,8 @@ let sast_to_cast let_decls f_decls =
   in let prefix_gns s = "gns_" ^ s  (* gn struct *)
 
   in let kn_to_fn kn =
-    (*
-    let rec walk_expr typ expr =
-      let lit = function
-        | SLitInt(i) -> CLitInt(i)
-        | SLitFloat(f) -> CLitFloat(f)
-        | SLitBool(b) -> CLitBool(b)
-        | SLitStr(s) -> CLitStr(s)
-        | _ -> assert false
-      in let binop = function
-        | SBinopInt(o) -> CBinopInt(o)
-        | SBinopFloat(o) -> CBinopFloat(o)
-        | SBinopBool(o) -> CBinopBool(o)
-        | SBinopPtr(o) -> CBinopPtr(o)
-        | _ -> assert false
-      in let rec walk = function
-        | SLit(t, l) -> CLit(t, lit l)
-        | SId(t, id, _) -> CId(t, id)
-        | SAccess(t, e, id) -> CAccess(t, walk e, id)
-        | SBinop(t, l, o, r) -> CBinop(t, walk l, binop o, walk r)
-        | SAssign(t, l, r) -> CAssign(t, walk l, walk r)
-        | SKnCall(t, id, a) -> CCall(t, id, List.map walk_stmt a)
-        | SUnop(t, o, e) -> CUnop(t, o, walk e)
-        | SCond(t, i, f, e) -> CCond(t, walk i, walk f, walk e)
-        | _ -> assert false
-      in CExpr(typ, walk expr)
-
-    and walk_loop typ num expr =
-      let lit = function
-        | SLitArray(es) -> CLitArray(List.map walk_stmt (map_tuple es typ))
-        | _ -> assert false
-      in let binop = function
-        | SBinopFn(o) -> ()
-        | _ -> assert false
-      in let rec walk_r = function
-        | SLit(t, l) -> CLit(t, lit l)              (* r-value *)
-        | SId(t, id, _) -> CId(t, id)               (* lr-value *)
-        | SBinop(t, l, o, r) -> assert false        (* r-value *)
-        | SKnCall(t, id, a) -> assert false         (* r-value *)
-        | SCond(t, i, f, e) -> assert false         (* r-value *)
-        | SAssign(t, l, r) -> assert false          (* m-value *)
-        | _ -> CExprDud
-
-
-      in let rec walk_l ass = function
-        | SAssign(t, l, r) -> walk_l (l :: ass) r
-        | e -> walk_r e
-      in let num = match num with
-        | Some(x) -> CLit(SInt, CLitInt x)
-        | None -> assert false
-      in CBlock(typ, [])
-    and walk_struct typ expr =
-      CStmtDud
-      (*
-
-    and walk_stmt = function
-      | (e, SArray(t, n)) -> walk_loop t n e
-      | (e, SStruct(id, _)) -> walk_struct id e
-      | (e, SPtr) | (e, SVoid) -> assert false
-      | (e, t) -> walk_expr t e
-*)
-      *)
     let walk_stmt (e, t) = 
-      let walk sexpr styp sanon =
+      let rec walk_anon sexpr styp sanon =
         let walk_r rtyp rexpr =
           let walk_primitive =
             let lit = function
@@ -92,28 +46,55 @@ let sast_to_cast let_decls f_decls =
               | SLitBool b -> CLitBool b
               | SLitStr s -> CLitStr s
               | _ -> assert false
-            in let binop = function
-              | SBinopInt o -> CBinopInt o
-              | SBinopFloat o -> CBinopFloat o
-              | SBinopBool o -> CBinopBool o
+            in let walk_unop walk acc t o e =
+              let (acc, e) = walk acc e
+              in (acc, CUnop(t, o, e))
+            in let walk_binop walk acc t l o r =
+              let primitive =
+                let tr = function
+                  | SBinopInt o -> CBinopInt o
+                  | SBinopFloat o -> CBinopFloat o
+                  | SBinopBool o -> CBinopBool o
 
-              (* change of type *)
-              | SBinopPtr o -> assert false
-              | SBinopGn SDo -> assert false
-              | _ -> assert false
-            in let rec walk = function
-              | SLit(t, l) -> CLit(t, lit l)
-              | SId(t, n, _) -> CId(t, n)
-              | SBinop(t, l, o, r) -> CBinop(t, walk l, binop o, walk r)
-              | SUnop(t, o, e) -> CUnop(t, o, walk e)
+                  (* change of type *)
+                  | SBinopPtr o -> assert false
+                  | SBinopGn SDo -> assert false
+                  | _ -> assert false
+                in let (acc, l) = walk acc l
+                in let (acc, r) = walk acc r
+                in (acc, CBinop(t, l, tr o, r))
+              in let array_downcast l =
+                let o = CBinopPtr SIndex
+                in let atyp = styp_of_sexpr l
+                in let (acc, r) = walk acc r    (* eval order of binops is undefined ay *)
+                in let anon = CPeekAnon atyp
+                in let anon2 = CPeek2Anon t
+                in let emit = CBinop(t, anon, o, r)
+                in let emit = CAssign(t, anon2, emit)
+                in let emit = CExpr(t, emit)
+                in let yield = CPushAnon(atyp, CBlock(emit :: walk_anon l atyp anon)) (* TODO: check order; reversed *)
+                in (yield :: acc, CExprDud)
+              in let do_loop =
+                ()
+              in match o with
+                | SBinopPtr SIndex -> array_downcast l
+                | SBinopGn SDo -> assert false
+                | SBinopFn o -> assert false (* this is inside walk_primitive, arrays not allowed *)
+                | SBinopGn SFor -> assert false (* see above *)
+                | _ -> primitive
+            in let rec walk acc = function
+              | SLit(t, l) -> (acc, CLit(t, lit l))
+              | SId(t, n, _) -> (acc, CId(t, n))
+              | SUnop(t, o, e) -> walk_unop walk acc t o e
+              | SBinop(t, l, o, r) -> walk_binop walk acc t l o r
 
               (* involves change of types *)
-              | SCond(ty, i, t, e) -> CExprDud
-              | SKnCall(t, i, a) -> CExprDud
-              | SAccess (t, e, s) -> CExprDud
+              | SCond(ty, i, t, e) -> assert false
+              | SKnCall(t, i, a) -> assert false
+              | SAccess (t, e, s) -> assert false
 
               (* requires new nested walk *)
-              | SAssign(t, l, r) -> CExprDud
+              | SAssign(t, l, r) -> assert false
 
 
               | SGnCall(t, i, a) -> assert false
@@ -133,7 +114,7 @@ let sast_to_cast let_decls f_decls =
 
         in let walk_l ltyp lexpr =
           let rec lvalue_tr typ ass anon =
-            let primitive_assign =
+             let primitive_assign =
               let rec tr = function
                 | SId(t, n, s) -> CId(t, n)
                 | SAccess(t, e, f) -> CAccess(t, tr e, f)
@@ -181,11 +162,11 @@ let sast_to_cast let_decls f_decls =
           in let rec walk ass = function
             | SAssign(t, l, r) when t=ltyp -> walk (l :: ass) r
             | SAssign(_, _, _) -> assert false
-            | e -> lvalue_tr ltyp ass sanon :: walk_r ltyp e
+            | e -> lvalue_tr ltyp ass sanon :: walk_r ltyp e (* TODO: check order; reversed *)
           in walk [] lexpr
 
         in walk_l styp sexpr
-      in CPushAnon(t, CBlock(walk e t (CPeekAnon t)))
+      in CPushAnon(t, CBlock(walk_anon e t (CPeekAnon t))) (* TODO: check order *)
 
     in let walk_ret = function
       | Some (e, t) -> CReturn (Some (t, (walk_stmt (e, t)))) 
