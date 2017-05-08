@@ -285,14 +285,22 @@ and check_expr tr_env expr =
       | LogNot -> if check_expr tr_env e = Bool then Bool else 
          raise (Failure "Logical not only applies to booleans"))
    | LookbackDefault(e1, e2) -> 
-          if (check_expr tr_env e2) == Int then check_expr tr_env e1 else
-          raise (Failure "Lookback indexing needs to be an integer")
+          let t1 = check_expr tr_env e1
+          and t2 = check_expr tr_env e2
+          in if t1 = t2 then t1 
+          else raise (Failure ("Lookback variable has type " ^ _string_of_typ t1 ^
+                               " but lookback default returns " ^ _string_of_typ t2)) 
    | Cond(e1, e2, e3) -> if check_expr tr_env e1 = Bool then
         let t2 = check_expr tr_env e2 in if t2 = check_expr tr_env e3 then t2
         else raise (Failure "Ternary operator return type mismatch")
      else raise (Failure "Ternary operator conditional needs to be a boolean
      expr")
-   | Lookback(str, i) -> check_expr tr_env (Id str)  
+   | Lookback(nstr, i) -> let str = flatten_ns_list nstr in
+          if VarMap.mem str tr_env.scope then
+              let found_var = List.hd (VarMap.find str tr_env.scope)
+              in if found_var.mut = Immutable then found_var.var_type
+                 else raise (Failure "Lookback not allowed for mutable types")
+          else raise (Failure ("Name " ^ str ^ " is not defined in lookback expression."))
    | Access(id, str) -> let fname = (match id with
                                 | Id(l) -> flatten_ns_list l (* for namespace *) 
                                 | _ -> "") 
