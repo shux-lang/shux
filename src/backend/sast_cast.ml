@@ -58,6 +58,10 @@ let sast_to_cast let_decls f_decls =
               let id = CId(t, n)
               in emit t id :: acc
 
+            in let walk_assign t l r =
+              let emit_r = CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t))
+              in push_anon t r emit_r :: acc
+
             in let walk_unop t o e =
               let acc = walk_r acc t e (* leaves sanon register containing result *)
               in let unop = CUnop(t, o, sanon)
@@ -104,10 +108,10 @@ let sast_to_cast let_decls f_decls =
               in let emit_access = CExpr(t, CAssign(t, CPeek2Anon t, eval_access))
               in let eval_struct = push_anon st_t e emit_access
               in eval_struct :: acc
-              
+
             in match rexpr with
               | SLit(t, l) -> lit t l
-              | SId(t, n, _) -> id t n
+              | SId(t, n, _) -> id t n (* don't care about scope *)
               | SUnop(t, o, e) -> walk_unop t o e
               | SBinop(t, l, o, r) -> walk_binop t l o r
               | SAccess (t, e, s) -> walk_access t e s
@@ -115,9 +119,10 @@ let sast_to_cast let_decls f_decls =
               | SKnCall(t, i, a) -> assert false
 
               (* requires new nested walk *)
-              | SAssign(t, l, r) -> assert false
+              | SAssign(t, l, r) -> walk_assign t l r 
 
-              | SGnCall(t, i, a) -> assert false
+              (* should never be naked *)
+              | SGnCall(_, _, _) -> assert false
               | _ -> assert false
 
           in let walk_array =
