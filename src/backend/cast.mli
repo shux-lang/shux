@@ -28,6 +28,7 @@ and cexpr =
   | CLoopCtr                    (* access the counter inside a CLoop *)
   | CPeekAnon of ctyp           (* access the temp value of a CBlock *)
   | CPeek2Anon of ctyp           (* access the temp value of a CBlock *)
+  | CPeek3Anon of ctyp           (* access the temp value of a CBlock *)
   | CBinop of ctyp * cexpr * cbin_op * cexpr
   | CAccess of ctyp * cexpr * string
   | CAssign of ctyp * cexpr * cexpr
