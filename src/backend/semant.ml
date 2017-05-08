@@ -113,9 +113,6 @@ let push_variable_env v env =
          new_variables = v::env.new_variables } 
 
  
-=======
-         new_variables = env.new_variables } 
->>>>>>> b917e73fa0da2b4575ca9c50ab28bb0f45c31b9a
 (* check expression 
 tr_env: current translation environment
 expr: expression to be checked 
