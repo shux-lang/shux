@@ -26,6 +26,7 @@ type var = {
 	id : string;
   mut : Ast.mut;
 	var_type : Ast.typ;
+	initialized : bool;
 }
 
 type trans_env = {
@@ -44,13 +45,20 @@ type trans_env = {
 		new_variables : var list;
 }
 
+let flatten_ns_list ns_list = 
+    let rec flatten_ns_rec flat = function
+        | [] -> flat
+        | hd::tl -> flatten_ns_rec (flat ^ "_" ^ hd) tl
+    in flatten_ns_rec (List.hd ns_list) (List.tl ns_list)
 
 let get_sfield_name = function
  | StructField(id, _ ) -> id
 
 let get_bind_typ = function
-   | Bind(_,t,_) -> t
-
+   | Bind(_,t,_) -> (match t with
+       | Struct(str_list) -> Struct([flatten_ns_list str_list])
+       | _ -> t)
+ 
 let get_bind_name = function
    | Bind(_,_,s) -> s
 
@@ -64,12 +72,6 @@ let convert_ret_typ = function
 let compare_ast_typ l r = match(l,r) with
    | (Array(t1, None), Array(t2, Some i)) -> t1=t2
    | (l,r) -> l=r
-
-let flatten_ns_list ns_list = 
-    let rec flatten_ns_rec flat = function
-        | [] -> flat
-        | hd::tl -> flatten_ns_rec (flat ^ "_" ^ hd) tl
-    in flatten_ns_rec (List.hd ns_list) (List.tl ns_list)
 
 (* check expression 
 tr_env: current translation environment
@@ -97,7 +99,7 @@ let rec  type_of_lit tr_env = function
                 else 
                     let err_msg = "Struct literal doesn't match struct defined" ^ 
                                   "as" ^ nid in raise(Failure err_msg)
-    else let err_msg = "Struct " ^ nid ^ "is not defined"
+    else let err_msg = "Struct " ^ nid ^ " is not defined"
                        in raise (Failure err_msg)
 
    | LitVector(l) -> let vector_check v = 
@@ -120,9 +122,14 @@ and check_expr tr_env expr =
 	match expr with
 	 | Lit(a) -> type_of_lit tr_env a
    | Id(nvar) -> let var = flatten_ns_list nvar in
-      if VarMap.mem var tr_env.scope
-			then let x = List.hd (VarMap.find var tr_env.scope) in x.var_type
-			else raise (Failure ("Variable " ^ var ^ " has not been declared"))
+      if VarMap.mem var tr_env.scope then
+          let found_var = List.hd (VarMap.find var tr_env.scope)
+          in if found_var.initialized 
+              then found_var.var_type
+          else 
+              raise (Failure ("Variable " ^ var ^ " has not been initialized"))
+			else 
+          raise (Failure ("Variable " ^ var ^ " has not been declared"))
    | Binop(e1, op, e2) -> 
       let t1 = check_expr tr_env e1 in
       let t2 = check_expr tr_env e2 in
@@ -334,7 +341,7 @@ let check_globals g =
               | Bind(mut, typ, s) -> 
                let t2 = check_expr tr_env expr in
                if compare_ast_typ typ t2 then
-                       let v = { id = s; var_type = typ; mut=mut} in
+                       let v = { id = s; var_type = typ; mut=mut; initialized = true} in
                       let vlist = if VarMap.mem s tr_env.scope then
                               v :: VarMap.find s tr_env.scope else [v] in 
                       check_global_inner { scope = VarMap.add s vlist tr_env.scope; 
@@ -422,7 +429,7 @@ let check_body f env =
            let formal_name = get_bind_name formal and
                formal_type = get_bind_typ formal and
                m = Immutable
-           in let v = { id = formal_name; var_type = formal_type; mut = m }
+           in let v = { id = formal_name; var_type = formal_type; mut = m; initialized=true }
            in push_variable_env v env
     in let formal_env = 
        List.fold_left place_formal env (check_formals f.formals env) in
@@ -436,7 +443,7 @@ let check_body f env =
                              var_name = get_bind_name b 
                              and m = get_bind_mut b in
                if compare_ast_typ t2 t1 then
-                   let v = { id = var_name; var_type = t2; mut = m }
+                   let v = { id = var_name; var_type = t2; mut = m; initialized = true}
                    in push_variable_env v env                  
                else let err_msg = "Type " ^ _string_of_typ t1 ^ " cannot be assigned" 
                                   ^ " to type " ^ _string_of_typ t2
@@ -444,7 +451,7 @@ let check_body f env =
            | None -> let t = get_bind_typ b and (*TODO: ensure uniqueness.. *) 
                          var_name = get_bind_name b and
                          m = get_bind_mut b 
-           in let v = { id = var_name; var_type = t; mut = m}
+           in let v = { id = var_name; var_type = t; mut = m; initialized = false}
            in push_variable_env v env ) 
         | Expr(e) -> ignore (check_expr env e); env in
        let ret_typ = convert_ret_typ f.ret_typ
