@@ -218,6 +218,23 @@ and translate_letdecl senv globals =
 and translate_fn_formals formals senv = 
    List.map (fun (Bind(m,t,s)) -> SBind(to_styp senv (Some t), s, SLocalVal)) formals
 
+and push_formal svar senv = 
+    let new_variables = 
+       if VarMap.mem svar.id senv.variables then
+          let old_varlist = VarMap.find svar.id senv.variables
+          in VarMap.add svar.id (svar::old_varlist) senv.variables
+       else
+          VarMap.add svar.id [svar] senv.variables
+    in { variables = new_variables; sfn_decl = senv.sfn_decl; 
+         sstruct_map = senv.sstruct_map } 
+
+and place_formals senv formals = 
+    let place_formal senv = function
+        | SBind(t, name, s) -> 
+           let svar = { id = name; scope = s; svar_type = t } 
+           in push_formal svar senv
+    in List.fold_left place_formal senv formals
+    
 and translate_kn_decl senv kn = 
     let name = kn.fname 
     and ret_typ = to_styp senv kn.ret_typ
@@ -235,10 +252,11 @@ and translate_kn_decl senv kn =
         | Expr(e) -> raise (Failure "hoisting failed. vdecl_to_local should only accept VDecl") 
     in let (vdecls, local_exprs) = hoist_body ([],[]) kn.body
     in let klocals = List.map (vdecl_to_local senv) vdecls
-    in let body_intermediate = List.map (get_sexpr senv) local_exprs
+    in let kn_env = List.fold_left place_formals senv [knformals;klocals]
+    in let body_intermediate = List.map (get_sexpr kn_env) local_exprs
     in let kbody = List.map (fun x -> (x, get_styp_from_sexpr x)) body_intermediate
     in (match kn.ret_expr with
-        | Some x -> let kret_expr = (get_sexpr senv x, ret_typ)
+        | Some x -> let kret_expr = (get_sexpr kn_env x, ret_typ)
 						        in { skname = name; skret_typ = ret_typ; skformals = knformals;
 								         sklocals = klocals; skbody = kbody; skret_expr = Some kret_expr } 
         | None -> { skname = name; skret_typ = ret_typ; skformals = knformals;
@@ -267,10 +285,11 @@ and translate_gn_decl senv gn =
     in let (vals, vars, expr) = hoist_body ([], [], []) gn.body
     in let gvals = List.map (vdecl_to_local senv) vals
     in let gvars = List.map (vdecl_to_local senv) vars
-    in let body_intermediate = List.map (get_sexpr senv) expr
+    in let gn_env = List.fold_left place_formals senv [gnformals;gvals;gvars]
+    in let body_intermediate = List.map (get_sexpr gn_env) expr
     in let gbody = List.map (fun x -> (x, get_styp_from_sexpr x)) body_intermediate
     in (match gn.ret_expr with
-       | Some x -> let gret_expr = (get_sexpr senv x, ret_typ)
+       | Some x -> let gret_expr = (get_sexpr gn_env x, ret_typ)
           in { sgname = name; sgret_typ = ret_typ; sgmax_iter = 0; sgformals = gnformals;
                sglocalvals = gvals; sglocalvars = gvars; sgbody = gbody; 
                sgret_expr = Some gret_expr } 
