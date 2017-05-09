@@ -263,8 +263,6 @@ and check_expr tr_env expr =
                       let fn = VarMap.find s tr_env.fn_map and
                       tlist = List.map (check_expr tr_env) elist
                       in
-                      if(fn.fn_typ = Gn) then raise (Failure "Cannot call
-                      generator without an iterator") else 
                          let match_formal b fform cform = 
                              if b then get_bind_typ fform = cform
                              else b 

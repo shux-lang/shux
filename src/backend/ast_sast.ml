@@ -234,7 +234,48 @@ and place_formals senv formals =
            let svar = { id = name; scope = s; svar_type = t } 
            in push_formal svar senv
     in List.fold_left place_formal senv formals
-    
+
+(* traverse an expression tree and find the maximum lookback value *)
+and lookback_walk exprs = 
+    (* get max integer from a list of integers *)
+    let get_max l = 
+        let rec get_max_helper maximum = function
+            | [] -> maximum
+            | hd:: tl -> 
+                if hd > maximum then get_max_helper hd tl
+                                else get_max_helper maximum tl
+        in get_max_helper 0 l
+    in let rec lookback_rec_walk maxi = function
+        | Lit(l) -> maxi
+        | Id(sl) -> maxi
+        | Lookback (sl, i) -> if i > maxi then i else maxi
+        | Binop(e1, bin_op, e2) -> 
+             let i1 = lookback_rec_walk maxi e1
+             in let i2 = lookback_rec_walk maxi e2
+             in get_max [i1;i2;maxi]
+        | Assign(e1, e2) -> 
+             let i1 = lookback_rec_walk maxi e1
+             in let i2 = lookback_rec_walk maxi e2
+             in get_max [i1;i2;maxi]
+        | Call(str, elist) ->
+             let ilist = List.map (lookback_rec_walk maxi) elist
+             in get_max ilist
+        | Uniop(u,e) -> let i = lookback_rec_walk maxi e
+                        in if i > maxi then i else maxi
+        | LookbackDefault(e1, e2) -> 
+              let i1 = lookback_rec_walk maxi e1
+							in let i2 = lookback_rec_walk maxi e2
+							in get_max [i1;i2;maxi]
+        | Cond(e1,e2,e3) ->
+             let i1 = lookback_rec_walk maxi e1
+             in let i2 = lookback_rec_walk maxi e2
+             in let i3 = lookback_rec_walk maxi e3
+             in get_max [i1;i2;i3;maxi]
+        | Access(e1, str) -> let i = lookback_rec_walk maxi e1
+                             in if i > maxi then i else maxi
+     in let ivalues = List.map (lookback_rec_walk 0) exprs
+     in get_max ivalues
+ 
 and translate_kn_decl senv kn = 
     let name = kn.fname 
     and ret_typ = to_styp senv kn.ret_typ
@@ -286,14 +327,17 @@ and translate_gn_decl senv gn =
     in let gvals = List.map (vdecl_to_local senv) vals
     in let gvars = List.map (vdecl_to_local senv) vars
     in let gn_env = List.fold_left place_formals senv [gnformals;gvals;gvars]
+    in let gmax_iter = (match gn.ret_expr with 
+                          | Some x -> lookback_walk (x::expr)
+                          | None -> lookback_walk expr)
     in let body_intermediate = List.map (get_sexpr gn_env) expr
     in let gbody = List.map (fun x -> (x, get_styp_from_sexpr x)) body_intermediate
     in (match gn.ret_expr with
        | Some x -> let gret_expr = (get_sexpr gn_env x, ret_typ)
-          in { sgname = name; sgret_typ = ret_typ; sgmax_iter = 0; sgformals = gnformals;
+          in { sgname = name; sgret_typ = ret_typ; sgmax_iter = gmax_iter; sgformals = gnformals;
                sglocalvals = gvals; sglocalvars = gvars; sgbody = gbody; 
                sgret_expr = Some gret_expr } 
-       | None -> { sgname = name; sgret_typ = ret_typ; sgmax_iter = 0; sgformals = gnformals;
+       | None -> { sgname = name; sgret_typ = ret_typ; sgmax_iter = gmax_iter; sgformals = gnformals;
                sglocalvals = gvals; sglocalvars = gvars; sgbody = gbody; 
                sgret_expr = None })
            
