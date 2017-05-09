@@ -3,11 +3,12 @@ open Scanner
 open Parser
 open Semant
 open Llvm
-open Codegen
 open Printf 
 open Astprint
 open Ast_sast
 open Sast_cast
+open Cast_llast
+open Lltranslate
 
 type action = Ast | LLVM
 
@@ -26,9 +27,10 @@ let _ =
 	let lexbuf = Lexing.from_channel cin in
 	let ast = Parser.program Scanner.token lexbuf in
   let sast = Ast_sast.translate_to_sast ast in
- (* let cast = Sast_cast.sast_to_cast sast in *) 
+  let cast = Sast_cast.sast_to_cast sast in
+  let llast = Cast_llast.cast_to_llast cast in
+  let llvm = Lltranslate.translate llast in
 	match action with
 		| Ast -> print_string (Astprint.string_of_program ast)
 		| LLVM -> 
-				let code = Codegen.translate ast in
-    		print_string (Llvm.string_of_llmodule code)
+    		print_string (Llvm.string_of_llmodule llvm)

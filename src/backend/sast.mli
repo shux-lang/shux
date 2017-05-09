@@ -31,7 +31,7 @@ type sbin_op_fn =
   | SFilter | SMap
 
 type sbin_op_gn =
-  | SFor | SDo
+  | SFor
 
 type sbin_op = 
   | SBinopInt of sbin_op_i
