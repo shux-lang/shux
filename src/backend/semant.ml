@@ -115,7 +115,6 @@ let push_variable_env v env =
             VarMap.add v.id [v] env.scope
     in { scope = new_scope; structs = env.structs; fn_map = env.fn_map;
          new_variables = v::env.new_variables } 
-
  
 (* check expression 
 tr_env: current translation environment

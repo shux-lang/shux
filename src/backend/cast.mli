@@ -38,7 +38,7 @@ and cexpr =
 
 and cstmt =
   | CExpr of ctyp * cexpr
-  | CCond of ctyp * (* if *) cstmt * (* then *) cstmt * (* else *) cstmt * (* merge *) cstmt
+  | CCond of ctyp * (* if *) cstmt * (* then *) cstmt * (* else *) cstmt
   | CPushAnon of ctyp * cstmt
 (*  ctyp tmp; { /* push tmp to AStack */
  *    cstmt where CPeekAnon := tmp /* peek AStack */
@@ -52,7 +52,7 @@ and cstmt =
  * ...
  * }
  *)
-  | CLoop of cexpr (* int *) * cstmt
+  | CLoop of cstmt (* int *) * cstmt
 (*  int cond = cexpr;
  *  int ctr;
  *  /* push (ctr, cond) to LStack */
