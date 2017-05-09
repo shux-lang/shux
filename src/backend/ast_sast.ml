@@ -15,6 +15,18 @@ type strans_env = {
     sstruct_map : sstruct_def VarMap.t
 }
 
+let print_styp = function
+  | SInt -> "int"
+  | SFloat -> "float"
+  | SString -> "string"
+  | SBool -> "bool"
+  | SStruct(b,e) -> "struct"
+  | SArray(s,i) -> "array"
+  | SPtr -> "ptr"
+  | SVoid  -> "void"
+
+
+
 let rec to_styp senv = function
     | Some x -> (match x with
     | Int -> SInt
@@ -29,7 +41,6 @@ let rec to_styp senv = function
     | Ptr -> SPtr
     | Void -> SVoid)
     | None -> SVoid
-
 (* iorf: true for int, false for float *) 
 and to_sbin_op iorf = function
     | Add -> if iorf then SBinopInt SAddi else SBinopFloat SAddf 
@@ -64,8 +75,7 @@ and get_styp_from_sexpr = function
     | SLookbackDefault(s,_,_,_) -> s
     | SUnop(s,_,_) -> s
     | SCond(s,_,_,_) -> s
-    | SExprDud -> SVoid (* Duuud *) 
-    | SLoopCtr -> SVoid (* john please *) 
+    | _ -> SVoid (* jooooohn *)
 
 and to_slit senv = function
     | LitInt(i) -> SLitInt(i)
@@ -152,13 +162,16 @@ and get_sexpr senv = function
 		            let sbinop = (match get_styp_from_sexpr st1 with
 					          | SInt -> to_sbin_op true bin_op
 					          | SFloat -> to_sbin_op false bin_op
-					          | _ -> raise (Failure "Not Integer/Float type on binop")) in 
+					          | _ -> let _ = print_string (print_styp (get_styp_from_sexpr st1)) in raise (Failure "Not Integer/Float type on binop")) in 
 		                SBinop(get_styp_from_sexpr st1, st1, sbinop, get_sexpr senv e2)
              | LogAnd | LogOr -> SBinop(SBool, st1, to_sbin_op true bin_op, get_sexpr senv e2)
              | Filter -> SBinop(SArray(get_styp_from_sexpr st1, None), st1, SBinopFn SFilter, get_sexpr senv e2)
              | Map -> SBinop(SArray(get_styp_from_sexpr (get_sexpr senv e2), None),
 											        st1, SBinopFn SMap, get_sexpr senv e2)
-             | Index -> SBinop(get_styp_from_sexpr st1, st1, SBinopPtr SIndex, get_sexpr senv e2)
+             | Index -> let st1type = get_styp_from_sexpr st1 in 
+                  (match st1type with
+                 | SArray(s, i) -> SBinop(s, st1, SBinopPtr SIndex, get_sexpr senv e2)
+                 | _ -> raise (Failure "Indexing needs sarray"))
              | For -> SBinop(SArray(get_styp_from_sexpr (get_sexpr senv e2), None), st1, SBinopGn SFor, get_sexpr senv e2)
              | Do -> SBinop(get_styp_from_sexpr (get_sexpr senv e2), st1, SBinopGn SDo, get_sexpr senv e2))
              | Assign(e1, e2) -> let st1 = get_sexpr senv e1 in 
