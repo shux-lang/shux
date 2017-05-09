@@ -3,8 +3,9 @@ open Cast
 
 module StringMap = Map.Make(String)
 
-let bug s = raise (Failure ("[BUG]: \n" ^ s))
-let debug s = print_string ("[DEBUG]: " ^ s ^ "\n")
+let bug s = raise (Failure ("[BUG]: " ^ s))
+(* let debug s = print_string ("[DEBUG]: " ^ s ^ "\n") *)
+let debug s = ()
 let warn d s = print_string ("[WARN]: " ^ s ^ "\n"); d
 
 let map_tuple l p =
@@ -65,7 +66,7 @@ let sast_to_cast (let_decls, f_decls) =
             (* TODO: check order *)
             CPushAnon(t, CBlock(List.rev (walk_anon e t (CPeekAnon t))))
 
-          in let walk_primitive =
+          in let walk_primitive xxx =
             let lit t l =
               let tr_lit = match l with
                 | SLitInt i -> CLitInt i
@@ -213,21 +214,18 @@ let sast_to_cast (let_decls, f_decls) =
               in eval_struct :: acc
 
             in let walk_binop t l o r =
-              let tr_binop = match o with
-                | SBinopPtr SIndex -> CBinopPtr SIndex (* only valid one *)
-                | _ -> warn CBinopDud "tried to translate a binop that isn't SIndex in walk_array"
-
-              in let dereference = (* operators whose operands are of Array t and int *)
+              let dereference xxx = (* operators whose operands are of Array t and int *)
                 let eval =  (* TODO: make sure I understand what the fuck is going on here *)
                   let arr_t = styp_of_sexpr l
-                  in let ind_t = if styp_of_sexpr r=SInt then SInt else assert false
-                  in let eval_deref = CBinop(t, CPeek2Anon arr_t, tr_binop, CPeekAnon ind_t)
+                  in let ind_t = if styp_of_sexpr r=SInt then SInt else 
+                    warn SInt "encountered non-SInt r-operand in walk_array"
+                  in let eval_deref = CBinop(t, CPeek2Anon arr_t, deref, CPeekAnon ind_t)
                   in let emit_deref = CExpr(t, CAssign(t, CPeek3Anon t, eval_deref))
                   in let eval_r = push_anon ind_t r emit_deref
                   in push_anon arr_t l eval_r
                 in eval :: acc
 
-              in let generator =
+              in let generator xxx =
                 let gn_call id actuals =
                   let gn_name = prefix_gn id
                   in let gns_name = prefix_gns id
@@ -236,7 +234,8 @@ let sast_to_cast (let_decls, f_decls) =
 
                   in let init_gns =
                     let set_field (a, at) (SBind(st, id, _)) =
-                      let t = if at=st then st else assert false
+                      let t = if at=st then st else
+                        warn st "encountered generator struct type mismatch in walk_array"
                       in let get_field =
                         CAccess(t, CPeek2Anon gns_typ, id)
                       in let emit_field =
@@ -252,7 +251,8 @@ let sast_to_cast (let_decls, f_decls) =
 
                     in init_fields [] gns_fields actuals
                   in let eval_cnt = (* TODO: check what t is equal to here *)
-                    let cnt_t = if styp_of_sexpr r=SInt then SInt else assert false
+                    let cnt_t = if styp_of_sexpr r=SInt then SInt else
+                      warn SInt "encountered non-SInt in gnc evaluation in walk_array"
                     in push_anon_nop cnt_t l 
                   in let call_loop =
                     let curr = CBinop(t, CPeek3Anon rtyp, deref, CLoopCtr)
@@ -266,21 +266,21 @@ let sast_to_cast (let_decls, f_decls) =
                     in CLoop(eval_cnt, CBlock [set_ctr; call_gn])
                   in CPushAnon(gns_typ, CBlock(List.rev(call_loop :: init_gns)))
                 in match r with
-                | SGnCall(gn_t, id, actuals) when gn_t=t -> gn_call id actuals :: acc
-                | SGnCall(_, _, _) -> warn acc "gn call type mismatch in walk_array"
+                | SGnCall(gn_t, id, actuals) when gn_t=element_t -> gn_call id actuals :: acc
+                | SGnCall(gn_t, id, actuals) -> warn (gn_call id actuals :: acc) "gn call type mismatch in walk_array"
                 |  _ -> warn acc "encountered non-SGnCall in right operand of SFor"
 
-              in let map =
+              in let map xxx =
                 acc
 
-              in let filter =
+              in let filter xxx =
                 acc
 
               in match o with
-                | SBinopPtr SIndex -> dereference
-                | SBinopGn SFor -> generator
-                | SBinopFn SMap -> map
-                | SBinopFn SFilter -> filter (* our worst nightmare *)
+                | SBinopPtr SIndex -> dereference ()
+                | SBinopGn SFor -> generator ()
+                | SBinopFn SMap -> map ()
+                | SBinopFn SFilter -> filter (* our worst nightmare *) ()
                 | _ -> warn acc "encountered invalid binop for walk_array"
 
             in let walk_call t i a =
@@ -346,7 +346,7 @@ let sast_to_cast (let_decls, f_decls) =
           in match rtyp with
             | SArray(t, n) -> debug "walk_r on array type"; walk_array t n
             | SStruct(i, b) -> debug "walk_r on struct type"; walk_struct i b
-            | _ -> debug "walk_r on primitive type"; walk_primitive
+            | _ -> debug "walk_r on primitive type"; walk_primitive ()
 
         in let walk_l ltyp lexpr =
           let rec lvalue_tr typ ass anon =
@@ -354,6 +354,7 @@ let sast_to_cast (let_decls, f_decls) =
               let rec tr = function
                 | SId(t, n, s) -> CId(t, n)
                 | SAccess(t, e, f) -> CAccess(t, tr e, f)
+                (* TODO: rhs of binop doesn't have to be an l-value *)
                 | SBinop(t, l, SBinopPtr SIndex, r) -> CBinop(t, tr l, CBinopPtr SIndex, tr r)
                 | SLoopCtr -> warn CExprDud "should not be able to assign to LoopCtr in lvalue_tr"
                 | _ -> warn CExprDud "encountered non-lvalue in lvalue_tr"
