@@ -1,6 +1,6 @@
 CAMLC=ocamlc
 OCAML=ocamlfind $(CAMLC) -linkpkg -thread -package core -package llvm -package llvm.analysis
-OBJS=exceptions.cmo sast.cmo ast.cmo astprint.cmo scanner.cmo parser.cmo semant.cmo codegen.cmo ast_sast.cmo sast_cast.cmo llast.cmo lltranslate.cmo cast_llast.cmo
+OBJS=exceptions.cmo sast.cmo ast.cmo astprint.cmo scanner.cmo parser.cmo semant.cmo ast_sast.cmo sast_cast.cmo llast.cmo lltranslate.cmo cast_llast.cmo
 INCLUDE=-I ../src/include -g
 OCAML_FLAGS=$(INCLUDE) $(OBJS)
 EXAMPLES=../examples
@@ -57,8 +57,6 @@ ast_sast.cmo : sast.cmo ast.cmo
 ast_sast.cmx : sast.cmx ast.cmx
 cast.cmo : sast.cmo
 cast.cmx : sast.cmx
-codegen.cmo : ast.cmo
-codegen.cmx : ast.cmx
 exceptions.cmo :
 exceptions.cmx :
 parser.cmo : ast.cmo parser.cmi
@@ -98,8 +96,9 @@ autoclean:
 	ocamlbuild -clean
 
 hello: $(COMPILER) $(EXAMPLES)/hello_world.shux
-	./shuxc $(EXAMPLES)/hello_world.shux > hello_world.ll
-	lli hello_world.ll
+	./shuxc $(EXAMPLES)/nstest.shux > nstest.ll
+	cat nstest.ll
+	lli nstest.ll
 
 tests:
 	cp shuxc ../tests/shuxc
