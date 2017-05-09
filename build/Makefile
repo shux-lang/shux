@@ -101,6 +101,5 @@ hello: $(COMPILER) $(EXAMPLES)/hello_world.shux
 	lli nstest.ll
 
 tests:
-	cp shuxc ../tests/shuxc
-	@cd $(TEST_DIR) && ./$(TEST)
+	@cd $(TEST_DIR) && $(SYMLINK) ../build/shuxc shuxc && ./$(TEST)
 
