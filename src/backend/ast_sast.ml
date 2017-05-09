@@ -49,7 +49,6 @@ and to_sbin_op iorf = function
     | Filter -> SBinopFn SFilter
     | Map -> SBinopFn SMap
     | For -> SBinopGn SFor
-    | Do -> SBinopGn SDo
     | Index -> SBinopPtr SIndex
 
 and get_styp_from_sexpr = function
@@ -132,7 +131,13 @@ and get_sexpr senv = function
 											        st1, SBinopFn SMap, get_sexpr senv e2)
              | Index -> SBinop(get_styp_from_sexpr st1, st1, SBinopPtr SIndex, get_sexpr senv e2)
              | For -> SBinop(SArray(get_styp_from_sexpr (get_sexpr senv e2), None), st1, SBinopGn SFor, get_sexpr senv e2)
-             | Do -> SBinop(get_styp_from_sexpr (get_sexpr senv e2), st1, SBinopGn SDo, get_sexpr senv e2))
+             | Do -> let st2 = get_sexpr senv e2
+                     in let st2_typ = get_styp_from_sexpr st2
+                     in let st1_typ = get_styp_from_sexpr st1
+                     in if st1_typ != SInt then assert(false) else (* needs to be an integer. semant should already have handled this *)
+                     let fake_for = SBinop(SArray(st2_typ, None), st1, SBinopGn SFor, st2)
+                     in let index = SBinop(st1_typ,st1, SBinopInt SSubi, SLit(SInt, SLitInt(-1)))
+                     in SBinop(st2_typ, fake_for, SBinopPtr SIndex, index))
              | Assign(e1, e2) -> let st1 = get_sexpr senv e1 in 
 								SAssign(get_styp_from_sexpr st1, st1, get_sexpr senv e2)
              | Call(s, elist) -> (match s with
