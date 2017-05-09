@@ -1,0 +1,41 @@
+let scalar dt = 0.01;
+let vector<2> g = (0.0, -9.81);
+
+struct particle {
+   float x;
+   float v;
+}
+
+kn euler_kernel(particle p) particle {
+   struct particle {
+      .v = p.v..1 + g * dt;
+      .x = p.x..1 + p.v..1 * dt; /* shouldn't this be p.v ? */
+   }
+}
+
+gn euler(particle[] init) particle[] {
+   var particle[] particles_buffer = particles_buffer @ p -> {
+      /* couldn't we use the kernel here? */
+      struct particle {
+         .v = p.v..1 + g * dt;
+	 .x = p.x..1 + p.v..1 * dt;
+      }
+   } init
+}
+
+kn main() int {
+   var particle[10] particles_init = {0}; /* do we have an easy way of doing this? */
+   var particle[] p_40, p_40_select; /* do we support multiple expressions in one line right now? */
+
+   for 1000 euler(p_init) @ state -> {
+      print("this should display"); /* we don't have opengl bindings yet */
+   }
+
+   p_40 = do 40 euler(p_init); /* copies array */
+   p_40_select = p_40 :: p -> {
+      p.x[0] < 4 && p.x[1] < 4
+   };
+
+   print("this should display"); /* again, graphics */
+}
+   
