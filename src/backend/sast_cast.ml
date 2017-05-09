@@ -94,7 +94,6 @@ let sast_to_cast (let_decls, f_decls) =
                 | SBinopBool o -> CBinopBool o
                 (* change of type *)
                 | SBinopPtr o -> CBinopPtr o
-                | SBinopGn SDo -> CBinopPtr SIndex (* do x y() := (for x y())[x-1] *)
                 | _ -> assert false
 
               in let primitive = (* operators whose temp value don't change type *)
