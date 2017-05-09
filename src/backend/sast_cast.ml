@@ -263,7 +263,6 @@ let sast_to_cast (let_decls, f_decls) =
                 | SBinopGn SFor -> generator
                 | SBinopFn SMap -> map
                 | SBinopFn SFilter -> filter (* our worst nightmare *)
-                | SBinopGn SDo -> assert false (* TODO: should be sugared away *)
                 |  _ -> assert false
 
             in let walk_call t i a =
