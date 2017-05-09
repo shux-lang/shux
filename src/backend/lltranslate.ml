@@ -3,13 +3,21 @@ open Llast
 
 module StringMap = Map.Make(String)
 
-let translate funcs =
+let translate structs globals funcs =
+  (* debug use *)
+  let print_llvalue llvalue msg=
+    let lltype = L.type_of llvalue in
+    prerr_string ("["^msg^"]"^" lltype:"^(L.string_of_lltype lltype)^";\n")
+  in
+
   let the_context = L.global_context () in
   let the_module = L.create_module the_context "shux" and
       i32_t = L.i32_type the_context and
       i8_t = L.i8_type the_context and
       i1_t = L.i1_type the_context and
-      float_t = L.float_type the_context
+      double_t = L.double_type the_context and
+      double_precision = 16 and (* adjust this to change number of digits printf will print *)
+      void_t = L.void_type the_context
   in
   let str_t = L.pointer_type i8_t in
 
@@ -17,27 +25,96 @@ let translate funcs =
       LLRegLabel (typ, str) -> typ
     | LLRegLit (typ, lit) -> typ in
 
-  let lltyp_of = function
-      LLBool -> i1_t
-    | LLInt  -> i32_t
-    | LLFloat -> L.double_type the_context
-    | _ -> i32_t
+  (* Define all the structs *)
+
+  let rec lleasytyp_of = function (* TODO compromise *)
+        LLBool -> i1_t
+      | LLInt  -> i32_t
+      | LLDouble -> L.double_type the_context
+      | LLConstString -> str_t
+      | LLVoid -> void_t
+      | LLArray (typ, len) ->
+         (match len with
+            Some real_len -> L.array_type (lleasytyp_of typ) real_len
+          | None -> assert false
+         )
+      | LLStruct str -> i1_t
   in
 
-  let combine lit = lltyp_of (extract_type lit) in
+  let define_structs = (* a map from struct name to struct type *)
+    let define_struct map struc =
+      let (struct_name, typelist) = struc in
+      let struct_typ = L.named_struct_type the_context struct_name in
+      ignore (L.struct_set_body struct_typ (Array.of_list (List.map lleasytyp_of typelist)) false);
+      StringMap.add struct_name struct_typ map
+    in
+    List.fold_left define_struct StringMap.empty structs
+  in
+
+  let rec lltyp_of = function (* TODO compromise *)
+    | LLStruct str -> StringMap.find str define_structs
+    | a -> lleasytyp_of a
+  in
+
+  let get_struct_by_name struct_name =
+      StringMap.find struct_name define_structs
+  in
+
+  let promote lit = (* promote two  *)
+    let llast_typ = extract_type lit in
+    (match llast_typ with
+     LLStruct str -> L.pointer_type (lltyp_of llast_typ)
+     | LLArray (typ, len) -> L.pointer_type (lltyp_of typ)
+     | _ -> lltyp_of llast_typ
+    )
+  in
+
+  let lit_to_llvalue = function
+    | LLLitBool b -> L.const_int i1_t (if b then 1 else 0)
+    | LLLitInt i -> L.const_int i32_t i
+    | LLLitDouble f -> L.const_float double_t f
+    | LLLitString s -> (L.define_global "stringlit" (L.const_stringz the_context s) the_module)
+    | _ -> assert false
+  in
+
+  (* define global variables *)
+  let define_globals =
+    let define_global map var =
+      let (gtyp, gname, glit) = var in
+      let init_val = (match glit with
+                        LLLitStruct list ->
+                        let struct_name = (match gtyp with LLStruct sname -> sname | _ -> assert false) in
+                        let struct_lltype = get_struct_by_name struct_name in
+                        let list_llvalues = List.map lit_to_llvalue list in
+                        ignore(L.const_named_struct struct_lltype (Array.of_list list_llvalues));
+                        assert false;
+                      | LLLitArray _ -> assert false
+                      | x -> lit_to_llvalue x
+                     ) in
+      let global_llvalue = L.define_global gname init_val the_module in
+      print_llvalue global_llvalue "define_globals";
+      StringMap.add gname global_llvalue map in
+    List.fold_left define_global StringMap.empty globals in
 
   (* Define the printf function *)
   let printf_t = L.var_arg_function_type i32_t [| str_t |] in
   let printf_func = L.declare_function "printf" printf_t the_module in
+  let int_format_str =
+    let str_arr_ptr = L.define_global "fmti" (L.const_stringz the_context "%d\n") the_module in
+    L.const_in_bounds_gep str_arr_ptr [| L.const_int i32_t 0; L.const_int i32_t 0|] and
+      float_format_str =
+        let formatter = "%."^(string_of_int double_precision)^"f\n" in
+        let str_arr_ptr = L.define_global "fmti" (L.const_stringz the_context formatter) the_module in
+    L.const_in_bounds_gep str_arr_ptr [| L.const_int i32_t 0; L.const_int i32_t 0|] in
 
   let define_funcs =
     let translate_func map func=
       let fname = func.llfname and
-          fformals = Array.of_list (List.map combine (func.llfformals))
+          fformals = Array.of_list (List.map promote (func.llfformals))
       in
       let func_sign = L.function_type (lltyp_of func.llfreturn) fformals in
       let func_def = L.define_function fname func_sign the_module in
-      StringMap.add fname (func_def, func) map
+     StringMap.add fname (func_def, func) map
     in
     List.fold_left translate_func StringMap.empty funcs in
 
@@ -50,7 +127,7 @@ let translate funcs =
     let build_func func =
       let (the_function, _) = StringMap.find func.llfname define_funcs in
       let builder = L.builder_at_end the_context (L.entry_block the_function) in
-      let int_format_str = L.build_global_stringptr "%d\n%" "fmtint" builder in
+
       let formals_list = Array.to_list (L.params the_function) in
 
       let get_reg_typ_name = function
@@ -60,16 +137,42 @@ let translate funcs =
       let build_formals = (* this is a map from formal name to its stack ptr *)
         let build_formal map formal_def formal_param =
           let (formal_type,formal_name) = get_reg_typ_name formal_def in
-          let formal_ptr = L.build_alloca (lltyp_of formal_type) formal_name builder in
-          ignore(L.build_store formal_param formal_ptr builder);
-          StringMap.add formal_name formal_ptr map in
+          (match formal_type with
+             LLArray (typ, len) ->
+             let double_ptr = L.build_alloca (L.type_of formal_param) "alloc_ptr_arr_formal" builder in
+             ignore(L.build_store formal_param double_ptr builder);
+             StringMap.add formal_name double_ptr map
+           | LLStruct struct_name ->
+              let double_ptr = L.build_alloca (L.type_of formal_param) "alloc_ptr_struct_formal" builder in
+              ignore(L.build_store formal_param double_ptr builder);
+              StringMap.add formal_name double_ptr map
+           | _ -> let formal_ptr = L.build_alloca (lltyp_of formal_type) formal_name builder in
+                  ignore(L.build_store formal_param formal_ptr builder);
+                  StringMap.add formal_name formal_ptr map
+          ) in
         List.fold_left2 build_formal StringMap.empty func.llfformals formals_list
       in
 
       let build_locals = (* this is a map from local name to its stack ptr *)
         let build_local map local_def =
           let (local_type, local_name) = get_reg_typ_name local_def in
-          let local_ptr = L.build_alloca (lltyp_of local_type) local_name builder in
+          let local_ptr =
+            (match local_type with
+               LLArray (typ, len) ->
+               let aggptr = L.build_alloca (lltyp_of local_type) local_name builder in
+               let ptr_to_first = L.build_in_bounds_gep aggptr [| L.const_int i32_t 0; L.const_int i32_t 0 |]
+                                                        "build_local_arr" builder in
+               let double_ptr = L.build_alloca (L.type_of ptr_to_first) "alloc_ptr_arr" builder in
+               ignore(L.build_store ptr_to_first double_ptr builder);
+               double_ptr
+             | LLStruct struct_name ->
+                let struct_typ = get_struct_by_name struct_name in
+                let struct_ptr = L.build_alloca struct_typ "build_local_struct" builder in
+                let double_ptr = L.build_alloca (L.type_of struct_ptr) "alloc_ptr_struct" builder in
+                ignore(L.build_store struct_ptr double_ptr builder);
+                double_ptr
+             | _ -> L.build_alloca (lltyp_of local_type) local_name builder
+            ) in
           StringMap.add local_name local_ptr map in
         List.fold_left build_local StringMap.empty func.llflocals
       in
@@ -82,31 +185,41 @@ let translate funcs =
         List.fold_left define_block StringMap.empty func.llfblocks
       in
 
+      let get_block_by_name bname =
+        let stmts, block_llvalue = StringMap.find bname define_blocks in
+        block_llvalue in
+
       (* helper function starts here *)
-      let llvalue_of_lit = function
+      let llvalue_of_lit typ block_builder = function
           LLLitBool bool -> L.const_int i1_t (if bool then 1 else 0)
         | LLLitInt int -> L.const_int i32_t int
-        | LLLitFloat float ->L.const_float float_t float
-        | _ -> L.const_int i32_t 0
+        | LLLitDouble double ->L.const_float double_t double
+        | LLLitString str -> L.build_global_stringptr str "globalstr" block_builder
+        | LLLitArray litlist -> assert false
+        | LLLitStruct litlist -> assert false
       in
 
-      let get_reg = function
+      let get_reg block_builder = function
           LLRegLabel (typ, regname) ->
           if (StringMap.mem regname build_formals)
           then (StringMap.find regname build_formals)
-          else (StringMap.find regname build_locals)
+          else (
+            if (StringMap.mem regname build_locals)
+            then (StringMap.find regname build_locals)
+            else (StringMap.find regname define_globals)
+          )
         | LLRegLit (typ, literal) ->
-           let literal_ptr = L.build_alloca (lltyp_of typ) "lit_alloc_inst" builder in
-           ignore(L.build_store (llvalue_of_lit literal) literal_ptr builder);
+           let literal_ptr = L.build_alloca (lltyp_of typ) "lit_alloc_inst" block_builder in
+           ignore(L.build_store (llvalue_of_lit typ block_builder literal) literal_ptr block_builder);
            literal_ptr
       in
 
       let load_reg ptrreglabel block_builder =
-        L.build_load (get_reg ptrreglabel) "loadinst" block_builder
+        L.build_load (get_reg block_builder ptrreglabel) "loadinst" block_builder
       in
 
       let store_reg ptrreglabel val_to_store block_builder=
-        L.build_store val_to_store (get_reg ptrreglabel) block_builder in
+        L.build_store val_to_store (get_reg block_builder ptrreglabel) block_builder in
 
       let make_tuple list element =
         let bundle a = (a,element) in
@@ -122,9 +235,12 @@ let translate funcs =
 
       let build_terminator block_builder = function
           LLBlockReturn label -> L.build_ret (load_reg label block_builder) block_builder
-        | LLBlockBr (a,b,c) -> L.const_int i32_t 0
-        | LLBlockJmp a -> L.const_int i32_t 0 in
-
+        | LLBlockReturnVoid -> L.build_ret_void block_builder
+        | LLBlockBr (label,brname1,brname2) ->
+           L.build_cond_br (load_reg label block_builder)
+                           (get_block_by_name brname1) (get_block_by_name brname2) block_builder
+        | LLBlockJmp brname -> L.build_br (get_block_by_name brname) block_builder
+      in
 
       let bind_block_to_stmt stmts = function
           "entry" -> make_tuple stmts builder
@@ -132,19 +248,39 @@ let translate funcs =
                   make_tuple stmts (L.builder_at_end the_context block_llvalue)
       in
 
+      let get_arr_ptr_by_labels agglabel indexlabel block_builder=
+        let aggreg = load_reg agglabel block_builder and indexreg = load_reg indexlabel block_builder in
+        L.build_in_bounds_gep aggreg [| indexreg |] "get_arr_inst" block_builder
+      in
+
+      let get_struct_ptr_by_labels agglabel index block_builder=
+        let aggreg = load_reg agglabel block_builder in
+        L.build_struct_gep aggreg index "get_struct_inst" block_builder
+      in
+
       let build_stmt map block_stmt=
         let (stmt, block_builder) = block_stmt in
         let stmt_llvalue =
           (match stmt with
              LLBuildPrintCall label
-             -> L.build_call printf_func
-                             [| int_format_str; (load_reg label block_builder) |] "printwhatever" block_builder
+             -> let argarr = (match (extract_type label) with
+                                LLInt -> [|int_format_str; (load_reg label block_builder) |]
+                              | LLDouble -> [|float_format_str; (load_reg label block_builder) |]
+                              | LLConstString -> [| (load_reg label block_builder) |]
+                              | _ -> [| |]) in (* TODO are we printing more things *)
+             L.build_call printf_func argarr "printwhatever" block_builder
            | LLBuildCall (fname,label_list,labelret) ->
               let func_llvalue = get_func_by_name fname and
                   func_formal_array_llvalue = transform_funclabel_list_to_llvalue label_list block_builder in
-              let call_ret_reg = L.build_call func_llvalue func_formal_array_llvalue "funccall" block_builder in
-                  ignore(store_reg labelret call_ret_reg block_builder);
-                  call_ret_reg
+              (match labelret with
+                 Some label->
+                 let call_ret_reg =
+                   L.build_call func_llvalue func_formal_array_llvalue "call_ret" block_builder in
+                 ignore(store_reg label call_ret_reg block_builder);
+                 call_ret_reg
+               | None -> ignore(L.build_call func_llvalue func_formal_array_llvalue "" block_builder);
+                         L.const_int i32_t 0
+              )
            | LLBuildBinOp (optyp,label1,label2,labelresult) ->
               let reg1 = load_reg label1 block_builder and reg2 = load_reg label2 block_builder in
               let regbinop = (match optyp with
@@ -152,9 +288,25 @@ let translate funcs =
                               | LLLT -> L.build_icmp L.Icmp.Slt reg1 reg2 "ltinst" block_builder
                              ) in
               store_reg labelresult regbinop block_builder
+           | LLBuildArrayLoad (agglabel,indexlabel,destlabel) ->
+              let elementptr = get_arr_ptr_by_labels agglabel indexlabel block_builder in
+              let derefelement = L.build_load elementptr "arrload_deref" block_builder in
+              store_reg destlabel derefelement block_builder
+           | LLBuildArrayStore (agglabel, indexlabel, fromlabel) ->
+              let elementptr = get_arr_ptr_by_labels agglabel indexlabel block_builder in
+              let val_to_store = load_reg fromlabel block_builder in
+              L.build_store val_to_store elementptr block_builder
+           | LLBuildStructLoad (agglabel,index,destlabel) ->
+              let elementptr = get_struct_ptr_by_labels agglabel index block_builder in
+              let derefelement = L.build_load elementptr "structload_deref" block_builder in
+              store_reg destlabel derefelement block_builder
+           | LLBuildStructStore (agglabel, index, fromlabel) ->
+              let elementptr = get_struct_ptr_by_labels agglabel index block_builder in
+              let val_to_store = load_reg fromlabel block_builder in
+              L.build_store val_to_store elementptr block_builder
            | LLBuildTerm terminator -> build_terminator block_builder terminator
-           | _ -> L.const_int i32_t 0
-          ) in
+          )
+           in
         StringMap.add ("stmt"^func.llfname) stmt_llvalue map
       in
       let bundled_stmts = bind_block_to_stmt func.llfbody "entry" in
