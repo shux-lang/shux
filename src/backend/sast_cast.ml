@@ -34,6 +34,7 @@ let sast_to_cast let_decls f_decls =
   in let prefix_lambda s i = "lambda_" ^ i ^ "_" ^ s
   in let prefix_gn s = "gn_" ^ s    (* gn function *)
   in let prefix_gns s = "gns_" ^ s  (* gn struct *)
+  in let gns_hash = Hashtbl.create 42
 
   in let kn_to_fn kn =
     let walk_stmt (e, t) = 
@@ -126,8 +127,8 @@ let sast_to_cast let_decls f_decls =
               let cond_t = styp_of_sexpr iff
               in let cond_t = if cond_t=SBool then cond_t else assert false
               in let eval_iff = push_anon_nop cond_t iff
-              in let eval_the = push_anon_nop cond_t the
-              in let eval_els = push_anon_nop cond_t els
+              in let eval_the = push_anon_nop t the
+              in let eval_els = push_anon_nop t els
               in let eval_merge = CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t))
               in let eval_cond = CCond(t, eval_iff, eval_the, eval_els, eval_merge)
               in eval_cond :: acc
@@ -146,11 +147,11 @@ let sast_to_cast let_decls f_decls =
               | SGnCall(_, _, _) -> assert false
               | _ -> assert false
 
-          in let walk_array =
+          in let walk_array element_t element_c =
             let deref = CBinopPtr SIndex
 
             in let lit t l =
-              let l = match l with
+              let l = match l with (* unwrap to list of expressions, emit by value *)
                 | SLitArray l -> l
                 | _ -> assert false
               in let assign e i =
@@ -166,20 +167,16 @@ let sast_to_cast let_decls f_decls =
                 List.fold_left for_each (acc, 0) l
               in eval_lit @ acc
 
-            in let id t n =
+            in let id t n = (* reference *)
               let id = CId(t, n)
-              in emit t id :: acc (* by reference *)
+              in emit t id :: acc
 
-            in let walk_assign t l r =
-              let emit_r = CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t)) (* by reference *)
+            in let walk_assign t l r = (* reference *)
+              let emit_r = CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t))
               in push_anon t r emit_r :: acc
 
-            in let walk_binop t l o r =
-              acc
-
-            in let walk_cond t iff the els =
-              let cond_t = styp_of_sexpr iff
-              in let cond_t = if cond_t=SBool then cond_t else assert false
+            in let walk_cond t iff the els = (* reference *)
+              let cond_t = if styp_of_sexpr iff=SBool then SBool else assert false
               in let eval_iff = push_anon_nop cond_t iff
               in let eval_the = push_anon_nop cond_t the
               in let eval_els = push_anon_nop cond_t els
@@ -187,8 +184,61 @@ let sast_to_cast let_decls f_decls =
               in let eval_cond = CCond(t, eval_iff, eval_the, eval_els, eval_merge)
               in eval_cond :: acc
 
-            in let walk_access t e s =
-              acc
+            in let walk_access t e s = (* reference *)
+              let st_t = styp_of_sexpr e
+              in let eval_access = CAccess(t, CPeekAnon st_t, s)
+              in let emit_access = CExpr(t, CAssign(t, CPeek2Anon t, eval_access))
+              in let eval_struct = push_anon st_t e emit_access
+              in eval_struct :: acc
+
+            in let walk_binop t l o r =
+              let tr_binop = match o with
+                | SBinopPtr o -> CBinopPtr o (* only valid one *)
+                | _ -> assert false
+
+              in let dereference = (* operators whose operands are of Array t and int *)
+                let eval =  (* TODO: make sure I understand what the fuck is going on here *)
+                  let arr_t = styp_of_sexpr l
+                  in let ind_t = if styp_of_sexpr r=SInt then SInt else assert false
+                  in let eval_deref = CBinop(t, CPeek2Anon arr_t, tr_binop, CPeekAnon ind_t)
+                  in let emit_deref = CExpr(t, CAssign(t, CPeek3Anon t, eval_deref))
+                  in let eval_r = push_anon ind_t r emit_deref
+                  in push_anon arr_t l eval_r
+                in eval :: acc
+
+              in let generator =
+                let gn_call id actuals =
+                  let gn_name = prefix_gn id
+                  in let gns_name = prefix_gns id
+                  in let gns_typ = SStruct(gns_name, Hashtbl.find gns_hash gns_name)
+
+                  in let init_gns =
+                    []
+                  in let eval_cnt =
+                    let cnt_t = if styp_of_sexpr r=SInt then SInt else assert false
+                    in push_anon_nop cnt_t l 
+                  in let call_gn =
+                    []
+                  in let call_loop =
+                    CLoop(eval_cnt, CBlock call_gn)
+                  in CPushAnon(gns_typ, CBlock(call_loop :: init_gns))
+                in match r with
+                | SGnCall(gn_t, id, actuals) when gn_t=t -> gn_call id actuals :: acc
+                | _ -> assert false
+
+              in let map =
+                acc
+
+              in let filter =
+                acc
+
+              in match o with
+                | SBinopPtr SIndex -> dereference
+                | SBinopGn SFor -> generator
+                | SBinopFn SMap -> map
+                | SBinopFn SFilter -> filter (* our worst nightmare *)
+                | SBinopGn SDo -> assert false (* TODO: should be sugared away *)
+                | _ -> assert false
 
             in let walk_call t i a =
               acc
@@ -208,12 +258,12 @@ let sast_to_cast let_decls f_decls =
               | SGnCall(_, _, _) -> assert false
               | _ -> assert false
 
-          in let walk_struct =
+          in let walk_struct id members =
             [ CStmtDud ]
 
           in match rtyp with
-            | SArray(t, n) -> walk_array
-            | SStruct(i, b) -> walk_struct
+            | SArray(t, n) -> walk_array t n
+            | SStruct(i, b) -> walk_struct i b
             | _ -> walk_primitive
 
         in let walk_l ltyp lexpr =
@@ -232,7 +282,7 @@ let sast_to_cast let_decls f_decls =
             in let array_assign t n =
               let index t a = CBinop(t, a, CBinopPtr SIndex, CLoopCtr)
               in let get_anon = index t anon
-              in let get_cond = CLit(SInt, (CLitInt n))
+              in let get_cond = CExpr(SInt, CLit(SInt, (CLitInt n)))
               in let map_ass a =
                  SBinop(t, a, SBinopPtr SIndex, SLoopCtr)
               in let get_index =
@@ -333,7 +383,9 @@ let sast_to_cast let_decls f_decls =
 
     in let gns_typ_name = prefix_gns gn.sgname
     in let gns_typ = SStruct(gns_typ_name, st_fields) (* struct type name *)
-    in let defn_cstruct = CStructDef { ssname = gns_typ_name; ssfields = st_fields }
+    in let defn_cstruct = 
+      Hashtbl.add gns_hash gns_typ_name st_fields;
+      CStructDef { ssname = gns_typ_name; ssfields = st_fields }
 
     in let gn_to_kn =
       let st_id = SId(gns_typ, gns_arg, SLocalVar)

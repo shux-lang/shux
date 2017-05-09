@@ -52,7 +52,7 @@ and cstmt =
  * ...
  * }
  *)
-  | CLoop of cexpr (* int *) * cstmt
+  | CLoop of cstmt (* int *) * cstmt
 (*  int cond = cexpr;
  *  int ctr;
  *  /* push (ctr, cond) to LStack */
