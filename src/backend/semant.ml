@@ -287,7 +287,9 @@ and check_expr tr_env expr =
    (match e1 with 
        | Id l -> ignore (match_typ e1 e2); get_mutability (flatten_ns_list l)
        | Assign(l1,l2) -> match_typ e1 e2
-       | Access(x,y)-> match_typ e1 e2 
+       | Access(x,y)-> (match x with
+           | Id(l) -> ignore(get_mutability (flatten_ns_list l)); match_typ e1 e2;
+           | _ -> raise(Failure "Semant not implemented for accessing into non-ids"))  
        | Binop(idx1, Index, _) -> (match idx1 with
            | Id(l) -> ignore (get_mutability (flatten_ns_list l))
            | _ -> raise (Failure "Semant not implemented for indexing into non-ids"));
