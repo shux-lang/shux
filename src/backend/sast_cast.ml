@@ -8,6 +8,42 @@ let bug s = raise (Failure ("[BUG]: " ^ s))
 let debug s = ()
 let warn d s = print_string ("[WARN]: " ^ s ^ "\n"); d
 
+let print_type t =
+  let rec string_of_type s = function
+    | SInt -> s ^ "SInt"
+    | SFloat -> s ^ "SFloat"
+    | SString -> s ^ "SString"
+    | SBool -> s ^ "SBool"
+    | SStruct(i, b) -> s ^ "SStruct " ^ i
+    | SArray(t, Some n) -> s ^ "SArray[" ^ (string_of_int n )^ "] of " ^ string_of_type "" t
+    | SArray(t, None) -> s ^ "SArray[] of " ^ string_of_type "" t
+    | SPtr -> s ^ "SPtr"
+    | SVoid -> s ^ "SVoid"
+  in print_string ((string_of_type "" t) ^ "\n")
+
+let string_of_binop_int = function
+  | SAddi -> "SAddi"
+  | SSubi -> "SSubi"
+  | SMuli -> "SMuli"
+  | SDivi -> "SDivi"
+  | SMod -> "SMod"
+  | SExpi -> "SExpi"
+  | SEqi -> "SEqi"
+  | SLti -> "SLti"
+  | SNeqi -> "SNeqi"
+  | SLeqi -> "SLeqi"
+  | SGeqi -> "SGeqi"
+
+let print_binop o =
+  let string_of_binop = function
+    | SBinopInt o -> string_of_binop_int o
+    | SBinopFloat o -> "float"
+    | SBinopBool o -> "bool"
+    | SBinopPtr o -> "ptr"
+    | SBinopFn o -> "fn"
+    | SBinopGn o -> "gn"
+  in print_string ((string_of_binop o) ^ "\n")
+
 let map_tuple l p =
   let build e = (e, p)
   in List.map build l
@@ -107,13 +143,13 @@ let sast_to_cast (let_decls, f_decls) =
                 | SBinopPtr o -> CBinopPtr o
                 | _ -> warn CBinopDud "encountered invalid binary operator in walk_primitive"
 
-              in let primitive = (* operators whose temp value don't change type *)
+              in let primitive xxx = (* operators whose temp value don't change type *)
                 let acc = walk_r acc t l (* leaves sanon register coontaining result of l *)
                 in let eval_binop = CBinop(t, CPeek2Anon t, tr_binop, CPeekAnon t)
                 in let emit_r = CExpr(t, CAssign(t, CPeek2Anon t, eval_binop))
                 in push_anon t r emit_r :: acc
 
-              in let dereference = (* operators whose operands are of Array t and int *)
+              in let dereference xxx = (* operators whose operands are of Array t and int *)
                 let eval =  (* TODO: make sure I understand what the fuck is going on here *)
                   let arr_t = styp_of_sexpr l
                   in let ind_t = styp_of_sexpr r
@@ -126,10 +162,10 @@ let sast_to_cast (let_decls, f_decls) =
                 in eval :: acc
 
               in match o with
-                | SBinopPtr SIndex -> dereference
+                | SBinopPtr SIndex -> dereference ()
                 | SBinopFn _ -> warn acc "encountered functional binop in walk_primitive"
                 | SBinopGn _ -> warn acc "encountered generator binop in walk_primitive"
-                | _ -> primitive
+                | _ -> primitive ()
 
             in let walk_access t e s =
               let st_t = styp_of_sexpr e
@@ -173,8 +209,9 @@ let sast_to_cast (let_decls, f_decls) =
                 | SLitArray l -> l
                 | _ -> warn [] "encountered non-array type literal in walk_array"
               in let et = element_t
-              in let at = if t=rtyp then t else
-                warn t "literal type mismatch in walk_array"
+              in let at = rtyp
+(*               in let at = if t=rtyp then t else (print_type t; print_type rtyp; *)
+(*                 warn rtyp "literal type mismatch in walk_array") *)
               in let assign e i =
                 let i = CLit(SInt, CLitInt i)
                 in let access =
@@ -356,6 +393,7 @@ let sast_to_cast (let_decls, f_decls) =
                 | SAccess(t, e, f) -> CAccess(t, tr e, f)
                 (* TODO: rhs of binop doesn't have to be an l-value *)
                 | SBinop(t, l, SBinopPtr SIndex, r) -> CBinop(t, tr l, CBinopPtr SIndex, tr r)
+                | SPeek2Anon t -> CPeek2Anon t
                 | SLoopCtr -> warn CExprDud "should not be able to assign to LoopCtr in lvalue_tr"
                 | _ -> warn CExprDud "encountered non-lvalue in lvalue_tr"
               in let fold_ass rs l =
@@ -519,8 +557,8 @@ let sast_to_cast (let_decls, f_decls) =
         | SBind(t, n, s)-> warn (SBind(t, n, s)) "encountered non-SLocalVar in gn local vars in walk_gn"
 
       in let lb_st t id n =
-        (* should be gnx_arg.id[(gnx_ctr - n) % mod_iter] *)
-        let idx = SBinop(SInt, wrap_int n, SBinopInt SSubi, st_cnt)
+        (* should be gnx_arg.id[(gnx_ctr - n) % max_iter] *)
+        let idx = SBinop(SInt, st_cnt, SBinopInt SSubi, wrap_int n)
         in let idx = SBinop(SInt, idx, SBinopInt SMod, wrap_int gn.sgmax_iter)
         in SBinop(t, st_var t id, SBinopPtr SIndex, idx)
 
