@@ -3,7 +3,9 @@ open Cast
 
 module StringMap = Map.Make(String)
 
-let debug s = raise (Failure ("[DEBUG]: " ^ s))
+let bug s = raise (Failure ("[BUG]: \n" ^ s))
+let debug s = print_string ("[DEBUG]: " ^ s ^ "\n")
+let warn d s = print_string ("[WARN]: " ^ s ^ "\n"); d
 
 let map_tuple l p =
   let build e = (e, p)
@@ -27,7 +29,7 @@ let styp_of_sexpr = function
   | SCond(t, _, _, _) -> t
   | SLoopCtr -> SInt
   | SPeek2Anon t -> t
-  | SExprDud -> debug "somebody is using duds"
+  | SExprDud -> bug "somebody is using Sexpr duds"
 
 
 let sast_to_cast (let_decls, f_decls) =
@@ -70,7 +72,7 @@ let sast_to_cast (let_decls, f_decls) =
                 | SLitFloat f -> CLitFloat f
                 | SLitBool b -> CLitBool b
                 | SLitStr s -> CLitStr s
-                | _ -> debug "encountered collection type literal in walk_primitive"
+                | _ -> warn CLitDud "encountered collection type literal in walk_primitive"
               in let lit = CLit(t, tr_lit)
               in emit t lit :: acc
 
@@ -102,7 +104,7 @@ let sast_to_cast (let_decls, f_decls) =
                 | SBinopBool o -> CBinopBool o
                 (* change of type *)
                 | SBinopPtr o -> CBinopPtr o
-                | _ -> debug "encountered invalid binary operator in walk_primitive"
+                | _ -> warn CBinopDud "encountered invalid binary operator in walk_primitive"
 
               in let primitive = (* operators whose temp value don't change type *)
                 let acc = walk_r acc t l (* leaves sanon register coontaining result of l *)
@@ -114,7 +116,8 @@ let sast_to_cast (let_decls, f_decls) =
                 let eval =  (* TODO: make sure I understand what the fuck is going on here *)
                   let arr_t = styp_of_sexpr l
                   in let ind_t = styp_of_sexpr r
-                  in let ind_t = if ind_t=SInt then ind_t else debug "encountered type mismatch in dereference in walk_primitive"
+                  in let ind_t = if ind_t=SInt then ind_t else 
+                    warn SInt "encountered type mismatch in dereference in walk_primitive"
                   in let eval_deref = CBinop(t, CPeek2Anon arr_t, tr_binop, CPeekAnon ind_t)
                   in let emit_deref = CExpr(t, CAssign(t, CPeek3Anon t, eval_deref))
                   in let eval_r = push_anon ind_t r emit_deref
@@ -123,8 +126,8 @@ let sast_to_cast (let_decls, f_decls) =
 
               in match o with
                 | SBinopPtr SIndex -> dereference
-                | SBinopFn _ -> debug "encountered functional binop in walk_primitive"
-                | SBinopGn _ -> debug "encountered generator binop in walk_primitive"
+                | SBinopFn _ -> warn acc "encountered functional binop in walk_primitive"
+                | SBinopGn _ -> warn acc "encountered generator binop in walk_primitive"
                 | _ -> primitive
 
             in let walk_access t e s =
@@ -136,7 +139,8 @@ let sast_to_cast (let_decls, f_decls) =
 
             in let walk_cond t iff the els =
               let cond_t = styp_of_sexpr iff
-              in let cond_t = if cond_t=SBool then cond_t else debug "non-boolean conditional expression in walk_primitive"
+              in let cond_t = if cond_t=SBool then cond_t else
+                warn SBool "non-boolean conditional expression in walk_primitive"
               in let eval_merge = CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t))
               in let eval_iff = push_anon_nop cond_t iff
               in let eval_the = push_anon t the eval_merge
@@ -157,8 +161,8 @@ let sast_to_cast (let_decls, f_decls) =
               | SPeek2Anon t -> emit t (CPeek2Anon t) :: acc
 
               (* should never be called like this *)
-              | SGnCall(_, _, _) -> debug "encountered naked generator call in walk_primitive"
-              | _ -> debug "encountered unexpected catch-all in walk_primitive"
+              | SGnCall(_, _, _) -> warn acc "encountered naked generator call in walk_primitive"
+              | _ -> warn acc "encountered unexpected catch-all in walk_primitive"
 
           in let walk_array element_t element_c =
             let deref = CBinopPtr SIndex
@@ -166,16 +170,17 @@ let sast_to_cast (let_decls, f_decls) =
             in let lit t l =
               let l = match l with (* unwrap to list of expressions, emit by value *)
                 | SLitArray l -> l
-                | _ -> debug "encountered non-array type literal in walk_array"
+                | _ -> warn [] "encountered non-array type literal in walk_array"
               in let et = element_t
-              in let at = if t=rtyp then t else debug "literal type mismatch in walk_array"
+              in let at = if t=rtyp then t else
+                warn t "literal type mismatch in walk_array"
               in let assign e i =
                 let i = CLit(SInt, CLitInt i)
                 in let access =
                   CBinop(et, CPeek2Anon at, deref, i)
                 in let emit =
                   CExpr(et, CAssign(et, access, CPeekAnon t))
-                in push_anon t e emit
+                in push_anon et e emit
               in let for_each (acc, i) e =
                 (assign e i :: acc, i + 1)
               in let (eval_lit, _) =
@@ -191,7 +196,8 @@ let sast_to_cast (let_decls, f_decls) =
               in push_anon t r emit_r :: acc
 
             in let walk_cond t iff the els = (* reference *)
-              let cond_t = if styp_of_sexpr iff=SBool then SBool else debug "non-boolean conditional expression in walk_array"
+              let cond_t = if styp_of_sexpr iff=SBool then SBool else
+                warn SBool "non-boolean conditional expression in walk_array"
               in let eval_merge = CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t))
               in let eval_iff = push_anon_nop cond_t iff
               in let eval_the = push_anon t the eval_merge
@@ -209,7 +215,7 @@ let sast_to_cast (let_decls, f_decls) =
             in let walk_binop t l o r =
               let tr_binop = match o with
                 | SBinopPtr SIndex -> CBinopPtr SIndex (* only valid one *)
-                | _ -> debug "tried to translate a binop that isn't SIndex in walk_array"
+                | _ -> warn CBinopDud "tried to translate a binop that isn't SIndex in walk_array"
 
               in let dereference = (* operators whose operands are of Array t and int *)
                 let eval =  (* TODO: make sure I understand what the fuck is going on here *)
@@ -261,8 +267,8 @@ let sast_to_cast (let_decls, f_decls) =
                   in CPushAnon(gns_typ, CBlock(List.rev(call_loop :: init_gns)))
                 in match r with
                 | SGnCall(gn_t, id, actuals) when gn_t=t -> gn_call id actuals :: acc
-                | SGnCall(_, _, _) -> debug "gn call type mismatch in walk_array"
-                |  _ -> debug "encountered non-SGnCall in right operand of SFor"
+                | SGnCall(_, _, _) -> warn acc "gn call type mismatch in walk_array"
+                |  _ -> warn acc "encountered non-SGnCall in right operand of SFor"
 
               in let map =
                 acc
@@ -275,7 +281,7 @@ let sast_to_cast (let_decls, f_decls) =
                 | SBinopGn SFor -> generator
                 | SBinopFn SMap -> map
                 | SBinopFn SFilter -> filter (* our worst nightmare *)
-                |  _ -> debug "encountered invalid binop for walk_array"
+                | _ -> warn acc "encountered invalid binop for walk_array"
 
             in let walk_call t i a =
               let map_act (e, t) =
@@ -297,14 +303,13 @@ let sast_to_cast (let_decls, f_decls) =
               | SPeek2Anon t -> emit t (CPeek2Anon t) :: acc
 
               (* no array type unary operators *)
-              | SLoopCtr -> debug "encountered SLoopCtr in walk_array"
-              | SUnop(t, o, e) -> debug "encountered unop in walk_array"
+              | SLoopCtr -> warn acc "encountered SLoopCtr in walk_array"
+              | SUnop(t, o, e) -> warn acc "encountered unop in walk_array"
               (* should never be called like this *)
-              | SGnCall(_, _, _) -> debug "encountered naked SGnCall in walk_array"
-              | _ -> debug "encountered unexpected catch-all expression in walk_array"
+              | SGnCall(_, _, _) -> warn acc "encountered naked SGnCall in walk_array"
+              | _ -> warn acc "encountered unexpected catch-all expression in walk_array"
 
           in let walk_struct id members =
-
             let id t n = (* reference *)
               let id = CId(t, n)
               in emit t id :: acc
@@ -312,7 +317,7 @@ let sast_to_cast (let_decls, f_decls) =
             in let lit t l =
               let (id, l) = match l with
                 | SLitStruct(id, l) -> (id, l)
-                | _ -> debug "encountered non-struct type literal in walk_struct"
+                | _ -> warn ("", []) "encountered non-struct type literal in walk_struct"
               in let map_struct acc (f, e) =
                 let t = styp_of_sexpr e
                 in let access =
@@ -336,12 +341,12 @@ let sast_to_cast (let_decls, f_decls) =
               | SId(t, n, _) -> id t n
               | SKnCall(t, i, a) -> walk_call t i a
               | SPeek2Anon t -> emit t (CPeek2Anon t) :: acc
-              | _ -> debug "encountered unexpected catch-all expression in walk_struct"
+              | _ -> warn acc "encountered unexpected catch-all expression in walk_struct"
 
           in match rtyp with
-            | SArray(t, n) -> walk_array t n
-            | SStruct(i, b) -> walk_struct i b
-            | _ -> walk_primitive
+            | SArray(t, n) -> debug "walk_r on array type"; walk_array t n
+            | SStruct(i, b) -> debug "walk_r on struct type"; walk_struct i b
+            | _ -> debug "walk_r on primitive type"; walk_primitive
 
         in let walk_l ltyp lexpr =
           let rec lvalue_tr typ ass anon =
@@ -350,8 +355,8 @@ let sast_to_cast (let_decls, f_decls) =
                 | SId(t, n, s) -> CId(t, n)
                 | SAccess(t, e, f) -> CAccess(t, tr e, f)
                 | SBinop(t, l, SBinopPtr SIndex, r) -> CBinop(t, tr l, CBinopPtr SIndex, tr r)
-                | SLoopCtr -> debug "should not be able to assign to LoopCtr in lvalue_tr"
-                | _ -> debug "encountered non-lvalue in lvalue_tr"
+                | SLoopCtr -> warn CExprDud "should not be able to assign to LoopCtr in lvalue_tr"
+                | _ -> warn CExprDud "encountered non-lvalue in lvalue_tr"
               in let fold_ass rs l =
                 CAssign(typ, tr l, rs)
               in CExpr(typ, List.fold_left fold_ass anon ass)
@@ -385,15 +390,16 @@ let sast_to_cast (let_decls, f_decls) =
 
             in match typ with
               | SArray(t, Some n) -> array_assign t n
-              | SArray(_, None) -> debug "encountered None-size array type in lvalue_tr"
+              | SArray(_, None) -> warn CStmtDud "encountered None-size array type in lvalue_tr"
               | SStruct(i, b) -> struct_assign i b
-              | SPtr -> debug "encountered pointer type in lvalue_tr"
-              | SVoid -> if ass=[] then CBlock [] else debug "encountered assignment to void type in lvalue_tr"
+              | SPtr -> warn CStmtDud "encountered pointer type in lvalue_tr"
+              | SVoid -> if ass=[] then CBlock [] else
+                warn CStmtDud "encountered assignment to void type in lvalue_tr"
               | _ -> primitive_assign
 
           in let rec walk ass = function
             | SAssign(t, l, r) when t=ltyp -> walk (l :: ass) r
-            | SAssign(_, _, _) -> debug "encountered assignment type mismatch in lvalue_tr"
+            | SAssign(_, _, _) -> warn [] "encountered assignment type mismatch in lvalue_tr"
             | e -> lvalue_tr ltyp ass sanon :: walk_r [] ltyp e (* reversed *)
           in walk [] lexpr
 
@@ -469,14 +475,14 @@ let sast_to_cast (let_decls, f_decls) =
       let assign_ret (e, t) = (SAssign(t, ret_id t, e), t)
       in match ret with
         | Some(e, t) -> Some(assign_ret(walk_body (e, t)))
-        | None -> debug "encountered None return expr in reference-returning kn in walk_kn"
+        | None -> warn None "encountered None return expr in reference-returning kn in walk_kn"
     in let ref_kn = { kn with skbody = List.map walk_body kn.skbody;
                       skformals = ret_bind kn.skret_typ :: List.map walk_binds kn.skformals;
                       sklocals = List.map walk_binds kn.sklocals;
                       skret_expr = walk_ret kn.skret_expr }
     in let kn = match kn.skret_typ with
       | SArray(_, Some _) -> ref_kn
-      | SArray(t, None) -> debug "encountered kn that returns None sized array type in walk_kn"
+      | SArray(t, None) -> warn kn "encountered kn that returns None sized array type in walk_kn"
       | SStruct(_, _) -> ref_kn
       | _ -> kn
 
@@ -489,7 +495,7 @@ let sast_to_cast (let_decls, f_decls) =
     in let st_fields =
       let a_decl = function
         | SBind(t, n, SLocalVal) -> SBind(SArray(t, Some gn.sgmax_iter), n, SStructField)
-        | SBind(_, n, _)-> debug "encountered non-SLocalVal binding in gn formals or local vals in walk_gn"
+        | SBind(t, n, s)-> warn (SBind(t, n, s)) "encountered non-SLocalVal binding in gn formals or local vals in walk_gn"
       in let ctr_decl =
         SBind(SInt, gnc, SLocalVar)
       in ctr_decl :: List.map a_decl (gn.sgformals @ gn.sglocalvals)
@@ -509,7 +515,7 @@ let sast_to_cast (let_decls, f_decls) =
 
       in let prefix_var = function
         | SBind(t, n, SLocalVar) -> SBind(t, prefix_gnv n, SLocalVar)
-        | SBind(_, n, _)-> debug "encountered non-SLocalVar in gn local vars in walk_gn"
+        | SBind(t, n, s)-> warn (SBind(t, n, s)) "encountered non-SLocalVar in gn local vars in walk_gn"
 
       in let lb_st t id n =
         (* should be gnx_arg.id[(gnx_ctr - n) % mod_iter] *)
@@ -525,8 +531,8 @@ let sast_to_cast (let_decls, f_decls) =
           | SKnCall as s -> SId(t, id, s)
           | SLocalVar as s -> SId(t, prefix_gnv id, s)
           | SLocalVal -> lb_st t id 0
-          | SStructField -> debug "encountered SStructField binding scope in walk_gn"
-
+          | SStructField as s -> warn (SId(t, id, s)) "encountered SStructField binding scope in walk_gn"
+          
         in let rec lb = function
           | SId(t, id, s) -> sid t id s
           | SLookback(t, id, n) -> lb_st t id n
