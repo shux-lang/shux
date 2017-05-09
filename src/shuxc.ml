@@ -26,7 +26,7 @@ let _ =
 	let lexbuf = Lexing.from_channel cin in
 	let ast = Parser.program Scanner.token lexbuf in
   let sast = Ast_sast.translate_to_sast ast in
-  let cast = Sast_cast.sast_to_cast sast in
+ (* let cast = Sast_cast.sast_to_cast sast in *) 
 	match action with
 		| Ast -> print_string (Astprint.string_of_program ast)
 		| LLVM -> 
