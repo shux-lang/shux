@@ -109,7 +109,7 @@ let sast_to_cast (let_decls, f_decls) =
                 | SLitFloat f -> CLitFloat f
                 | SLitBool b -> CLitBool b
                 | SLitStr s -> CLitStr s
-                | _ -> warn CLitDud "encountered collection type literal in walk_primitive"
+                | _ -> print_type t; warn CLitDud "encountered collection type literal in walk_primitive"
               in let lit = CLit(t, tr_lit)
               in emit t lit :: acc
 
