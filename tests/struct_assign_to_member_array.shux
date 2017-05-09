@@ -1,5 +1,5 @@
 struct foo {
-   var int[2] a;
+   int[2] a;
 }
 
 kn main() int {

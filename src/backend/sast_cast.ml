@@ -27,7 +27,7 @@ let styp_of_sexpr = function
   | SPeek2Anon t -> t
   | SExprDud -> assert false (* SVoid *)
 
-let sast_to_cast let_decls f_decls =
+let sast_to_cast (let_decls,f_decls) =
   let prefix_x s = "extern_" ^ s    (* extern decl *)
   in let prefix_s s = "struct_" ^ s (* struct defn *)
   in let prefix_l s = "let_" ^ s    (* let decl *)
