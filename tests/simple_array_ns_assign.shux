@@ -1,5 +1,5 @@
 ns foo = {
-   var int[] a = [2,4];
+   var int[2] a = [2,4];
 }
 
 kn main() int {
