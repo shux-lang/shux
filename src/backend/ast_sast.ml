@@ -25,7 +25,8 @@ let print_styp = function
   | SPtr -> "ptr"
   | SVoid  -> "void"
 
-
+let print_bind_name = function
+    | SBind(s, name, scope) -> print_string name
 
 let rec to_styp senv = function
     | Some x -> (match x with
@@ -41,6 +42,7 @@ let rec to_styp senv = function
     | Ptr -> SPtr
     | Void -> SVoid)
     | None -> SVoid
+
 (* iorf: true for int, false for float *) 
 and to_sbin_op iorf = function
     | Add -> if iorf then SBinopInt SAddi else SBinopFloat SAddf 
@@ -109,6 +111,67 @@ and to_sbind env = function
     | Bind(m, t, s) -> SBind(to_styp env (Some t), s, mut_to_scope m)
 
 
+and get_inherited body decls retexpr =
+    let uniq l = 
+        let same (t1,s1) (t2,s2) = t1=t2 && s1=s2  
+        in let rec exists s b = function
+            | [] -> b
+            | hd::tl -> if (same hd s) then exists s true tl
+                                       else exists s b tl
+        in let rec uniq_rec uniques = function
+             | [] -> uniques
+             | hd::tl -> 
+                if (exists hd false uniques) 
+                         then uniq_rec uniques tl
+                         else uniq_rec (hd::uniques) tl
+        in uniq_rec [] l
+    in let match_sbind typ name b binding = 
+        if b then b else (match binding with 
+            | SBind(t, s, scope) -> t=typ && s=name)
+    in let rec add_inherit decls inherits = function
+        | [] -> inherits
+        | (t,s)::tl -> if (List.fold_left (match_sbind t s) false decls)
+                       then add_inherit decls inherits tl
+                       else let new_bind = SBind(t, s, SLocalVal)
+                       in let new_inherits = new_bind::inherits
+                       in add_inherit decls new_inherits tl
+    in let rec detect_names = function
+        | SId(t,s,c) -> [(t,s)]
+				| SAccess(t, se, name) -> 
+						let expr_names = detect_names se
+            in (t,name)::expr_names
+        | SBinop(st, se1, bop, se2) -> 
+            let names1 = detect_names se1
+            and names2 = detect_names se2
+            in names1@names2
+        | SAssign(st, se1, se2) -> 
+            let names1 = detect_names se1
+            and names2 = detect_names se2
+            in names1@names2
+        | SKnCall(st, kname, form_list) -> 
+            let exprs = List.map fst form_list
+            in let name_list = List.map detect_names exprs
+            in List.flatten name_list
+        | SGnCall(st, gname, form_list) -> 
+            let exprs = List.map fst form_list
+            in let name_list = List.map detect_names exprs
+            in List.flatten name_list
+       | SUnop(t, sun, se) -> detect_names se
+       | SCond(t, se1, se2, se3) -> 
+            let name_list = List.map detect_names [se1;se2;se3]
+            in List.flatten name_list
+       | _ -> []
+    in let rec get_inherited_rec decls inherits = function
+        | [] -> inherits
+        | hd::tl -> get_inherited_rec decls ((detect_names (fst hd))::inherits) tl
+    in let inherited_body = get_inherited_rec decls [] body
+    in let full_body = (detect_names retexpr)::inherited_body
+    in let flat_names = List.flatten full_body
+    in let uniq_names = uniq flat_names
+    in let inherits = add_inherit decls [] uniq_names
+    in let _ = List.iter print_bind_name inherits
+    in []
+
 and to_slambda senv l = 
     let lformals = translate_fn_formals l.lformals senv
     in let aret = l.lret_expr
@@ -126,15 +189,20 @@ and to_slambda senv l =
     in let (decls, abody) = hoist_lambda ([],[]) l.lbody
     in let llocals = List.map (vdecl_to_local senv) decls
     in let l_env = List.fold_left place_formals senv [llocals;lformals]
-    in let body_intermediate = List.map (get_sexpr l_env) abody
+    in let body_intermediate = List.map (get_sexpr l_env) abody 
     in let lbody = List.map (fun x -> (x, get_styp_from_sexpr x)) body_intermediate
     in (match aret with
-        | Some x -> let sret_expr = get_sexpr senv x
+        | Some x -> let sret_expr = get_sexpr l_env x
+                    in let inherited = get_inherited lbody (llocals@lformals) sret_expr
                     in let sret_typ = get_styp_from_sexpr sret_expr
-                    in { slret_typ = sret_typ; slformals = lformals; sllocals = llocals; 
+                    in { slret_typ = sret_typ; slformals = lformals; 
+                         sllocals = llocals; slinherit = inherited;
                          slbody = lbody; slret_expr = Some (sret_expr, sret_typ) }
-        | None -> { slret_typ = SVoid; slformals = lformals; sllocals = llocals;
-                    slbody = lbody; slret_expr = None })
+        | None -> let inherited = get_inherited lbody (llocals@lformals) SExprDud
+                  in
+                  { slret_typ = SVoid; slformals = lformals; 
+                    sllocals = llocals; slinherit = inherited;
+                    slbody = lbody; slret_expr = None; })
 
 and mut_to_scope = function 
     | Mutable -> SLocalVar
