@@ -36,7 +36,9 @@ let sast_to_cast let_decls f_decls =
   in let prefix_gn s = "gn_" ^ s    (* gn function *)
   in let prefix_gns s = "gns_" ^ s  (* gn struct *)
   in let prefix_gnx s = "gnx_" ^ s
-  in let gnc = prefix_gnx "ctr"     (* gn execution state counter name *)
+  in let gnc = prefix_gnx "gnc"     (* gn execution state counter name *)
+  in let prefix_ref s = "ref_" ^ s  (* for arrays that return by reference *)
+  in let ret_ref = "ret_ref"
   in let gns_hash = Hashtbl.create 42
 
   in let kn_to_fn kn =
@@ -394,15 +396,41 @@ let sast_to_cast let_decls f_decls =
     in hoist_lambdas kn
 
   in let walk_kn kn =
-     let kn = {kn with skname = prefix_kn kn.skname }
-     in let ret_arr = kn
-     in let ret_struct = kn
-     in let kn = match kn.skret_typ with
-      | SArray(t, Some n) -> ret_arr
+    let kn = { kn with skname = prefix_kn kn.skname }
+    in let ret_id t = SId(t, ret_ref, SLocalVar)
+    in let ret_bind t = SBind(t, ret_ref, SLocalVar)
+    in let tr t id s = match s with
+      | SLocalVal | SLocalVar -> (t, prefix_ref id, s)
+      | _ -> (t, id, s)
+    in let walk_binds (SBind(t, id, s)) =
+      let (t, id, s) = tr t id s in SBind(t, id, s)
+    in let walk_body (e, t) =
+      let rec walk = function
+        | SId(t, id, s) -> let (t, id, s) = tr t id s in SId(t, id, s)
+        | SBinop(t, l, o, r) -> SBinop(t, walk l, o, walk r)
+        | SAssign(t, l, r) -> SAssign(t, walk l, walk r)
+        | SCond(t, iff, the, els) -> SCond(t, walk iff, walk the, walk els)
+        | SUnop(t, o, e) -> SUnop(t, o, walk e)
+        | SAccess(t, e, s) -> SAccess(t, walk e, s)
+        | SKnCall(t, s, a) -> SKnCall(t, s, List.map (fun (e, t) -> (walk e, t)) a)
+        | SGnCall(t, s, a) -> SGnCall(t, s, List.map (fun (e, t) -> (walk e, t)) a)
+        | s -> s
+      in (walk e, t)
+    in let walk_ret ret = 
+      let assign_ret (e, t) = (SAssign(t, ret_id t, e), t)
+      in match ret with
+        | Some(e, t) -> Some(assign_ret(walk_body (e, t)))
+        | None -> assert false (* should not be None if it was a reference type *)
+    in let ref_kn = { kn with skbody = List.map walk_body kn.skbody;
+                      skformals = ret_bind kn.skret_typ :: List.map walk_binds kn.skformals;
+                      sklocals = List.map walk_binds kn.sklocals;
+                      skret_expr = walk_ret kn.skret_expr }
+    in let kn = match kn.skret_typ with
+      | SArray(_, Some _) -> ref_kn
+      | SStruct(_, _) -> ref_kn
       | SArray(t, None) -> assert false
-      | SStruct(i, b) -> ret_struct
       | _ -> kn
-     in kn_to_fn kn 
+    in kn_to_fn kn 
 
   in let walk_gn gn = 
     let prefix_gnv s = "gnv_" ^ s         (* for local vars *)
