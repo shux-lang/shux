@@ -74,8 +74,8 @@ let convert_ret_typ = function
    | None -> Void
 
 let compare_ast_typ l r = match(l,r) with
-   | (Array(t1, None), Array(t2, Some i)) -> t1=t2
-   | (l,r) -> l=r
+   | (Array(t1, _), Array(t2, _)) -> t1=t2 (* this is a weak way to type check arrays *)
+   | (l,r) -> l=r                          (* but we're just going to Let It Happpen 😭 *)
 
 (* ensure that arrays are initialized properly when declared *) 
 let check_array_init = function
