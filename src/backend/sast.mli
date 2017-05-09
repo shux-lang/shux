@@ -1,5 +1,5 @@
 type sscope = (* replacing Mutable vs Immutable *)
-  | SLocalVal | SLocalVar | SGlobal | SStructField
+  | SLocalVal | SLocalVar | SGlobal | SStructField | SKnCall
 
 type styp =
   | SInt
@@ -65,6 +65,8 @@ and sexpr =
   | SLookbackDefault of styp * int * sexpr * sexpr
   | SUnop of styp * sun_op * sexpr
   | SCond of styp * sexpr * sexpr * sexpr
+  | SLoopCtr (* CLoopCtr, useful for recursion *)
+  | SPeek2Anon of styp
   | SExprDud
 
 and slambda = {
@@ -72,7 +74,7 @@ and slambda = {
   slformals   : sbind list;
   sllocals    : sbind list;         (* no lookback, const-ness not enforced *)
   slbody      : (sexpr * styp) list;
-  slret_expr  : (sexpr * styp);
+  slret_expr  : (sexpr * styp) option;
 }
 
 type skn_decl = {

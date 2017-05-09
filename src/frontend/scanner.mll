@@ -87,7 +87,7 @@ rule token = parse
   | ':'     { COLON }
   | "::"    { FILTER }
   | '@'     { MAP }
-  | "->"    { FUNC }
+  | "->"    { ARROW }
 
 (* control keywords *)
   | "if"      { IF }

@@ -26,31 +26,38 @@ and cexpr =
   | CLit of ctyp * clit
   | CId of ctyp * string
   | CLoopCtr                    (* access the counter inside a CLoop *)
-  | CBlockVal of ctyp           (* access the temp value of a CBlock *)
+  | CPeekAnon of ctyp           (* access the temp value of a CBlock *)
+  | CPeek2Anon of ctyp           (* access the temp value of a CBlock *)
+  | CPeek3Anon of ctyp           (* access the temp value of a CBlock *)
   | CBinop of ctyp * cexpr * cbin_op * cexpr
   | CAccess of ctyp * cexpr * string
   | CAssign of ctyp * cexpr * cexpr
   | CCall of ctyp * string * cstmt list
   | CUnop of ctyp * cun_op * cexpr
-  | CCond of ctyp * cexpr * cexpr * cexpr
   | CExprDud
 
 and cstmt =
   | CExpr of ctyp * cexpr
-  | CBlock of ctyp * cstmt list
-(*  ctyp tmp; { /* push tmp to BStack */
- *    cstmt ...
- *    CBlockVal := tmp /* peek BStack */
+  | CCond of ctyp * (* if *) cstmt * (* then *) cstmt * (* else *) cstmt
+  | CPushAnon of ctyp * cstmt
+(*  ctyp tmp; { /* push tmp to AStack */
+ *    cstmt where CPeekAnon := tmp /* peek AStack */
  *  }
- *  /* pop BStack */
+ *  /* pop AStack */
  *)
-  | CLoop of ctyp * cexpr (* int *) * cstmt
+  | CBlock of cstmt list
+(* {
+ * cstmt
+ * cstmt
+ * ...
+ * }
+ *)
+  | CLoop of cstmt (* int *) * cstmt
 (*  int cond = cexpr;
  *  int ctr;
  *  /* push (ctr, cond) to LStack */
  *  for (ctr = 0; ctr < cexpr; ctr++) {
- *    cstmt
- *    CLoopCtr := ctr /* fst (peek LStack) */
+ *    cstmt where CLoopCtr := ctr /* fst (peek LStack) */
  *  }
  *  /* pop LStack */
  *)
