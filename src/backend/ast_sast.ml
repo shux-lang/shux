@@ -63,6 +63,7 @@ and to_sbin_op iorf = function
     | Map -> SBinopFn SMap
     | For -> SBinopGn SFor
     | Index -> SBinopPtr SIndex
+    | Do -> SBinopGn SFor (* will never be called *) 
 
 and get_styp_from_sexpr = function
     | SLit(s,_) -> s
