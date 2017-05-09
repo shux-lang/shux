@@ -66,7 +66,11 @@ let get_bind_mut = function
    | Bind(m,_,_) -> m
 
 let convert_ret_typ = function
-   | Some x -> x
+   | Some x -> (match x with
+       | Array(t, i) -> (match i with
+           | Some i -> x
+           | None -> raise (Failure "A return type for an array needs to have a fixed size"))
+       | _ -> x)
    | None -> Void
 
 let compare_ast_typ l r = match(l,r) with
@@ -170,21 +174,20 @@ and check_expr tr_env expr =
           raise (Failure ("Variable " ^ var ^ " has not been declared"))
    | Binop(e1, op, e2) -> 
       let t1 = check_expr tr_env e1 in
-      let t2 = check_expr tr_env e2 in
       (match op with
-       | Add | Sub | Mul | Div -> if t1 != t2 
+       | Add | Sub | Mul | Div -> if t1 != check_expr tr_env e2 
           then raise (Failure "Can't do binop on incompatible types.")
-          else if t1 != Int && t2 != Float then 
+          else if t1 != Int && (check_expr tr_env e2) != Float then 
              raise (Failure "Binop only defined over integers or scalars.")
          else t1
-       | Mod -> if t1 = Int && t2 = Int then Int else 
+       | Mod -> if t1 = Int && (check_expr tr_env e2) = Int then Int else 
           raise (Failure "Bad types for mod operator")
-       | Exp -> if t1 = Float && t2 = Float then Float else
+       | Exp -> if t1 = Float && (check_expr tr_env e2) = Float then Float else
 
           raise (Failure "Bad types for exponent operator")
-       | Eq | Lt | Gt | Neq | Leq | Geq -> if t1 != t2 
+       | Eq | Lt | Gt | Neq | Leq | Geq -> if t1 != (check_expr tr_env e2) 
           then raise (Failure "Can't do binop on incompatible types.") else Bool
-       | LogAnd | LogOr -> if t1 != t2 || t1 != Bool
+       | LogAnd | LogOr -> if t1 != (check_expr tr_env e2) || t1 != Bool
           then raise (Failure "Logical and/or only applies to bools.") else Bool
        | Filter | Map as fm -> let (t,i) = (match t1 with 
             | Array(v, i) -> (v, i) 
@@ -212,21 +215,57 @@ and check_expr tr_env expr =
                          | _ -> raise (Failure "Filter not given a lambda :("))
             | _ -> raise (Failure "Filter not given a lambda :((("))
             then (match fm with
-             | Filter -> if t2 = Bool then Array(t, i) else
+             | Filter -> if (check_expr tr_env e2) = Bool then Array(t, i) else
                      raise (Failure "Filter kernel needs to return Bool")
-             | Map -> if t = t2 then Array(t, i) else 
+             | Map -> if t = (check_expr tr_env e2) then Array(t, i) else 
                      raise (Failure "Map kernel return type needs to match
                                    array")
              | _ -> raise (Failure "The OCaml compiler has a strict type system."))
             else raise (Failure "Map/Filter needs kernel that takes single
             parameter matching the [] to be mapped/filtered")
-       | Index -> if t2 = Int then match t1 with
+       | Index -> if (check_expr tr_env e2) = Int then match t1 with
           | Array(v, i) -> v
           | Vector(l) -> Float
           | _ -> raise (Failure "Indexing needs an array/vector to index into")
          else raise (Failure "Indexing needs to be by integer expression only.")
-      | For -> Array(t2, None) (*For returns an array of the return type of gn *)
-      | Do -> t2 (* Do simply returns the final value of the gn *))
+      | For -> (match e2 with
+                   | Call(str, elist) -> (match str with 
+                       | Some ns -> let s = flatten_ns_list ns in 
+                           if VarMap.mem s tr_env.fn_map then
+                           let gn = VarMap.find s tr_env.fn_map
+                           and tlist = List.map (check_expr tr_env) elist 
+                           in if (gn.fn_typ = Kn) then raise (Failure ("Cannot call " ^ 
+                                                   "kernel with a for expression"))
+                           else let match_formal b fform cform = 
+                               if b then get_bind_typ fform = cform else b
+                           in
+                           if (List.fold_left2 match_formal true gn.formals tlist)
+                           then match gn.ret_typ with 
+                               | Some x -> Array(x, None)
+                               | None -> Void
+                           else raise (Failure ("Formals don't match for generator call " ^ s))
+                           else raise (Failure ("Generator " ^ s ^ " not defined in call"))
+                       | None -> Int)
+                       | _ -> raise (Failure "For iterator needs a generator call "))
+      | Do ->  (match e2 with
+                   | Call(str, elist) -> (match str with 
+                       | Some ns -> let s = flatten_ns_list ns in 
+                           if VarMap.mem s tr_env.fn_map then
+                           let gn = VarMap.find s tr_env.fn_map
+                           and tlist = List.map (check_expr tr_env) elist 
+                           in if (gn.fn_typ = Kn) then raise (Failure ("Cannot call " ^ 
+                                                   "kernel with a do expression"))
+                           else let match_formal b fform cform = 
+                               if b then get_bind_typ fform = cform else b
+                           in
+                           if (List.fold_left2 match_formal true gn.formals tlist)
+                           then match gn.ret_typ with 
+                               | Some x -> x
+                               | None -> Void
+                           else raise (Failure ("Formals don't match for generator call " ^ s))
+                           else raise (Failure ("Generator " ^ s ^ " not defined in call"))
+                       | None -> Int)
+                       | _ -> raise (Failure "For iterator needs a generator call ")))
    | Assign(e1, e2) -> 
             (* need to short circuit the initialization checker here *)
         let match_typ exp1 exp2 = 
@@ -263,7 +302,9 @@ and check_expr tr_env expr =
                       let fn = VarMap.find s tr_env.fn_map and
                       tlist = List.map (check_expr tr_env) elist
                       in
-                         let match_formal b fform cform = 
+                      if(fn.fn_typ = Gn) then raise (Failure ("Cannot call " ^
+                          "generator without an iterator")) else
+                      let match_formal b fform cform = 
                              if b then get_bind_typ fform = cform
                              else b 
                          in
