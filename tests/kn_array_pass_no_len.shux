@@ -1,4 +1,4 @@
-kn foo(int[] a) int {
+kn foo(int[4] a) int {
    a[0]
 }
 
