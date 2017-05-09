@@ -3,11 +3,12 @@ open Cast
 open Llast
 
 let cast_to_llast cast =
-  let ctyp_to_lltyp = function
+  let rec ctyp_to_lltyp = function
       SInt -> LLInt
     | SFloat -> LLDouble
     | SBool -> LLBool
-    | _ -> LLInt (* TODO *)
+    | SArray (styp, int) -> LLArray (ctyp_to_lltyp styp, int)
+    | _ -> LLInt
   in
 
   let rec translate_clit = function
@@ -37,7 +38,8 @@ let cast_to_llast cast =
          LLRegLabel (ctyp_to_lltyp ctyp, cstr) in
        let formals = List.map declare_fml_lcl cfunc.cformals in
        let locals = List.map declare_fml_lcl cfunc.clocals in
-         {llfname=cfunc.cfname;llfformals=formals;llflocals=locals;llfbody=body;llfreturn=LLInt;llfblocks=[]}::list
+       {llfname=cfunc.cfname;llfformals=formals;llflocals=locals;llfbody=body;llfreturn=
+        if(cfunc.cret_typ = SVoid) then (LLVoid) else (ctyp_to_lltyp cfunc.cret_typ);llfblocks=[]}::list
     | _ -> list
   in
   let translate_cprogram =

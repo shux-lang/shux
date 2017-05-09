@@ -1,4 +1,10 @@
-kn main() int {
-   int[5] x = [0,1,2,3,4];
+gn hello(int formalx) {
+   int knx;
+}
+kn main(int x) int {
+   int[5] x;
+   int y;
+   float z;
+   string s;
    0
 }

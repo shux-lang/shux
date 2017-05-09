@@ -159,6 +159,7 @@ let sast_to_cast (let_decls,f_decls) =
               let l = match l with (* unwrap to list of expressions, emit by value *)
                 | SLitArray l -> l
                 | _ -> assert false
+              in let t = element_t
               in let assign e i =
                 let i = CLit(SInt, CLitInt i)
                 in let access =

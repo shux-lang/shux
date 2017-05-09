@@ -325,5 +325,5 @@ let translate (structs,globals,funcs) =
     in
     List.iter build_func funcs in
 
-  (*let _ = Llvm_analysis.assert_valid_module the_module in*)
+  let _ = Llvm_analysis.assert_valid_module the_module in
   the_module
