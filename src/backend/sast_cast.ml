@@ -40,6 +40,7 @@ let sast_to_cast (let_decls, f_decls) =
   in let prefix_ref s = "ref_" ^ s  (* for arrays that return by reference *)
   in let ret_ref = "ret_ref"
   in let gns_hash = Hashtbl.create 42
+  in let lmb_hash = Hashtbl.create 42
 
   in let kn_to_fn kn =
     let walk_stmt (e, t) = 
@@ -159,12 +160,14 @@ let sast_to_cast (let_decls, f_decls) =
               let l = match l with (* unwrap to list of expressions, emit by value *)
                 | SLitArray l -> l
                 | _ -> assert false
+              in let et = element_t
+              in let at = if t=rtyp then t else assert false
               in let assign e i =
                 let i = CLit(SInt, CLitInt i)
                 in let access =
-                  CBinop(t, CPeek2Anon rtyp, deref, i)
+                  CBinop(et, CPeek2Anon at, deref, i)
                 in let emit =
-                  CExpr(t, CAssign(t, access, CPeekAnon t))
+                  CExpr(et, CAssign(et, access, CPeekAnon t))
                 in push_anon t e emit
               in let for_each (acc, i) e =
                 (assign e i :: acc, i + 1)
@@ -184,8 +187,8 @@ let sast_to_cast (let_decls, f_decls) =
               let cond_t = if styp_of_sexpr iff=SBool then SBool else assert false
               in let eval_merge = CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t))
               in let eval_iff = push_anon_nop cond_t iff
-              in let eval_the = push_anon cond_t the eval_merge
-              in let eval_els = push_anon cond_t els eval_merge
+              in let eval_the = push_anon t the eval_merge
+              in let eval_els = push_anon t els eval_merge
               in let eval_cond = CCond(t, eval_iff, eval_the, eval_els)
               in eval_cond :: acc
 
@@ -219,8 +222,9 @@ let sast_to_cast (let_decls, f_decls) =
                   in let gns_typ = SStruct(gns_name, gns_fields)
 
                   in let init_gns =
-                    let set_field (a, at) (SBind(t, id, _)) =
-                      let get_field =
+                    let set_field (a, at) (SBind(st, id, _)) =
+                      let t = if at=st then st else assert false
+                      in let get_field =
                         CAccess(t, CPeek2Anon gns_typ, id)
                       in let emit_field =
                         CExpr(t, CAssign(t, get_field, CPeekAnon t))
@@ -234,7 +238,7 @@ let sast_to_cast (let_decls, f_decls) =
                         | a::at -> init_fields (set_field a f :: inits) ft at
 
                     in init_fields [] gns_fields actuals
-                  in let eval_cnt =
+                  in let eval_cnt = (* TODO: check what t is equal to here *)
                     let cnt_t = if styp_of_sexpr r=SInt then SInt else assert false
                     in push_anon_nop cnt_t l 
                   in let call_loop =
@@ -345,14 +349,14 @@ let sast_to_cast (let_decls, f_decls) =
               in CExpr(typ, List.fold_left fold_ass anon ass)
 
             in let array_assign t n =
-              let index t a = CBinop(t, a, CBinopPtr SIndex, CLoopCtr)
+              let index t a = CBinop(t, anon, CBinopPtr SIndex, CLoopCtr)
               in let get_anon = index t anon
               in let get_cond = CExpr(SInt, CLit(SInt, (CLitInt n)))
               in let map_ass a =
                  SBinop(t, a, SBinopPtr SIndex, SLoopCtr)
               in let get_index =
                 List.map map_ass ass
-              in CLoop(get_cond, lvalue_tr typ get_index get_anon)
+              in CLoop(get_cond, lvalue_tr t get_index get_anon)
 
             in let struct_assign id binds =
               let map_binds (SBind(t, n, _)) =
