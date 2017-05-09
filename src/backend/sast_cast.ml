@@ -92,7 +92,6 @@ let sast_to_cast (let_decls,f_decls) =
                 | SBinopBool o -> CBinopBool o
                 (* change of type *)
                 | SBinopPtr o -> CBinopPtr o
-                | SBinopGn SDo -> CBinopPtr SIndex (* do x y() := (for x y())[x-1] *)
                 | _ -> assert false
 
               in let primitive = (* operators whose temp value don't change type *)
@@ -114,7 +113,6 @@ let sast_to_cast (let_decls,f_decls) =
 
               in match o with
                 | SBinopPtr SIndex -> dereference
-                | SBinopGn SDo -> assert false (* TODO: see if Mert can sugar this away *)
                 | SBinopFn _ -> assert false (* this is inside walk_primitive, arrays not allowed *)
                 | SBinopGn _ -> assert false (* see above *)
                 | _ -> primitive
