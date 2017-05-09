@@ -378,7 +378,8 @@ let sast_to_cast (let_decls, f_decls) =
               | SArray(t, Some n) -> array_assign t n
               | SArray(_, None) -> assert false (* this should not be allowed? *)
               | SStruct(i, b) -> struct_assign i b
-              | SPtr | SVoid -> assert false
+              | SPtr -> assert false
+              | SVoid -> if ass=[] then CBlock [] else assert false (* need nop *)
               | _ -> primitive_assign
 
           in let rec walk ass = function
