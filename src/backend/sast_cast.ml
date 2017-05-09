@@ -481,7 +481,7 @@ let sast_to_cast (let_decls,f_decls) =
       | _ -> CStmtDud
     in let walk = function
       | SLetDecl(SBind(t, n, s), e) -> CConstDecl(SBind(t, prefix_l n, s), interp_expr e)
-      | SStructDef s -> CStructDef {s with ssname = prefix_s s.ssname}
+      | SStructDef s -> CStructDef {s with ssname = s.ssname}
       | SExternDecl x -> CExternDecl {x with sxalias = prefix_x x.sxalias}
     in walk let_decls
 

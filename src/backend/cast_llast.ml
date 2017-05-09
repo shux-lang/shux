@@ -8,6 +8,7 @@ let cast_to_llast cast =
     | SFloat -> LLDouble
     | SBool -> LLBool
     | SArray (styp, int) -> LLArray (ctyp_to_lltyp styp, int)
+    | SStruct (name, _) -> LLStruct name
     | _ -> LLInt
   in
 
@@ -42,9 +43,7 @@ let cast_to_llast cast =
         if(cfunc.cret_typ = SVoid) then (LLVoid) else (ctyp_to_lltyp cfunc.cret_typ);llfblocks=[]}::list
     | _ -> list
   in
-  let translate_cprogram =
-    List.fold_left translate_cdecl [] cast
-  in
+ 
 
   let define_structs =
     let unbind (SBind (ctyp, _, _))=
@@ -59,4 +58,9 @@ let cast_to_llast cast =
     in
     List.fold_left define_struct [] cast
   in
+
+  let translate_cprogram =
+    List.fold_left translate_cdecl [] cast
+  in
+
   (define_structs,[],translate_cprogram) (*struct llglobal func*)
