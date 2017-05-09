@@ -66,6 +66,7 @@ and sexpr =
   | SUnop of styp * sun_op * sexpr
   | SCond of styp * sexpr * sexpr * sexpr
   | SLoopCtr (* CLoopCtr, useful for recursion *)
+  | SPeek2Anon of styp
   | SExprDud
 
 and slambda = {
