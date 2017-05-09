@@ -1,22 +1,19 @@
 type lltyp =
   | LLBool (* i1 *)
   | LLInt (* i32 *)
-  | LLFloat (* double_type *)
+  | LLDouble (* double_type *)
   | LLConstString (* name and content, only used for representing strings, simply i8* *)
-  | LLArray of lltyp * int option
+  | LLArray of lltyp * int option (* inside formal we need to declare int*; inside local we declare int[len] *)
   | LLStruct of string
   | LLVoid (* only used for declaring function types *)
-
-(* might not be used
-type llbind = LLBind of lltyp * string
- *)
 
 type lllit =
   | LLLitBool of bool
   | LLLitInt of int
-  | LLLitFloat of float
+  | LLLitDouble of float
   | LLLitString of string
-  | LLLitStruct of string * lllit list
+  | LLLitArray of lllit list
+  | LLLitStruct of lllit list
 
 type llglobal = lltyp * string * lllit
 type llstruct_def = string * lltyp list
@@ -59,7 +56,7 @@ type llblock_term = (* a block must be terminated by either a jump or a return *
 
 type llstmt =
   | LLBuildBinOp of llops_typ * llreg * llreg * llreg
-  | LLBuildCall of string * llreg list * llreg option(* 1 storing func def, 2 storing list of formals, 3 storing retval *)
+  | LLBuildCall of string * llreg list * llreg option(* 1 storing func def, 2 storing list of formals, 3 storing retval, void functions dont have return val *)
   | LLBuildPrintCall of llreg (* register storing the integer that you want to print *)
   | LLBuildArrayLoad of llreg * llreg * llreg (* 1 has the arr label, 2 has index, 3 has dest label *)
   | LLBuildArrayStore of llreg * llreg * llreg (* 1 has the arr label, 2 has index, 3 has source label *)
