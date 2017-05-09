@@ -3,7 +3,7 @@ open Cast
 
 module StringMap = Map.Make(String)
 
-let debug s = raise (Failure s)
+let debug s = raise (Failure ("[DEBUG]: " ^ s))
 
 let map_tuple l p =
   let build e = (e, p)
