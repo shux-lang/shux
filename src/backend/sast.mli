@@ -73,7 +73,7 @@ and slambda = {
   slformals   : sbind list;
   sllocals    : sbind list;         (* no lookback, const-ness not enforced *)
   slbody      : (sexpr * styp) list;
-  slret_expr  : (sexpr * styp);
+  slret_expr  : (sexpr * styp) option;
 }
 
 type skn_decl = {

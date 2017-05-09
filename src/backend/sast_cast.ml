@@ -220,7 +220,7 @@ let sast_to_cast let_decls f_decls =
       let hoist n { slret_typ; slformals; sllocals; slbody; slret_expr } = hoist_lambdas
         { skname = prefix_lambda kn.skname n; skret_typ = slret_typ;
           skformals = slformals; sklocals = sllocals; skbody = slbody; 
-          skret_expr = Some slret_expr }
+          skret_expr = slret_expr }
 
       in let rec fish acc p = function
         | SLit(_, SLitKn(l)) -> (hoist p l) :: acc

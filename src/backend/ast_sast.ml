@@ -80,24 +80,52 @@ and to_slit senv = function
               | StructField(name, expr) ->(name, get_sexpr senv expr)
           in SLitStruct(flatten_ns_list s, List.map (translate_structfield senv) e)
 
-and slit_to_styp = function
+and slit_to_styp senv = function
     | SLitInt(i) -> SInt
     | SLitFloat(f) -> SFloat
     | SLitBool(b) -> SBool
     | SLitStr(s) -> SString
     | SLitKn(l) -> l.slret_typ
     | SLitArray(elist) -> get_styp_from_sexpr (List.hd elist)
-    | SLitStruct(name, slist) -> SStruct(name, []) (*TODO: Struct literal type translation *) 
+    | SLitStruct(name, slist) -> 
+          let sdef = VarMap.find name senv.sstruct_map
+          in SStruct(name, sdef.ssfields)
 
 and to_sunop iorf = function
     | LogNot -> SLogNot
     | Neg -> if iorf then SNegi else SNegf
     | Pos -> raise (Failure "Pos isnt supposed to exist in SAST") 
 
-(*TODO: *)
+and to_sbind env = function
+    | Bind(m, t, s) -> SBind(to_styp env (Some t), s, mut_to_scope m)
+
+
 and to_slambda senv l = 
-{ slret_typ = SInt; slformals = []; sllocals = []; slbody = [];
-slret_expr = (SLit(SInt, SLitInt(1)), SInt)} 
+    let lformals = translate_fn_formals l.lformals senv
+    in let aret = l.lret_expr
+    in let rec hoist_lambda (vdecls, exprs) = function
+        | [] -> (List.rev vdecls, List.rev exprs)
+        | VDecl(b,e)::tl -> (match e with
+            | Some e -> let id = get_bind_name b
+                        in let asn = Assign(Id([id]), e)
+                        in hoist_lambda (VDecl(b, Some e)::vdecls, asn::exprs) tl
+            | None -> hoist_lambda (VDecl(b,e)::vdecls, exprs) tl)
+        | Expr(e)::tl -> hoist_lambda (vdecls, e::exprs) tl
+    in let vdecl_to_local senv = function
+        | VDecl(b,e) -> to_sbind senv b
+        | Expr(e) -> raise (Failure "Lambda hoisting failed")
+    in let (decls, abody) = hoist_lambda ([],[]) l.lbody
+    in let llocals = List.map (vdecl_to_local senv) decls
+    in let l_env = List.fold_left place_formals senv [llocals;lformals]
+    in let body_intermediate = List.map (get_sexpr l_env) abody
+    in let lbody = List.map (fun x -> (x, get_styp_from_sexpr x)) body_intermediate
+    in (match aret with
+        | Some x -> let sret_expr = get_sexpr senv x
+                    in let sret_typ = get_styp_from_sexpr sret_expr
+                    in { slret_typ = sret_typ; slformals = lformals; sllocals = llocals; 
+                         slbody = lbody; slret_expr = Some (sret_expr, sret_typ) }
+        | None -> { slret_typ = SVoid; slformals = lformals; sllocals = llocals;
+                    slbody = lbody; slret_expr = None })
 
 and mut_to_scope = function 
     | Mutable -> SLocalVar
@@ -107,16 +135,13 @@ and get_sfn_name = function
     | SGnDecl(g) -> g.sgname
     | SKnDecl(k) -> k.skname
 
-
-and to_sbind env = function
-    | Bind(m, t, s) -> SBind(to_styp env (Some t), s, mut_to_scope m)
-
 and translate_struct_defs env struct_def = 
     {ssname  = struct_def.sname; ssfields = List.map (to_sbind env) struct_def.fields }
 
 (* translate expr -> sexpr. uses senv for bookkeeping *)
 and get_sexpr senv = function
-    | Lit(a) -> let sliteral = to_slit senv a in SLit(slit_to_styp sliteral, sliteral)
+    | Lit(a) -> let sliteral = to_slit senv a 
+                in SLit(slit_to_styp senv sliteral, sliteral)
     | Id(ns) -> let s = flatten_ns_list ns
                 in let v = List.hd (VarMap.find s senv.variables)
 			          in SId(v.svar_type, s, v.scope)
@@ -221,6 +246,7 @@ and translate_letdecl senv globals =
 and translate_fn_formals formals senv = 
    List.map (fun (Bind(m,t,s)) -> SBind(to_styp senv (Some t), s, SLocalVal)) formals
 
+(* pushing formal arguments to senv *)
 and push_formal svar senv = 
     let new_variables = 
        if VarMap.mem svar.id senv.variables then
@@ -231,6 +257,7 @@ and push_formal svar senv =
     in { variables = new_variables; sfn_decl = senv.sfn_decl; 
          sstruct_map = senv.sstruct_map } 
 
+(* place a list of SBinds into an environment and return new env *)
 and place_formals senv formals = 
     let place_formal senv = function
         | SBind(t, name, s) -> 
