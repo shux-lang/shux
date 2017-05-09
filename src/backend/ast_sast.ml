@@ -112,16 +112,30 @@ and to_sbind env = function
     | Bind(m, t, s) -> SBind(to_styp env (Some t), s, mut_to_scope m)
 
 
-and get_inherited body decls =
-    let match_sbind typ name b binding = 
+and get_inherited body decls retexpr =
+    let uniq l = 
+        let same (t1,s1) (t2,s2) = t1=t2 && s1=s2  
+        in let rec exists s b = function
+            | [] -> b
+            | hd::tl -> if (same hd s) then exists s true tl
+                                       else exists s b tl
+        in let rec uniq_rec uniques = function
+             | [] -> uniques
+             | hd::tl -> 
+                if (exists hd false uniques) 
+                         then uniq_rec uniques tl
+                         else uniq_rec (hd::uniques) tl
+        in uniq_rec [] l
+    in let match_sbind typ name b binding = 
         if b then b else (match binding with 
             | SBind(t, s, scope) -> t=typ && s=name)
-    in let add_inherit t s decls inherits = 
-        if List.fold_left (match_sbind t s) false decls
-            then inherits
-            else let inherit_bind = SBind(t, s, SLocalVal)
-            in if List.mem inherit_bind inherits then inherits
-            else inherit_bind::inherits
+    in let rec add_inherit decls inherits = function
+        | [] -> inherits
+        | (t,s)::tl -> if (List.fold_left (match_sbind t s) false decls)
+                       then add_inherit decls inherits tl
+                       else let new_bind = SBind(t, s, SLocalVal)
+                       in let new_inherits = new_bind::inherits
+                       in add_inherit decls new_inherits tl
     in let rec detect_names = function
         | SId(t,s,c) -> [(t,s)]
 				| SAccess(t, se, name) -> 
@@ -152,8 +166,11 @@ and get_inherited body decls =
         | [] -> inherits
         | hd::tl -> get_inherited_rec decls ((detect_names (fst hd))::inherits) tl
     in let inherited_body = get_inherited_rec decls [] body
-    in let flat_names = List.flatten inherited_body
-   (* in let _ = List.iter (fun (x,y) -> print_string y) flat_names*)
+    in let full_body = (detect_names retexpr)::inherited_body
+    in let flat_names = List.flatten full_body
+    in let uniq_names = uniq flat_names
+    in let inherits = add_inherit decls [] uniq_names
+    in let _ = List.iter print_bind_name inherits
     in []
 
 and to_slambda senv l = 
@@ -172,18 +189,19 @@ and to_slambda senv l =
         | Expr(e) -> raise (Failure "Lambda hoisting failed")
     in let (decls, abody) = hoist_lambda ([],[]) l.lbody
     in let llocals = List.map (vdecl_to_local senv) decls
-    in let _ = List.iter print_bind_name llocals
     in let l_env = List.fold_left place_formals senv [llocals;lformals]
-    in let body_intermediate = List.map (get_sexpr l_env) abody
+    in let body_intermediate = List.map (get_sexpr l_env) abody 
     in let lbody = List.map (fun x -> (x, get_styp_from_sexpr x)) body_intermediate
-    in let inherited = get_inherited lbody llocals@lformals
     in (match aret with
         | Some x -> let sret_expr = get_sexpr l_env x
+                    in let inherited = get_inherited lbody (llocals@lformals) sret_expr
                     in let sret_typ = get_styp_from_sexpr sret_expr
                     in { slret_typ = sret_typ; slformals = lformals; 
                          sllocals = llocals; slinherit = inherited;
                          slbody = lbody; slret_expr = Some (sret_expr, sret_typ) }
-        | None -> { slret_typ = SVoid; slformals = lformals; 
+        | None -> let inherited = get_inherited lbody (llocals@lformals) SExprDud
+                  in
+                  { slret_typ = SVoid; slformals = lformals; 
                     sllocals = llocals; slinherit = inherited;
                     slbody = lbody; slret_expr = None; })
 
