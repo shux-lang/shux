@@ -3,7 +3,7 @@ open Llast
 
 module StringMap = Map.Make(String)
 
-let translate structs globals funcs =
+let translate (structs,globals,funcs) =
   (* debug use *)
   let print_llvalue llvalue msg=
     let lltype = L.type_of llvalue in
@@ -92,7 +92,6 @@ let translate structs globals funcs =
                       | x -> lit_to_llvalue x
                      ) in
       let global_llvalue = L.define_global gname init_val the_module in
-      print_llvalue global_llvalue "define_globals";
       StringMap.add gname global_llvalue map in
     List.fold_left define_global StringMap.empty globals in
 
@@ -326,5 +325,5 @@ let translate structs globals funcs =
     in
     List.iter build_func funcs in
 
-  let _ = Llvm_analysis.assert_valid_module the_module in
+  (*let _ = Llvm_analysis.assert_valid_module the_module in*)
   the_module
