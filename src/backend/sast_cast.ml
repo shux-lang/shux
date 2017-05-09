@@ -23,7 +23,8 @@ let styp_of_sexpr = function
   | SLookbackDefault(t, _, _, _) -> t
   | SUnop(t, _, _) -> t
   | SCond(t, _, _, _) -> t
-  | SLoopCtr -> assert false (* SInt *)
+  | SLoopCtr -> SInt
+  | SPeek2Anon t -> t
   | SExprDud -> assert false (* SVoid *)
 
 let sast_to_cast let_decls f_decls =
@@ -34,6 +35,9 @@ let sast_to_cast let_decls f_decls =
   in let prefix_lambda s i = "lambda_" ^ i ^ "_" ^ s
   in let prefix_gn s = "gn_" ^ s    (* gn function *)
   in let prefix_gns s = "gns_" ^ s  (* gn struct *)
+  in let prefix_gnx s = "gnx_" ^ s
+  in let gnc = prefix_gnx "ctr"     (* gn execution state counter name *)
+  in let gns_hash = Hashtbl.create 42
 
   in let kn_to_fn kn =
     let walk_stmt (e, t) = 
@@ -41,10 +45,14 @@ let sast_to_cast let_decls f_decls =
         let rec walk_r acc rtyp rexpr =
           let emit t v = (* set sanon register to the value of v *)
             CExpr(t, CAssign(t, sanon, v))
-          in let push_anon t e last =  (* push new sanon of type t onto stack, walk e, then do last *)
-            CPushAnon(t, CBlock(List.rev (last :: walk_anon e t (CPeekAnon t)))) (* TODO: check order *)
-          in let push_anon_nop t e =  (* push new sanon of type t onto stack, walk e *)
-            CPushAnon(t, CBlock(List.rev (walk_anon e t (CPeekAnon t)))) (* TODO: check order *)
+          in let push_anon t e last =  
+            (* push new sanon of type t onto stack, walk e, then do last *)
+            (* TODO: check order *)
+            CPushAnon(t, CBlock(List.rev (last :: walk_anon e t (CPeekAnon t))))
+          in let push_anon_nop t e =
+            (* push new sanon of type t onto stack, walk e *)
+            (* TODO: check order *)
+            CPushAnon(t, CBlock(List.rev (walk_anon e t (CPeekAnon t))))
           in let walk_primitive =
             let lit t l =
               let tr_lit = match l with
@@ -63,6 +71,13 @@ let sast_to_cast let_decls f_decls =
             in let walk_assign t l r =
               let emit_r = CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t))
               in push_anon t r emit_r :: acc
+
+            in let walk_call t i a =
+              let map_act (e, t) =
+                push_anon_nop t e
+              in let eval_call =
+                CCall(t, i, List.map map_act a)
+              in emit t eval_call :: acc
 
             in let walk_unop t o e =
               let acc = walk_r acc t e (* leaves sanon register containing result *)
@@ -114,41 +129,169 @@ let sast_to_cast let_decls f_decls =
             in let walk_cond t iff the els =
               let cond_t = styp_of_sexpr iff
               in let cond_t = if cond_t=SBool then cond_t else assert false
-              in let eval_iff = push_anon_nop cond_t iff
-              in let eval_the = push_anon_nop cond_t the
-              in let eval_els = push_anon_nop cond_t els
               in let eval_merge = CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t))
-              in let eval_cond = CCond(t, eval_iff, eval_the, eval_els, eval_merge)
+              in let eval_iff = push_anon_nop cond_t iff
+              in let eval_the = push_anon t the eval_merge
+              in let eval_els = push_anon t els eval_merge
+              in let eval_cond = CCond(t, eval_iff, eval_the, eval_els)
               in eval_cond :: acc
-
-            in let walk_call t i a =
-              acc
 
             in match rexpr with
               | SLit(t, l) -> lit t l
               | SId(t, n, _) -> id t n (* don't care about scope *)
               | SUnop(t, o, e) -> walk_unop t o e
               | SBinop(t, l, o, r) -> walk_binop t l o r
-              | SAccess (t, e, s) -> walk_access t e s
+              | SAccess(t, e, s) -> walk_access t e s
               | SCond(t, iff, the, els) -> walk_cond t iff the els
               | SKnCall(t, i, a) -> walk_call t i a
+              | SAssign(t, l, r) -> walk_assign t l r (* requires new nested walk *)
+              | SLoopCtr -> emit SInt CLoopCtr :: acc
+              | SPeek2Anon t -> emit t (CPeek2Anon t) :: acc
 
-              (* requires new nested walk *)
-              | SAssign(t, l, r) -> walk_assign t l r 
-
-              (* should never be naked *)
+              (* should never be called like this *)
               | SGnCall(_, _, _) -> assert false
               | _ -> assert false
 
-          in let walk_array =
-            [ CStmtDud ]
+          in let walk_array element_t element_c =
+            let deref = CBinopPtr SIndex
 
-          in let walk_struct =
+            in let lit t l =
+              let l = match l with (* unwrap to list of expressions, emit by value *)
+                | SLitArray l -> l
+                | _ -> assert false
+              in let assign e i =
+                let i = CLit(SInt, CLitInt i)
+                in let access =
+                  CBinop(t, CPeek2Anon rtyp, deref, i)
+                in let emit =
+                  CExpr(t, CAssign(t, access, CPeekAnon t))
+                in push_anon t e emit
+              in let for_each (acc, i) e =
+                (assign e i :: acc, i + 1)
+              in let (eval_lit, _) =
+                List.fold_left for_each (acc, 0) l
+              in eval_lit @ acc
+
+            in let id t n = (* reference *)
+              let id = CId(t, n)
+              in emit t id :: acc
+
+            in let walk_assign t l r = (* reference *)
+              let emit_r = CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t))
+              in push_anon t r emit_r :: acc
+
+            in let walk_cond t iff the els = (* reference *)
+              let cond_t = if styp_of_sexpr iff=SBool then SBool else assert false
+              in let eval_merge = CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t))
+              in let eval_iff = push_anon_nop cond_t iff
+              in let eval_the = push_anon cond_t the eval_merge
+              in let eval_els = push_anon cond_t els eval_merge
+              in let eval_cond = CCond(t, eval_iff, eval_the, eval_els)
+              in eval_cond :: acc
+
+            in let walk_access t e s = (* reference *)
+              let st_t = styp_of_sexpr e
+              in let eval_access = CAccess(t, CPeekAnon st_t, s)
+              in let emit_access = CExpr(t, CAssign(t, CPeek2Anon t, eval_access))
+              in let eval_struct = push_anon st_t e emit_access
+              in eval_struct :: acc
+
+            in let walk_binop t l o r =
+              let tr_binop = match o with
+                | SBinopPtr o -> CBinopPtr o (* only valid one *)
+                | _ -> assert false
+
+              in let dereference = (* operators whose operands are of Array t and int *)
+                let eval =  (* TODO: make sure I understand what the fuck is going on here *)
+                  let arr_t = styp_of_sexpr l
+                  in let ind_t = if styp_of_sexpr r=SInt then SInt else assert false
+                  in let eval_deref = CBinop(t, CPeek2Anon arr_t, tr_binop, CPeekAnon ind_t)
+                  in let emit_deref = CExpr(t, CAssign(t, CPeek3Anon t, eval_deref))
+                  in let eval_r = push_anon ind_t r emit_deref
+                  in push_anon arr_t l eval_r
+                in eval :: acc
+
+              in let generator =
+                let gn_call id actuals =
+                  let gn_name = prefix_gn id
+                  in let gns_name = prefix_gns id
+                  in let gns_fields = Hashtbl.find gns_hash gns_name
+                  in let gns_typ = SStruct(gns_name, gns_fields)
+
+                  in let init_gns =
+                    let set_field (a, at) (SBind(t, id, _)) =
+                      let get_field =
+                        CAccess(t, CPeek2Anon gns_typ, id)
+                      in let emit_field =
+                        CExpr(t, CAssign(t, get_field, CPeekAnon t))
+                      in push_anon t a emit_field
+                    in let rec init_fields inits gns_fields actuals = 
+                      let (f, ft) = match gns_fields with
+                        | [] -> assert false
+                        | f::ft -> (f, ft)
+                      in match actuals with
+                        | [] -> inits
+                        | a::at -> init_fields (set_field a f :: inits) ft at
+
+                    in init_fields [] gns_fields actuals
+                  in let eval_cnt =
+                    let cnt_t = if styp_of_sexpr r=SInt then SInt else assert false
+                    in push_anon_nop cnt_t l 
+                  in let call_loop =
+                    let curr = CBinop(t, CPeek3Anon rtyp, deref, CLoopCtr)
+                    in let emit_val =
+                      CExpr(t, CAssign(t, curr, CPeekAnon t))
+                    in let set_ctr =
+                      let ctr = CAccess(SInt, CPeek2Anon gns_typ, gnc)
+                      in CExpr(SInt, CAssign(SInt, ctr, CLoopCtr))
+                    in let call_gn =
+                      push_anon t (SKnCall(t, gn_name, [ (SPeek2Anon gns_typ, gns_typ) ])) emit_val
+                    in CLoop(eval_cnt, CBlock [set_ctr; call_gn])
+                  in CPushAnon(gns_typ, CBlock(List.rev(call_loop :: init_gns)))
+                in match r with
+                | SGnCall(gn_t, id, actuals) when gn_t=t -> gn_call id actuals :: acc
+                | _ -> assert false
+
+              in let map =
+                acc
+
+              in let filter =
+                acc
+
+              in match o with
+                | SBinopPtr SIndex -> dereference
+                | SBinopGn SFor -> generator
+                | SBinopFn SMap -> map
+                | SBinopFn SFilter -> filter (* our worst nightmare *)
+                | SBinopGn SDo -> assert false (* TODO: should be sugared away *)
+                | _ -> assert false
+
+            in let walk_call t i a =
+              acc
+
+            in match rexpr with
+              | SLit(t, l) -> lit t l
+              | SId(t, n, _) -> id t n
+              | SBinop(t, l, o, r) -> walk_binop t l o r
+              | SAccess(t, e, s) -> walk_access t e s
+              | SCond(t, iff, the, els) -> walk_cond t iff the els
+              | SKnCall(t, i, a) -> walk_call t i a
+              | SAssign(t, l, r) -> walk_assign t l r
+              | SPeek2Anon t -> emit t (CPeek2Anon t) :: acc
+
+              (* no array type unary operators *)
+              | SLoopCtr -> assert false
+              | SUnop(t, o, e) -> assert false
+              (* should never be called like this *)
+              | SGnCall(_, _, _) -> assert false
+              | _ -> assert false
+
+          in let walk_struct id members =
             [ CStmtDud ]
 
           in match rtyp with
-            | SArray(t, n) -> walk_array
-            | SStruct(i, b) -> walk_struct
+            | SArray(t, n) -> walk_array t n
+            | SStruct(i, b) -> walk_struct i b
             | _ -> walk_primitive
 
         in let walk_l ltyp lexpr =
@@ -167,7 +310,7 @@ let sast_to_cast let_decls f_decls =
             in let array_assign t n =
               let index t a = CBinop(t, a, CBinopPtr SIndex, CLoopCtr)
               in let get_anon = index t anon
-              in let get_cond = CLit(SInt, (CLitInt n))
+              in let get_cond = CExpr(SInt, CLit(SInt, (CLitInt n)))
               in let map_ass a =
                  SBinop(t, a, SBinopPtr SIndex, SLoopCtr)
               in let get_index =
@@ -220,7 +363,7 @@ let sast_to_cast let_decls f_decls =
       let hoist n { slret_typ; slformals; sllocals; slbody; slret_expr } = hoist_lambdas
         { skname = prefix_lambda kn.skname n; skret_typ = slret_typ;
           skformals = slformals; sklocals = sllocals; skbody = slbody; 
-          skret_expr = Some slret_expr }
+          skret_expr = slret_expr }
 
       in let rec fish acc p = function
         | SLit(_, SLitKn(l)) -> (hoist p l) :: acc
@@ -251,12 +394,19 @@ let sast_to_cast let_decls f_decls =
     in hoist_lambdas kn
 
   in let walk_kn kn =
-     kn_to_fn {kn with skname = prefix_kn kn.skname }
+     let kn = {kn with skname = prefix_kn kn.skname }
+     in let ret_arr = kn
+     in let ret_struct = kn
+     in let kn = match kn.skret_typ with
+      | SArray(t, Some n) -> ret_arr
+      | SArray(t, None) -> assert false
+      | SStruct(i, b) -> ret_struct
+      | _ -> kn
+     in kn_to_fn kn 
 
   in let walk_gn gn = 
     let prefix_gnv s = "gnv_" ^ s         (* for local vars *)
-    in let gns_arg = "gnx_arg"            (* gn execution state argument name *)
-    in let gnc = "gnx_ctr"                (* gn execution state counter name *)
+    in let gns_arg = prefix_gnx "arg"            (* gn execution state argument name *)
 
     in let st_fields =
       let a_decl = function
@@ -268,7 +418,9 @@ let sast_to_cast let_decls f_decls =
 
     in let gns_typ_name = prefix_gns gn.sgname
     in let gns_typ = SStruct(gns_typ_name, st_fields) (* struct type name *)
-    in let defn_cstruct = CStructDef { ssname = gns_typ_name; ssfields = st_fields }
+    in let defn_cstruct = 
+      Hashtbl.add gns_hash gns_typ_name st_fields;
+      CStructDef { ssname = gns_typ_name; ssfields = st_fields }
 
     in let gn_to_kn =
       let st_id = SId(gns_typ, gns_arg, SLocalVar)
@@ -280,12 +432,6 @@ let sast_to_cast let_decls f_decls =
       in let prefix_var = function
         | SBind(t, n, SLocalVar) -> SBind(t, prefix_gnv n, SLocalVar)
         | SBind(_, n, _)-> assert false
-
-      in let inc_cnt =
-        let t = SInt
-        in let inc = SBinop(t, st_cnt, SBinopInt SAddi, wrap_int 1)
-        in let e = SAssign(t, st_cnt, inc)
-        in (e, t)
 
       in let lb_st t id n =
         (* should be gnx_arg.id[(gnx_ctr - n) % mod_iter] *)
@@ -318,7 +464,7 @@ let sast_to_cast let_decls f_decls =
       in { skname = prefix_gn gn.sgname; skret_typ = gn.sgret_typ;
             skformals = [ SBind(gns_typ, gns_arg, SLocalVar) ];
             sklocals = List.map prefix_var gn.sglocalvars; 
-            skbody = inc_cnt :: List.map lookback gn.sgbody; 
+            skbody = List.map lookback gn.sgbody; 
             skret_expr = map_opt lookback gn.sgret_expr }
 
     in defn_cstruct :: kn_to_fn gn_to_kn
