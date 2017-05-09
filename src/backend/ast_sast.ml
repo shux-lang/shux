@@ -75,7 +75,10 @@ and to_slit senv = function
     | LitKn(l) -> SLitKn(to_slambda senv l)
     | LitVector(el) -> SLitArray(List.map (get_sexpr senv) el)
     | LitArray(e) -> SLitArray(List.map (get_sexpr senv) e)
-    | LitStruct(s,e) -> SLitStruct("aa", []) (*TODO: *) 
+    | LitStruct(s,e) -> 
+          let translate_structfield senv = function 
+              | StructField(name, expr) ->(name, get_sexpr senv expr)
+          in SLitStruct(flatten_ns_list s, List.map (translate_structfield senv) e)
 
 and slit_to_styp = function
     | SLitInt(i) -> SInt
