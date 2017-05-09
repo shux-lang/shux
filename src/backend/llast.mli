@@ -15,9 +15,6 @@ type lllit =
   | LLLitArray of lllit list
   | LLLitStruct of lllit list
 
-type llglobal = lltyp * string * lllit
-type llstruct_def = string * lltyp list
-
 type llreg =
   | LLRegLabel of lltyp * string(* register can store a name and an lltyp value *)
   | LLRegLit of lltyp * lllit
@@ -79,4 +76,7 @@ type llfunc_def = {
     llfblocks : llblock list;
 }
 
-type llprog = llfunc_def list
+type llglobal = lltyp * string * lllit
+type llstruct_def = string * lltyp list
+
+type llprog = llstruct_def list * llglobal list * llfunc_def list

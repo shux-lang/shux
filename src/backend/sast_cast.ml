@@ -31,7 +31,7 @@ let sast_to_cast (let_decls,f_decls) =
   let prefix_x s = "extern_" ^ s    (* extern decl *)
   in let prefix_s s = "struct_" ^ s (* struct defn *)
   in let prefix_l s = "let_" ^ s    (* let decl *)
-  in let prefix_kn s = "kn_" ^ s    (* kn function *)
+  in let prefix_kn s = if s="main" then s else "kn_" ^ s    (* kn function *)
   in let prefix_lambda s i = "lambda_" ^ i ^ "_" ^ s
   in let prefix_gn s = "gn_" ^ s    (* gn function *)
   in let prefix_gns s = "gns_" ^ s  (* gn struct *)
