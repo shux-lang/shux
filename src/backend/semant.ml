@@ -193,32 +193,36 @@ and check_expr tr_env expr =
             | _ -> raise (Failure "Left hand needs to be [] for map/filter"))
        in
             if (match e2 with
-            | Binop(kn, _, _) -> (match kn with
-              | Id(nn) -> let n = flatten_ns_list nn in
-                  if VarMap.mem n tr_env.fn_map then
-                      let k = VarMap.find n tr_env.fn_map in
-                      if k.fn_typ = Kn 
-                      then List.length k.formals = 1
-                      else let err_msg = "Map/Filter function" ^ n
-                       ^ " needs to be a kernel" in raise(Failure err_msg)
-                  else let err_msg = "Kernel call in filter/map " ^ n ^ "doesnt
-                  exist" in raise(Failure err_msg)
-              | Lit(n) -> (match n with
-                          | LitKn(l) ->(List.length l.lformals) = 1 && 
-                                    (get_bind_typ (List.hd l.lformals)) = t
-                          | _ -> raise (Failure "Filter not given a lambda"))
-              | _ -> raise (Failure "Filter not given a lambda :((("))
-            | Lit(n) -> (match n with
+                | Lit(n) -> (match n with
                          | LitKn(l) ->(List.length l.lformals) = 1 &&
                                    (get_bind_typ (List.hd l.lformals)) = t
-                         | _ -> raise (Failure "Filter not given a lambda :("))
-            | _ -> raise (Failure "Filter not given a lambda :((("))
+                         | _ -> raise (Failure "Filter/Map right hand literals needs to be a lambda :("))
+                | Id(nn) -> let n =  flatten_ns_list nn in 
+                         if VarMap.mem n tr_env.fn_map then
+                            let k = VarMap.find n tr_env.fn_map in
+                            if k.fn_typ = Kn
+                                then List.length k.formals = 1
+                                else raise (Failure "Map/Filter function needs to be a kernel")
+                        else raise (Failure ("Kernel call in filter/map " ^ n ^ "doesnt" ^ " exist"))
+                | _ -> raise (Failure "Filter not given a lambda."))
             then (match fm with
-             | Filter -> if (check_expr tr_env e2) = Bool then Array(t, i) else
+             | Filter -> let filt_typ = (match e2 with
+                             | Id(nn) -> let n = flatten_ns_list nn in
+                                         let kn = VarMap.find n tr_env.fn_map
+                                         in convert_ret_typ kn.ret_typ
+                             | _ -> (check_expr tr_env e2))
+                     in if filt_typ = Bool then Array(t, i) else
                      raise (Failure "Filter kernel needs to return Bool")
-             | Map -> if t = (check_expr tr_env e2) then Array(t, i) else 
-                     raise (Failure "Map kernel return type needs to match
-                                   array")
+             | Map -> let map_typ = (match e2 with
+                             | Id(nn) -> let n = flatten_ns_list nn 
+                                         in let kn = VarMap.find n tr_env.fn_map
+                                         in convert_ret_typ kn.ret_typ
+                             | _ -> (check_expr tr_env e2)) in 
+                       if t = map_typ then Array(map_typ, i) 
+                     else let s1 = _string_of_typ t
+                          and s2 = _string_of_typ map_typ 
+                          in raise (Failure ("Map kernel return type needs to match array. " ^ 
+                                             s1 ^ " doesn't match " ^ s2))
              | _ -> raise (Failure "The OCaml compiler has a strict type system."))
             else raise (Failure "Map/Filter needs kernel that takes single
             parameter matching the [] to be mapped/filtered")
