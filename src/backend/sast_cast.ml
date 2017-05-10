@@ -34,6 +34,7 @@ let string_of_binop_int = function
   | SExpi -> "SExpi"
   | SEqi -> "SEqi"
   | SLti -> "SLti"
+  | SGti -> "SGti"
   | SNeqi -> "SNeqi"
   | SLeqi -> "SLeqi"
   | SGeqi -> "SGeqi"
