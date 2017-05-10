@@ -16,10 +16,100 @@ let translate (structs,globals,funcs) =
       i8_t = L.i8_type the_context and
       i1_t = L.i1_type the_context and
       double_t = L.double_type the_context and
+      float_t = L.float_type the_context and
       double_precision = 16 and (* adjust this to change number of digits printf will print *)
       void_t = L.void_type the_context
   in
   let str_t = L.pointer_type i8_t in
+  let f_void_t = L.function_type void_t [||] in
+  let fptr_void_t = L.pointer_type f_void_t in
+
+  (* BEGIN EXTERNAL CALLS DEFINITIONS 
+   *
+   *)
+
+  let glClearColor_formals = Array.of_list [float_t; float_t; float_t; float_t] in
+  let glClearColor_sign = L.function_type void_t glClearColor_formals in
+  let glClearColor_func = L.declare_function "glClearColor" glClearColor_sign the_module in
+
+  let glEnable_formals = Array.of_list [i32_t] in
+  let glEnable_sign = L.function_type void_t glEnable_formals in
+  let glEnable_func = L.declare_function "glEnable" glEnable_sign the_module in
+
+  let glPointSize_formals = Array.of_list [float_t] in
+  let glPointSize_sign = L.function_type void_t glPointSize_formals in
+  let glPointSize_func = L.declare_function "glPointSize" glPointSize_sign the_module in
+
+  let glMatrixMode_formals = Array.of_list [i32_t] in
+  let glMatrixMode_sign = L.function_type void_t glMatrixMode_formals in
+  let glMatrixMode_func = L.declare_function "glMatrixMode" glMatrixMode_sign the_module in
+
+  
+  (* gl render call set *)
+  let glClear_formals = Array.of_list [i32_t] in
+  let glClear_sign = L.function_type void_t glClear_formals in
+  let glClear_func = L.declare_function "glClear" glClear_sign the_module in
+
+  let glLoadIdentity_formals = Array.of_list [] in
+  let glLoadIdentity_sign = L.function_type void_t glLoadIdentity_formals in
+  let glLoadIdentity_func = L.declare_function "glLoadIdentity" glLoadIdentity_sign  the_module in
+
+  let glOrtho_formals = Array.of_list [] in
+  let glOrtho_sign = L.function_type void_t glOrtho_formals in
+  let glOrtho_func = L.declare_function "glOrtho" glOrtho_sign the_module in
+
+  let glColor4f_formals = Array.of_list [float_t; float_t; float_t; float_t] in
+  let glColor4f_sign = L.function_type void_t glColor4f_formals in
+  let glColor4f_func = L.declare_function "glColor4f" glColor4f_sign the_module in
+
+  (* for the render loop *)
+  let glBegin_formals = Array.of_list [i32_t] in
+  let glBegin_sign = L.function_type void_t glBegin_formals in
+  let glBegin_func = L.declare_function "glBegin" glBegin_sign the_module in
+
+  let glVertex2f_formals = Array.of_list [float_t; float_t] in
+  let glVertex2f_sign = L.function_type void_t glVertex2f_formals in
+  let glVertex2f_func = L.declare_function "glVertex2f" glVertex2f_sign the_module in
+
+  let glEnd_formals = Array.of_list [i32_t] in
+  let glEnd_sign = L.function_type void_t glEnd_formals in
+  let glEnd_func = L.declare_function "glEnd" glEnd_sign the_module in 
+
+
+  (* gl update/idle call set *)
+  let glutPostRedisplay_formals = Array.of_list [] in
+  let glutPostRedisplay_sign = L.function_type void_t glutPostRedisplay_formals in
+  let glutPostRedisplay_func = L.declare_function "glutPostRedisplay" glutPostRedisplay_sign the_module in
+
+
+  (* glut main call set *)
+  let glutInitWindowSize_formals = Array.of_list [i32_t; i32_t] in
+  let glutInitWindowSize_sign = L.function_type void_t glutInitWindowSize_formals in
+  let glutInitWindowSize_func = L.declare_function "glutInitWindowSize" glutInitWindowSize_sign the_module in
+
+  let glutInit_formals = Array.of_list [L.pointer_type i32_t; L.pointer_type i8_t] in
+  let glutInit_sign = L.function_type void_t glutInit_formals in
+  let glutInit_func = L.declare_function "glutInit" glutInit_sign the_module in 
+
+  let glutCreateWindow_formals = Array.of_list [L.pointer_type i8_t] in
+  let glutCreateWindow_sign = L.function_type i32_t glutCreateWindow_formals in
+  let glutCreateWindow_func = L.declare_function "glutCreateWindow" glutCreateWindow_sign the_module in
+ 
+  let glutDisplayFunc_formals = Array.of_list [fptr_void_t] in
+  let glutDisplayFunc_sign = L.function_type void_t glutDisplayFunc_formals in
+  let glutDisplayFunc_func = L.declare_function "glutDisplayFunc" glutDisplayFunc_sign the_module in
+
+  let glutIdleFunc_formals = Array.of_list [fptr_void_t] in
+  let glutIdleFunc_sign = L.function_type void_t glutIdleFunc_formals in
+  let glutIdleFunc_func = L.declare_function "glutIdleFunc" glutIdleFunc_sign the_module in
+
+  let glutMainLoop_formals = Array.of_list [] in
+  let glutMainLoop_sign = L.function_type void_t glutMainLoop_formals in
+  let glutMainLoop_func = L.declare_function "glutMainLoop" glutMainLoop_sign the_module in
+
+  (* END EXTERNAL CALLS DEFINITIONS 
+   *
+   *)
 
   let extract_type = function
       LLRegLabel (typ, str) -> typ
