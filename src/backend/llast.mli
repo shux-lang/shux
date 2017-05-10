@@ -18,6 +18,7 @@ type lllit =
 type llreg =
   | LLRegLabel of lltyp * string(* register can store a name and an lltyp value *)
   | LLRegLit of lltyp * lllit
+  | LLRegDud
 
 (* might not be used
 type llacc_typ =
@@ -60,6 +61,7 @@ type llstmt =
   | LLBuildStructLoad of llreg * int * llreg (* 1 has the struct label, 2 has the index, 3 has dest label *)
   | LLBuildStructStore of llreg * int * llreg (* 1 has the struct label, 2 has the index, 3 has source label *)
   | LLBuildTerm of llblock_term
+  | LLBuildNoOp
 
 
 type llblock = {
@@ -80,3 +82,4 @@ type llglobal = lltyp * string * lllit
 type llstruct_def = string * lltyp list
 
 type llprog = llstruct_def list * llglobal list * llfunc_def list
+
