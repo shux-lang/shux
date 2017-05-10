@@ -10,7 +10,7 @@ struct particle {
 gn euler(struct particle[] init) struct particle[] {
    struct particle[] pbuf = pbuf..1 : init @ p -> {
       /* couldn't we use the kernel here? */
-      struct particle {
+      particle {
          .v = p.v + g * dt;
 	 .x = p.x + p.v * dt;
       }
@@ -18,9 +18,9 @@ gn euler(struct particle[] init) struct particle[] {
 }
 
 kn main() int {
-   var particle[1] p_init = [struct particle { .v=1; .x=0; }];
+   var particle[1] p_init = [particle { .v=1; .x=0; }];
    
-   for 1000 euler(p_init) @ state -> {
+   for 1000 euler(p_init) @ (particle[] state) -> {
       print("step"); /* we don't have opengl bindings yet */
       print_scalar(state[0].x);
    }
