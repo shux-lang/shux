@@ -94,16 +94,13 @@ let sast_to_cast (let_decls, f_decls) =
     let walk_stmt (e, t) = 
       let rec walk_anon sexpr styp sanon = (* this will yield a reversed list *)
         let emit t v = (* set sanon register to the value of v *)
-          db "emitted";
           CExpr(t, CAssign(t, sanon, v))
 
         in let push_anon t e last =  
           (* push new sanon of type t onto stack, walk e, then do last *)
-          db "push anon last";
           CPushAnon(t, CBlock(List.rev (last :: walk_anon e t (CPeekAnon t))))
 
         in let push_anon_nop t e =
-          db "push anon nop";
           (* push new sanon of type t onto stack, walk e *)
           CPushAnon(t, CBlock(List.rev (walk_anon e t (CPeekAnon t))))
 
@@ -117,7 +114,7 @@ let sast_to_cast (let_decls, f_decls) =
                 | SLitStr s -> CLitStr s
                 | _ -> print_type t; warn CLitDud "encountered collection type literal in walk_primitive"
               in let lit = CLit(t, tr_lit)
-              in db "emit lit"; emit t lit :: acc
+              in emit t lit :: acc
 
             in let id t n =
               let id = CId(t, n)
@@ -125,7 +122,7 @@ let sast_to_cast (let_decls, f_decls) =
 
             in let walk_assign t l r =
               let emit_r = CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t))
-              in db "walk_assign "; push_anon t r emit_r :: acc
+              in push_anon t r emit_r :: acc
 
             in let walk_call t i a =
               let map_act (e, t) =
@@ -451,7 +448,7 @@ let sast_to_cast (let_decls, f_decls) =
               in let stmts = List.map (do_assign nop) ass
               in let stmts = List.map List.rev stmts
               in let stmts = List.flatten stmts
-              in db "pushed"; CPushAnon(SInt, CBlock stmts) (* push some space for potential index *)
+              in CPushAnon(SInt, CBlock stmts) (* push some space for potential index *)
 
             in let array_assign t n =
               let index t a = CBinop(t, anon, CBinopPtr SIndex, CLoopCtr)
@@ -496,10 +493,10 @@ let sast_to_cast (let_decls, f_decls) =
           in walk [] lexpr
 
         in walk_l styp sexpr
-      in db "stmt push"; CPushAnon(t, CBlock(List.rev (walk_anon e t (CPeekAnon t)))) (* in order *)
+      in CPushAnon(t, CBlock(List.rev (walk_anon e t (CPeekAnon t)))) (* in order *)
 
     in let walk_ret = function
-      | Some (e, t) -> db "return";  CReturn (Some (t, (walk_stmt (e, t)))) 
+      | Some (e, t) -> CReturn (Some (t, (walk_stmt (e, t)))) 
       | None -> CReturn None
 
     in let fn_decl kn = CFnDecl 
