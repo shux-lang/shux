@@ -18,6 +18,8 @@ let pretty_print_regs l =
   List.map print_reg l
 
 let cast_to_llast cast =
+  let struct_tbl = Hashtbl.create 42
+  in
   let rec ctyp_to_lltyp = function
       SInt -> LLInt
     | SFloat -> LLDouble
@@ -100,7 +102,10 @@ let cast_to_llast cast =
        let zerolit = LLRegLit(LLInt, (LLLitInt 0)) in (* TODO need to store both int and doubles *)
        let llinst = LLBuildBinOp (LLAdd, zerolit, e2, e1) in
        (cnt, head, e1, llinst::llinsts)
-    | CAccess( typ, expr1, string) -> assert false
+    | CAccess( typ, expr1, field_id) -> 
+       let (cnt,head,vreg, llinsts) = walk_cexpr a_stack t_stack c_stack cnt head llinsts expr1 in
+       let index = Hashtbl.find struct_tbl field_id  in
+        assert false
     | CCall(typ, id, actuals) -> 
         let folder ((cnt,head,_,llinsts), llregs) stmt =
           let (cnt,head,llreg,llinsts) = 
@@ -141,20 +146,22 @@ let cast_to_llast cast =
          LLRegLabel (ctyp_to_lltyp ctyp, cstr) in
        let formals = List.map declare_fml_lcl cfunc.cformals in
        let locals = List.map declare_fml_lcl cfunc.clocals in
-       {llfname=cfunc.cfname;llfformals=formals;llflocals=(temps@locals);llfbody=(List.rev insts);llfreturn=
-        if(cfunc.cret_typ = SVoid) then (LLVoid) else (ctyp_to_lltyp cfunc.cret_typ);llfblocks=[]}::list
+       {llfname=cfunc.cfname; llfformals=formals; llflocals=(temps@locals);
+       llfbody=(List.rev insts); llfblocks=[];
+       llfreturn= if(cfunc.cret_typ = SVoid) 
+                  then (LLVoid) 
+                  else (ctyp_to_lltyp cfunc.cret_typ)}::list
     | _ -> list
   in
 
   let define_structs =
-    let unbind (SBind (ctyp, _, _))=
-      ctyp_to_lltyp ctyp
-    in
     let define_struct list = function
       | CStructDef cstruct ->
-         let struct_name = cstruct.ssname and
-             field_list = cstruct.ssfields in
-         (struct_name, List.map unbind field_list)::list
+        let folder (acc, n) (SBind(t, id, _)) =
+          Hashtbl.add struct_tbl id n;
+          (ctyp_to_lltyp t :: acc, n + 1)
+        in let (ordered_fields, _) = List.fold_left folder ([], 0) cstruct.ssfields
+        in (cstruct.ssname, ordered_fields) :: list 
       | _ -> list
     in
     List.fold_left define_struct [] cast
