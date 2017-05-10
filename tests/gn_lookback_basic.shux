@@ -4,6 +4,6 @@ gn foo(int x, int y) int {
 }
 
 kn main() int {
-   int result := do 100 foo(5, 7);
+   int result = do 100 foo(5, 7);
    0
 }
