@@ -223,8 +223,12 @@ and get_sexpr senv = function
     | Lit(a) -> let sliteral = to_slit senv a 
                 in SLit(slit_to_styp senv sliteral, sliteral)
     | Id(ns) -> let s = flatten_ns_list ns
-                in let v = List.hd (VarMap.find s senv.variables)
-			          in SId(v.svar_type, s, v.scope)
+                in if VarMap.mem s senv.variables then
+                let v = List.hd (VarMap.find s senv.variables)
+			            in SId(v.svar_type, s, v.scope)
+                else if VarMap.mem s senv.sfn_decl
+                 then SId(SPtr, s, SLocalVal)
+                else assert(false)
     | Lookback(str, i) -> SLookback(SInt, flatten_ns_list str, i)
     | Binop(e1, bin_op, e2) -> 
         let st1 = get_sexpr senv e1 in (match bin_op with
