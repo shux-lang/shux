@@ -530,7 +530,28 @@ let check_globals g =
                        fn_map = VarMap.empty; new_variables = []} in
    check_global_inner env_default g
 
-      
+let get_lookback_env fn_typ formals body env = 
+    let rec grab_exprs exprs = function
+        | [] ->  exprs
+        | hd::tl -> (match hd with
+            | VDecl(b,e) -> (match e with
+                | Some e -> grab_exprs (e::exprs) tl
+                | None -> grab_exprs exprs tl)
+            | Expr(e) -> grab_exprs exprs tl)
+
+    in let rec kn_lookback = function
+        | [] ->  true
+        | hd::tl -> (match hd with
+            | Lit(l) -> kn_lookback tl
+            | Id(s) -> kn_lookback tl
+            | Lookback(s,i) -> raise (Failure "Kernels can't have lookback exprs")
+            | Binop(e1,binop,e2) -> if (kn_lookback [e1]) && (kn_lookback [e2])
+                                    then kn_lookback tl)
+  
+   in (match formals with
+     | Kn -> if kn_lookback body then env
+     | Gn -> env)
+
 let check_body f env = 
     let check_formals formals env = 
         let check_formal env old_formals formal = 
@@ -546,8 +567,9 @@ let check_body f env =
            in let v = { id = formal_name; var_type = formal_type; mut = m; initialized=true }
            in push_variable_env v env
     in let formal_env = 
-       List.fold_left place_formal env (check_formals f.formals env) in
-    let body = f.body and
+       List.fold_left place_formal env (check_formals f.formals env)
+    in let lookback_env = get_lookback_env f.fn_typ f.formals f.body formal_env
+    in let body = f.body and
         ret = f.ret_expr 
     in
     let check_stmt env = function
