@@ -29,7 +29,7 @@ let cast_to_llast cast =
   let then_decl i = "then" ^ (string_of_int i) and
       else_decl i = "else" ^ (string_of_int i) and
       merge_decl i = "merge" ^ (string_of_int i) in
-  let dud = LLRegLit (LLInt,(LLLitInt 0)) in
+  let dud = LLRegLit (LLInt,(LLLitInt 42)) in
 
   let add_inst_to_branch inst bname map =
     if(StringMap.mem bname map)
@@ -39,20 +39,16 @@ let cast_to_llast cast =
   in
 
   let rec walk_cstmt (a_stack,t_stack,cnt,head,blabels,llinsts) = function
-    | CExpr(t, e) -> prerr_string "CExpr->"; (assert (StringMap.mem "entry" llinsts)); walk_cexpr a_stack t_stack cnt head blabels llinsts e
+    | CExpr(t, e) -> prerr_string "CExpr->("; (assert (StringMap.mem "entry" llinsts)); let ret = walk_cexpr a_stack t_stack cnt head blabels llinsts e in prerr_string ")"; ret
     | CPushAnon(t, s) -> 
        let v = a_decl cnt in
-       prerr_string ("CPushAnon"^v^"->");
-      
+       prerr_string ("CPushAnon "^v^"->");
        let vreg = LLRegLabel (ctyp_to_lltyp t, v) in
-       assert false
-                  
+       walk_cstmt ((v::a_stack),t_stack,(cnt + 1),(vreg::head),blabels,llinsts) s
+
     | CReturn opt -> prerr_string "CReturn->";(match opt with
                         Some (typ, CPushAnon(t, cstmt)) when t=typ ->
                         let v = a_decl cnt in
-                        let cstmt =
-                          match cstmt with CPushAnon(_) ->
-                            (cstmt) | _ ->  (assert false) in
                         let vreg = LLRegLabel (ctyp_to_lltyp typ, v) in
                         let (cnt, head, r1, blabels, llinsts) =
                           walk_cstmt (
@@ -63,9 +59,9 @@ let cast_to_llast cast =
                               blabels,
                               llinsts) cstmt
                         in
-                        let llinst = LLBuildTerm (LLBlockReturn r1) in
+                        let llinst = LLBuildTerm (LLBlockReturn vreg) in
                         let llinsts = add_inst_to_branch llinst (List.hd blabels) llinsts in
-                        (cnt, head, r1, blabels, llinsts)
+                        (cnt, head, vreg, blabels, llinsts)
                       | Some _ -> assert false
                       | None ->
                          let llinst = LLBuildTerm LLBlockReturnVoid and
@@ -84,7 +80,7 @@ let cast_to_llast cast =
               walk_cstmt ((v::a_stack), t_stack, (cnt + 1), vreg::head, blabels,llinsts) ifstmt in
             let thenname = then_decl cnt
             and elsename = else_decl cnt and mergename = merge_decl cnt in
-            let llinstbr = LLBuildTerm (LLBlockBr (rif, thenname, elsename)) in
+            let llinstbr = LLBuildTerm (LLBlockBr (vreg, thenname, elsename)) in
             let llinsts = add_inst_to_branch llinstbr (List.hd blabels) llinsts in
             
             let v = a_decl cnt in
@@ -102,14 +98,16 @@ let cast_to_llast cast =
                           elsename::blabels, llinsts) elsestmt in
             let llelsejmp = LLBuildTerm (LLBlockJmp mergename) in
             let llinsts = add_inst_to_branch llelsejmp (List.hd blabels) llinsts in
-            (cnt, head, dud, mergename::blabels, llinsts)
+            (cnt, head, vreg, mergename::blabels, llinsts)
          | _ -> assert false
        )
     | CBlock stmt_list ->
-       prerr_string "CBlock->";
+       prerr_string "CBlock->[";
        let fold_block (cnt, head, llreg, blabels, llinsts) stmt  =
          walk_cstmt (a_stack, t_stack, cnt, head, blabels, llinsts) stmt in
-       List.fold_left fold_block (cnt, head, dud, blabels, llinsts) stmt_list
+       let ret = List.fold_left fold_block (cnt, head, dud, blabels, llinsts) stmt_list
+        in prerr_string "]";
+ret
     | _ -> assert false
 
   and walk_cexpr a_stack t_stack cnt head blabels llinsts= function
@@ -158,6 +156,7 @@ let cast_to_llast cast =
        let llinsts = add_inst_to_branch llinst (List.hd blabels) llinsts in
        (cnt, head, vreg, blabels, llinsts)
     | CAssign (typ, expr1, expr2) ->
+       prerr_string "CAssign->";
        let (cnt,head,e1, blabels, llinsts) = walk_cexpr a_stack t_stack cnt head blabels llinsts expr1 in
        let (cnt,head,e2, blabels,llinsts) = walk_cexpr a_stack t_stack cnt head blabels llinsts expr2 in
        (*
@@ -184,16 +183,16 @@ let cast_to_llast cast =
        (cnt, head, e1, blabels, llinsts) 
     | CPeekAnon typ ->
        prerr_string "PeekAnon->";
-       let anon = (match head with h::t -> h | [] -> assert false) in
-       (cnt, head, anon, blabels, llinsts)
+       let anon = (match a_stack  with h::t -> h | [] -> assert false) in
+       (cnt, head, LLRegLabel (ctyp_to_lltyp typ, anon), blabels, llinsts)
     | CPeek2Anon typ ->
        prerr_string "PeekAnon2->";
-       let anon = (List.nth head 1) in
-       (cnt, head, anon, blabels, llinsts)
+       let anon = (List.nth a_stack 1) in
+       (cnt, head, LLRegLabel (ctyp_to_lltyp typ, anon), blabels, llinsts)
     | CPeek3Anon typ ->
        prerr_string "PeekAnon3->";
-       let anon = (List.nth head 2) in
-       (cnt, head, anon, blabels, llinsts)
+       let anon = (List.nth a_stack 2) in
+       (cnt, head, LLRegLabel (ctyp_to_lltyp typ, anon), blabels, llinsts)
     | CCall (frettyp, fname, fstmts) ->
        let fold_block (cnt, head, llreg, blabels, llinsts, reglist) stmt  =
          let (cnt, head, llreg, blabels, llinsts) = walk_cstmt (a_stack, t_stack, cnt, head, blabels, llinsts) stmt

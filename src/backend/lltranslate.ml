@@ -16,7 +16,6 @@ let translate (structs,globals,funcs) =
       i8_t = L.i8_type the_context and
       i1_t = L.i1_type the_context and
       double_t = L.double_type the_context and
-      float_t = L.float_type the_context and
       double_precision = 16 and (* adjust this to change number of digits printf will print *)
       void_t = L.void_type the_context
   in
@@ -30,6 +29,7 @@ let translate (structs,globals,funcs) =
 
   (* LVS *)
   (* gl init call set *)
+  (*
   let glClearColor_formals = Array.of_list [float_t; float_t; float_t; float_t] in
   let glClearColor_sign = L.function_type void_t glClearColor_formals in
   let glClearColor_func = L.declare_function "glClearColor" glClearColor_sign the_module in
@@ -194,6 +194,7 @@ let translate (structs,globals,funcs) =
   let _ = L.build_ret_void builder_graphics_loop in
 
   (* ************************************************************** *)
+   *)
 
   let extract_type = function
       LLRegLabel (typ, str) -> typ
