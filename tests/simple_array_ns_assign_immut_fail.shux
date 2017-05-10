@@ -3,7 +3,7 @@ ns foo = {
 }
 
 kn main() int {
-   int b = a[0];
-   a[1] = 5; /* should fail */
+   int b = foo->a[0];
+   foo->a[1] = 5; /* should fail */
    0
 }

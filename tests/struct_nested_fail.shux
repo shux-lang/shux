@@ -7,7 +7,7 @@ struct foo {
    struct baz {
       struct foo {
          scalar x;
-	 scalar y;
+	      scalar y;
       }
 
       string str;
