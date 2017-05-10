@@ -3,10 +3,11 @@ open Cast
 
 module StringMap = Map.Make(String)
 
+let die = true
 let bug s = raise (Failure ("[BUG]: " ^ s))
 (* let debug s = print_string ("[DEBUG]: " ^ s ^ "\n") *)
 let debug s = ()
-let warn d s = print_string ("[WARN]: " ^ s ^ "\n"); d
+let warn d s = print_string ("[WARN]: " ^ s ^ "\n"); if die then assert false else d
 
 let print_type t =
   let rec string_of_type s = function
@@ -90,20 +91,19 @@ let sast_to_cast (let_decls, f_decls) =
   in let kn_to_fn kn =
     let walk_stmt (e, t) = 
       let rec walk_anon sexpr styp sanon = (* this will yield a reversed list *)
-        let rec walk_r acc rtyp rexpr =
+        let emit t v = (* set sanon register to the value of v *)
+          CExpr(t, CAssign(t, sanon, v))
 
-          let emit t v = (* set sanon register to the value of v *)
-            CExpr(t, CAssign(t, sanon, v))
+        in let push_anon t e last =  
+          (* push new sanon of type t onto stack, walk e, then do last *)
+          CPushAnon(t, CBlock(List.rev (last :: walk_anon e t (CPeekAnon t))))
 
-          in let push_anon t e last =  
-            (* push new sanon of type t onto stack, walk e, then do last *)
-            CPushAnon(t, CBlock(List.rev (last :: walk_anon e t (CPeekAnon t))))
+        in let push_anon_nop t e =
+          (* push new sanon of type t onto stack, walk e *)
+          CPushAnon(t, CBlock(List.rev (walk_anon e t (CPeekAnon t))))
 
-          in let push_anon_nop t e =
-            (* push new sanon of type t onto stack, walk e *)
-            CPushAnon(t, CBlock(List.rev (walk_anon e t (CPeekAnon t))))
-
-          in let walk_primitive xxx =
+        in let rec walk_r acc rtyp rexpr =
+          let walk_primitive xxx =
             let lit t l =
               let tr_lit = match l with
                 | SLitInt i -> CLitInt i
@@ -412,17 +412,22 @@ let sast_to_cast (let_decls, f_decls) =
         in let walk_l ltyp lexpr =
           let rec lvalue_tr typ ass anon =
              let primitive_assign xxx =
-              let rec tr = function
-                | SId(t, n, s) -> CId(t, n)
-                | SAccess(t, e, f) -> CAccess(t, tr e, f)
-                (* TODO: rhs of binop doesn't have to be an l-value *)
-                | SBinop(t, l, SBinopPtr SIndex, r) -> CBinop(t, tr l, CBinopPtr SIndex, tr r)
-                | SPeek2Anon t -> CPeek2Anon t
-                | SLoopCtr -> warn CExprDud "should not be able to assign to LoopCtr in lvalue_tr"
-                | _ -> warn CExprDud "encountered non-lvalue in lvalue_tr"
-              in let fold_ass rs l =
-                CAssign(typ, tr l, rs)
-              in CExpr(typ, List.fold_left fold_ass anon ass)
+              let assign_to e = CExpr(typ, CAssign(typ, e, CPeek2Anon typ))
+              in let nop e = e
+              in let access t f e = CAccess(t, e, f)
+              in let index t l = CBinop(t, l, CBinopPtr SIndex, CPeekAnon SInt)
+              in let get_index r = walk_r [] SInt r
+
+              in let rec do_assign f = function
+                | SId(t, n, _) -> [ assign_to (f (CId(t, n))) ]
+                | SPeek2Anon t -> [ assign_to (f (CPeek3Anon t)) ]
+                | SAccess(t, e, i) -> do_assign (access t i) e
+                | SBinop(t, l, SBinopPtr SIndex, r) -> do_assign (index t) l @ get_index r
+                | _ -> warn [ CStmtDud ] "encountered non-lvalue in lvalue_tr"
+              in let stmts = List.map (do_assign nop) ass
+              in let stmts = List.map List.rev stmts
+              in let stmts = List.flatten stmts
+              in CPushAnon(SInt, CBlock stmts)
 
             in let array_assign t n =
               let index t a = CBinop(t, anon, CBinopPtr SIndex, CLoopCtr)
