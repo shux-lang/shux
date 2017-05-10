@@ -66,6 +66,7 @@ and sexpr =
   | SAssign of styp * sexpr * sexpr
   | SKnCall of styp * string * (sexpr * styp) list
   | SGnCall of styp * string * (sexpr * styp) list
+	| SExternCall of styp * string * (sexpr * styp) list
   | SLookbackDefault of styp * int * sexpr * sexpr
   | SUnop of styp * sun_op * sexpr
   | SCond of styp * sexpr * sexpr * sexpr
@@ -105,6 +106,7 @@ type sgn_decl = {
 type sfn_decl =
   | SGnDecl of sgn_decl
   | SKnDecl of skn_decl
+  | SExternFunc of skn_decl
 
 type sstruct_def = {
   ssname      : string;
