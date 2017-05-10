@@ -3,26 +3,31 @@ open Cast
 
 module StringMap = Map.Make(String)
 
-let die = false
-let war = false
+let string_of_type t =
+  let rec str s = function
+    | SInt -> s ^ "SInt"
+    | SFloat -> s ^ "SFloat"
+    | SString -> s ^ "SString"
+    | SBool -> s ^ "SBool"
+    | SStruct(i, b) -> s ^ "SStruct " ^ i
+    | SArray(t, Some n) -> s ^ "SArray[" ^ (string_of_int n )^ "] of " ^ str "" t
+    | SArray(t, None) -> s ^ "SArray[] of " ^ str "" t
+    | SPtr -> s ^ "SPtr"
+    | SVoid -> s ^ "SVoid"
+in str "" t
+
+let die = true
+let war = true
 let bug s = raise (Failure ("[BUG]: " ^ s))
 (* let debug s = prerr_string ("[DEBUG]: " ^ s ^ "\n") *)
 let debug s = ()
 let db s = prerr_string (s ^ "\n")
 let warn d s = if war then prerr_string ("[WARN]: " ^ s ^ "\n"); if die then assert false else d
 
+let warn_t d t s = if war then prerr_string ("[WARN]: " ^ s ^ " (" ^ (string_of_type t) ^ ")\n"); if die then assert false else d
+
 let print_type t =
-  let rec string_of_type s = function
-    | SInt -> s ^ "SInt"
-    | SFloat -> s ^ "SFloat"
-    | SString -> s ^ "SString"
-    | SBool -> s ^ "SBool"
-    | SStruct(i, b) -> s ^ "SStruct " ^ i
-    | SArray(t, Some n) -> s ^ "SArray[" ^ (string_of_int n )^ "] of " ^ string_of_type "" t
-    | SArray(t, None) -> s ^ "SArray[] of " ^ string_of_type "" t
-    | SPtr -> s ^ "SPtr"
-    | SVoid -> s ^ "SVoid"
-  in if war then prerr_string ((string_of_type "" t) ^ "\n")
+  if war then prerr_string ((string_of_type t) ^ "\n")
 
 let type_check t1 t2 s = (* default t1 *)
   if war then if t1=t2 then t1 else (print_type t1; print_type t2; warn t1 s) else t1
@@ -112,7 +117,7 @@ let sast_to_cast (let_decls, f_decls) =
                 | SLitFloat f -> CLitFloat f
                 | SLitBool b -> CLitBool b
                 | SLitStr s -> CLitStr s
-                | _ -> print_type t; warn CLitDud "encountered collection type literal in walk_primitive"
+                | _ -> warn_t CLitDud t "encountered collection type literal in walk_primitive"
               in let lit = CLit(t, tr_lit)
               in emit t lit :: acc
 
@@ -128,7 +133,7 @@ let sast_to_cast (let_decls, f_decls) =
               let map_act (e, t) =
                 push_anon_nop t e
               in let eval_call =
-                CCall(t, i, List.map map_act a)
+                CCall(t, prefix_kn i, List.map map_act a)
               in emit t eval_call :: acc
 
             in let walk_sex t i a =
@@ -329,7 +334,7 @@ let sast_to_cast (let_decls, f_decls) =
                   | _ -> warn (SVoid, "", []) "right operand of map call incorrect in walk_array"
                 in let (etr, cnt) = match atr with 
                   | SArray(t, Some cnt) when etr=t -> (etr, cnt)
-                  | _ -> print_type etr; warn (etr, 0) "map kernel return type mismatch in walk_array"
+                  | _ -> warn_t (etr, 0) atr "map kernel return type mismatch in walk_array"
                 in let for_each = 
                   CExpr(SInt, CLit(SInt, CLitInt cnt))
                 in let curr = 
@@ -366,7 +371,7 @@ let sast_to_cast (let_decls, f_decls) =
               in let ret_ref =
                 CExpr(t, CPeekAnon t) (* just pass it in by reference *)
               in let eval_call =
-                CCall(t, i, ret_ref :: List.map map_act a)
+                CCall(t, prefix_kn i, ret_ref :: List.map map_act a)
               in CExpr(t, eval_call) :: acc (* no need for emit, use side effect *)
 
             in match rexpr with
@@ -410,7 +415,7 @@ let sast_to_cast (let_decls, f_decls) =
               in let ret_ref =
                 CExpr(t, CPeekAnon t) (* just pass it in by reference *)
               in let eval_call =
-                CCall(t, i, ret_ref :: List.map map_act a)
+                CCall(t, prefix_kn i, ret_ref :: List.map map_act a)
               in CExpr(t, eval_call) :: acc (* no need for emit, use side effect *)
 
             in match rexpr with 
