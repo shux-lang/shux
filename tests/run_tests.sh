@@ -1,6 +1,6 @@
 #!/bin/sh
 
-compiler=./shuxc
+compiler="./shuxc"
 runtime=lli
 test_ext=".shux"
 obj_ext=".ll"
