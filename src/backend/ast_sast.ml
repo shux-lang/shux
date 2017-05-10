@@ -87,7 +87,7 @@ and to_slit senv = function
     | LitKn(l) -> SLitKn(to_slambda senv l)
     | LitVector(el) -> SLitArray(List.map (get_sexpr senv) el)
     | LitArray(e) -> SLitArray(List.map (get_sexpr senv) e)
-    | LitStruct(s,e) -> 
+    | LitStruct(s,e) ->
           let translate_structfield senv = function 
               | StructField(name, expr) ->(name, get_sexpr senv expr)
           in SLitStruct(flatten_ns_list s, List.map (translate_structfield senv) e)
@@ -171,8 +171,7 @@ and get_inherited body decls retexpr =
     in let flat_names = List.flatten full_body
     in let uniq_names = uniq flat_names
     in let inherits = add_inherit decls [] uniq_names
-    in let _ = List.iter print_bind_name inherits
-    in []
+		in inherits
 
 and to_slambda senv l = 
     let lformals = translate_fn_formals l.lformals senv
@@ -213,10 +212,15 @@ and mut_to_scope = function
 and get_sfn_name = function
     | SGnDecl(g) -> g.sgname
     | SKnDecl(k) -> k.skname
-    | SExternFunc(e) -> e.skname
+    | SExDud(e) -> e.skname
 
 and translate_struct_defs env struct_def = 
     {ssname  = struct_def.sname; ssfields = List.map (to_sbind env) struct_def.fields }
+
+and get_struct_bind name = function
+    | [] -> assert(false)
+    | SBind(t,n,scope)::tl -> if name=n then SBind(t,n,scope)
+                               else get_struct_bind name tl
 
 (* translate expr -> sexpr. uses senv for bookkeeping *)
 and get_sexpr senv = function
@@ -232,12 +236,18 @@ and get_sexpr senv = function
     | Lookback(str, i) -> SLookback(SInt, flatten_ns_list str, i)
     | Binop(e1, bin_op, e2) -> 
         let st1 = get_sexpr senv e1 in (match bin_op with
-            | Add | Sub | Mul | Div | Mod | Exp | Eq | Lt | Gt | Neq | Leq | Geq -> 
+            | Add | Sub | Mul | Div | Mod | Exp -> 
 		            let sbinop = (match get_styp_from_sexpr st1 with
 					          | SInt -> to_sbin_op true bin_op
 					          | SFloat -> to_sbin_op false bin_op
-					          | _ -> let _ = print_string (print_styp (get_styp_from_sexpr st1)) in raise (Failure "Not Integer/Float type on binop")) in 
+					          | _ -> raise (Failure "Not Integer/Float type on binop")) in 
 		                SBinop(get_styp_from_sexpr st1, st1, sbinop, get_sexpr senv e2)
+             | Eq | Lt | Gt | Neq | Leq | Geq ->
+                let sbinop = (match get_styp_from_sexpr st1 with
+					          | SInt -> to_sbin_op true bin_op
+					          | SFloat -> to_sbin_op false bin_op
+					          | _ -> raise (Failure "Not Integer/Float type on binop")) in
+                   SBinop(SBool, st1, sbinop, get_sexpr senv e2)
              | LogAnd | LogOr -> SBinop(SBool, st1, to_sbin_op true bin_op, get_sexpr senv e2)
              | Filter -> let expr2 = (match e2 with
                            | Id(nn) -> let n = flatten_ns_list nn 
@@ -249,7 +259,7 @@ and get_sexpr senv = function
                                         in let kn = VarMap.find n senv.sfn_decl
                                         in let kn_typ = (match kn with 
                                             | SGnDecl(sgn) -> assert(false)
-                                            | SExternFunc(s) -> assert(false)
+                                            | SExDud(s) -> assert(false)
                                             | SKnDecl(skn) -> skn.skret_typ)
                                         in SId(kn_typ, n, SKnLambda([]))
                            | _ -> get_sexpr senv e2)
@@ -276,7 +286,7 @@ and get_sexpr senv = function
 		                          in let f = VarMap.find s senv.sfn_decl in (match f with 
 		                 | SGnDecl(gn) -> SGnCall(gn.sgret_typ, s, call_formals)
 		                 | SKnDecl(kn) -> SKnCall(kn.skret_typ, s, call_formals)
-                     | SExternFunc(en) -> SExternCall(en.skret_typ, s, call_formals))
+                     | SExDud(en) -> SExCall(en.skret_typ, s, call_formals))
                  | None -> SGnCall(SInt, "_", []))
              | Uniop(u, e) -> (match u with
                  | LogNot -> let st1 = get_sexpr senv e in 
@@ -300,10 +310,15 @@ and get_sexpr senv = function
 						   and se2 = get_sexpr senv e2
 					     and se3 = get_sexpr senv e3
 						   in SCond(get_styp_from_sexpr se2, se1, se2, se3)
-            | Access(e,  str) -> let se = get_sexpr senv e in 
-								                 SAccess(get_styp_from_sexpr se, se, str)
-
-
+            | Access(e,  str) -> let sex = get_sexpr senv e
+                                 in let styp = get_styp_from_sexpr sex
+                                 in let sbinds = (match styp with
+                                     | SStruct(s, sbind) -> sbind
+                                     | _ -> assert(false))
+                                 in let bind = get_struct_bind str sbinds
+                                 in let t  = (match bind with
+                                     | SBind(t, s, scope) -> t)
+								               in SAccess(t, sex , str)
 
 (* this translates letdecls and also builds an environment for further translation *) 
 and translate_letdecl senv globals = 
@@ -343,7 +358,7 @@ and translate_letdecl senv globals =
 						in let new_func = { skname = e.xalias; skret_typ = sret_type;
 																skformals = new_formals; sklocals = [];
 																skbody = []; skret_expr = None } 
-						in let new_fnmap = VarMap.add new_func.skname (SExternFunc new_func) senv.sfn_decl
+						in let new_fnmap = VarMap.add new_func.skname (SExDud new_func) senv.sfn_decl
 						in let new_env = { variables = senv.variables; sfn_decl = new_fnmap; 
 															 sstruct_map = senv.sstruct_map }
 						in ((SExternDecl new_extern)::sglobals, new_env)
@@ -474,7 +489,7 @@ and translate_gn_decl senv gn =
           in { sgname = name; sgret_typ = ret_typ; sgmax_iter = gmax_iter; sgformals = gnformals;
                sglocalvals = gvals; sglocalvars = gvars; sgbody = gbody; 
                sgret_expr = Some gret_expr } 
-       | None -> { sgname = name; sgret_typ = ret_typ; sgmax_iter = gmax_iter; sgformals = gnformals;
+       | None ->  { sgname = name; sgret_typ = ret_typ; sgmax_iter = gmax_iter; sgformals = gnformals;
                sglocalvals = gvals; sglocalvars = gvars; sgbody = gbody; 
                sgret_expr = None })
            
