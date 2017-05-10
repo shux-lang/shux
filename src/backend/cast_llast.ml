@@ -141,5 +141,5 @@ let cast_to_llast cast =
   let translate_cprogram =
     List.fold_left translate_cdecl [] cast
   in
-
+  ignore(assert (List.length define_globals=1) );
   (define_structs,define_globals,translate_cprogram) (*struct llglobal func*)

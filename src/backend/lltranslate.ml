@@ -23,7 +23,8 @@ let translate (structs,globals,funcs) =
 
   let extract_type = function
       LLRegLabel (typ, str) -> typ
-    | LLRegLit (typ, lit) -> typ in
+    | LLRegLit (typ, lit) -> typ
+    | LLRegDud -> assert false in
 
   (* Define all the structs *)
 
@@ -131,7 +132,8 @@ let translate (structs,globals,funcs) =
 
       let get_reg_typ_name = function
           LLRegLabel (typ, str) -> (typ, str)
-        | LLRegLit (typ,lit) -> (typ,"nonameliteral") in
+        | LLRegLit (typ,lit) -> (typ,"nonameliteral")
+        | LLRegDud -> assert false in
 
       let build_formals = (* this is a map from formal name to its stack ptr *)
         let build_formal map formal_def formal_param =
@@ -211,6 +213,7 @@ let translate (structs,globals,funcs) =
            let literal_ptr = L.build_alloca (lltyp_of typ) "lit_alloc_inst" block_builder in
            ignore(L.build_store (llvalue_of_lit typ block_builder literal) literal_ptr block_builder);
            literal_ptr
+        | LLRegDud -> assert false
       in
 
       let load_reg ptrreglabel block_builder =
@@ -304,6 +307,7 @@ let translate (structs,globals,funcs) =
               let val_to_store = load_reg fromlabel block_builder in
               L.build_store val_to_store elementptr block_builder
            | LLBuildTerm terminator -> build_terminator block_builder terminator
+           | LLBuildNoOp -> L.const_int i32_t 0
           )
            in
         StringMap.add ("stmt"^func.llfname) stmt_llvalue map
