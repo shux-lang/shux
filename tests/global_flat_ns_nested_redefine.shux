@@ -1,8 +1,9 @@
 ns foo = {
-   int a;
    ns bar = {
-      int a;
+      let int a = 0;
    }
+
+   let int a = 1;
 }
 
 kn main() int {

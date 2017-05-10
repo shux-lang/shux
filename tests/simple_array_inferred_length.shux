@@ -1,5 +1,5 @@
 kn main() int {
-   int[] a = [2,3];
+   int[2] a = [2,3];
    a[1]
 }
 

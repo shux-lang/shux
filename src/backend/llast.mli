@@ -1,23 +1,19 @@
 type lltyp =
   | LLBool (* i1 *)
   | LLInt (* i32 *)
-  | LLFloat (* double_type *)
-  | LLConstString of string (* name and content, only used for representing strings, simply i8* *)
-  | LLArray of lltyp list * int
-  | LLStruct of string * lltyp list
+  | LLDouble (* double_type *)
+  | LLConstString (* name and content, only used for representing strings, simply i8* *)
+  | LLArray of lltyp * int option (* inside formal we need to declare int*; inside local we declare int[len] *)
+  | LLStruct of string
   | LLVoid (* only used for declaring function types *)
-  | LLBlock
-(* | LLVarFunc of lltyp * lltyp list  only used for printf *)
-
-(* might not be used
-type llbind = LLBind of lltyp * string
- *)
 
 type lllit =
   | LLLitBool of bool
   | LLLitInt of int
-  | LLLitFloat of float
+  | LLLitDouble of float
   | LLLitString of string
+  | LLLitArray of lllit list
+  | LLLitStruct of lllit list
 
 type llreg =
   | LLRegLabel of lltyp * string(* register can store a name and an lltyp value *)
@@ -51,16 +47,18 @@ type llops_typ =
 
 type llblock_term = (* a block must be terminated by either a jump or a return *)
   | LLBlockReturn of llreg
-  | LLBlockBr of llreg * llreg * llreg (* 1st of boolean, 2nd and 3 of label type *)
-  | LLBlockJmp of llreg (* register must be a branch label type *)
+  | LLBlockReturnVoid
+  | LLBlockBr of llreg * string * string (* 1st of boolean, 2nd and 3 of label type *)
+  | LLBlockJmp of string (* register must be a branch label type *)
 
 type llstmt =
   | LLBuildBinOp of llops_typ * llreg * llreg * llreg
-  | LLBuildAlloc of llreg * lltyp
-  | LLBuildStore of llreg * llreg (* store from an actual register to a pointer typed register*)
-  | LLBuildLoad of llreg * llreg (* load from left ptr register to right actual register*)
-  | LLBuildCall of string * llreg list * llreg (* 1 storing func def, 2 storing list of formals, 3 storing retval *)
+  | LLBuildCall of string * llreg list * llreg option(* 1 storing func def, 2 storing list of formals, 3 storing retval, void functions dont have return val *)
   | LLBuildPrintCall of llreg (* register storing the integer that you want to print *)
+  | LLBuildArrayLoad of llreg * llreg * llreg (* 1 has the arr label, 2 has index, 3 has dest label *)
+  | LLBuildArrayStore of llreg * llreg * llreg (* 1 has the arr label, 2 has index, 3 has source label *)
+  | LLBuildStructLoad of llreg * int * llreg (* 1 has the struct label, 2 has the index, 3 has dest label *)
+  | LLBuildStructStore of llreg * int * llreg (* 1 has the struct label, 2 has the index, 3 has source label *)
   | LLBuildTerm of llblock_term
 
 
@@ -78,4 +76,7 @@ type llfunc_def = {
     llfblocks : llblock list;
 }
 
-type llprog = llfunc_def list
+type llglobal = lltyp * string * lllit
+type llstruct_def = string * lltyp list
+
+type llprog = llstruct_def list * llglobal list * llfunc_def list

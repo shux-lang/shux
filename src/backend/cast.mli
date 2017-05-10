@@ -38,7 +38,7 @@ and cexpr =
 
 and cstmt =
   | CExpr of ctyp * cexpr
-  | CCond of ctyp * (* if *) cstmt * (* then *) cstmt * (* else *) cstmt * (* merge *) cstmt
+  | CCond of ctyp * (* if *) cstmt * (* then *) cstmt * (* else *) cstmt
   | CPushAnon of ctyp * cstmt
 (*  ctyp tmp; { /* push tmp to AStack */
  *    cstmt where CPeekAnon := tmp /* peek AStack */
@@ -52,7 +52,7 @@ and cstmt =
  * ...
  * }
  *)
-  | CLoop of cexpr (* int *) * cstmt
+  | CLoop of cstmt (* int *) * cstmt
 (*  int cond = cexpr;
  *  int ctr;
  *  /* push (ctr, cond) to LStack */
@@ -79,7 +79,7 @@ type cstruct_def = Sast.sstruct_def
 type cdecl =
   | CFnDecl of cfn_decl
   | CStructDef of cstruct_def
-  | CConstDecl of cbind * cstmt
+  | CConstDecl of cbind * clit
   | CExternDecl of Sast.sextern_decl
   | CDeclDud
 
