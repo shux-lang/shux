@@ -411,7 +411,7 @@ let sast_to_cast (let_decls, f_decls) =
 
         in let walk_l ltyp lexpr =
           let rec lvalue_tr typ ass anon =
-             let primitive_assign =
+             let primitive_assign xxx =
               let rec tr = function
                 | SId(t, n, s) -> CId(t, n)
                 | SAccess(t, e, f) -> CAccess(t, tr e, f)
@@ -458,7 +458,7 @@ let sast_to_cast (let_decls, f_decls) =
               | SPtr -> warn CStmtDud "encountered pointer type in lvalue_tr"
               | SVoid -> if ass=[] then CBlock [] else
                 warn CStmtDud "encountered assignment to void type in lvalue_tr"
-              | _ -> primitive_assign
+              | _ -> primitive_assign ()
 
           in let rec walk ass = function
             | SAssign(t, l, r) when t=ltyp -> walk (l :: ass) r
@@ -595,7 +595,8 @@ let sast_to_cast (let_decls, f_decls) =
           | SKnLambda _ as s -> SId(t, id, s)
           | SLocalVar as s -> SId(t, prefix_gnv id, s)
           | SLocalVal -> lb_st t id 0
-          | SStructField as s -> warn (SId(t, id, s)) "encountered SStructField binding scope in walk_gn"
+          | SStructField as s -> warn (SId(t, id, s)) 
+            "encountered SStructField binding scope in walk_gn"
           
         in let rec lb = function
           | SId(t, id, s) -> sid t id s
