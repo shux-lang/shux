@@ -26,6 +26,8 @@ type llops_iop =
   | LLMul
   | LLDiv
   | LLMod
+  | LLAnd
+  | LLOr
 
 type llops_fop =
   | LLFAdd

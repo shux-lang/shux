@@ -314,6 +314,8 @@ let translate (structs,globals,funcs) =
                   | LLMul -> L.build_mul
                   | LLDiv -> L.build_sdiv
                   | LLMod -> L.build_srem
+                  | LLAnd -> L.build_and
+                  | LLOr -> L.build_or
                 and
                   fopfinder = function
                   | LLFAdd -> L.build_fadd
