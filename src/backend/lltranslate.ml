@@ -28,7 +28,7 @@ let translate (structs,globals,funcs) =
    *
    *)
 
-(* LVS *)
+  (* LVS *)
   (* gl init call set *)
   let glClearColor_formals = Array.of_list [float_t; float_t; float_t; float_t] in
   let glClearColor_sign = L.function_type void_t glClearColor_formals in
@@ -72,6 +72,10 @@ let translate (structs,globals,funcs) =
   let glVertex2f_formals = Array.of_list [float_t; float_t] in
   let glVertex2f_sign = L.function_type void_t glVertex2f_formals in
   let glVertex2f_func = L.declare_function "glVertex2f" glVertex2f_sign the_module in
+
+  let glVertexArray_formals = Array.of_list [i32_t; i32_t; i32_t; L.pointer_type float_t ] in
+  let glVertexArray_sign = L.function_type void_t glVertexArray_formals in
+  let glVertexArray_func = L.declare_function "glVertexArray" glVertexArray_sign the_module in
 
   let glEnd_formals = Array.of_list [i32_t] in
   let glEnd_sign = L.function_type void_t glEnd_formals in
@@ -117,6 +121,79 @@ let translate (structs,globals,funcs) =
   (* END EXTERNAL CALLS DEFINITIONS 
    *
    *)
+
+  (* ************************************************************* *)
+
+  (* LVS START initgl modifications *)
+  let init_gl_func_formals = Array.of_list [] in
+  let init_gl_func_sign = L.function_type void_t init_gl_func_formals in
+  let init_gl_func_llvalue = L.define_function "__init_gl" init_gl_func_sign the_module in
+  let builder_init_gl_func = L.builder_at_end the_context (L.entry_block init_gl_func_llvalue) in
+  let _ = L.build_call glClearColor_func [| L.const_float float_t 0.9; L.const_float float_t 0.9; L.const_float float_t 0.9; L.const_float float_t 1.0 |] "" builder_init_gl_func in
+  let _ = L.build_call glEnable_func [| L.const_int i32_t 2832 |] "" builder_init_gl_func in
+  let _ = L.build_call glPointSize_func [| L.const_float float_t 10.0 |] "" builder_init_gl_func in
+  let _ = L.build_call glMatrixMode_func [| L.const_int i32_t 5889 |] "" builder_init_gl_func in
+  let _ = L.build_ret_void builder_init_gl_func in
+  (* LVS END initgl modifications *)
+  
+
+  (* &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& *)
+  (* begin work on actual bindings *)
+
+  (* graphics_do_update *)
+  (* user-callable update function *)
+  let idle_func_formals = Array.of_list [] in
+  let idle_func_sign = L.function_type void_t idle_func_formals in
+  let idle_func_llvalue = L.define_function "graphics_do_update" idle_func_sign the_module in
+  let builder_idle_func = L.builder_at_end the_context (L.entry_block idle_func_llvalue) in
+  let _ = L.build_call glutPostRedisplay_func [||] "" builder_idle_func in
+  let _ = L.build_ret_void builder_idle_func in
+
+  (* graphics_do_render *)
+  (* a display function rendering a list of 2d scalars *)
+  (* LVSTOOD doesn't take parameters yet *)
+  let display_func_formals = Array.of_list [] in
+  let display_func_sign = L.function_type void_t display_func_formals in
+  let display_func_llvalue = L.define_function "graphics_do_render" display_func_sign the_module in
+  let builder_display_func = L.builder_at_end the_context (L.entry_block display_func_llvalue) in
+  let _ = L.build_call glClear_func [|L.const_int i32_t 16640|] "" builder_display_func in
+  let _ = L.build_call glLoadIdentity_func [||] "" builder_display_func in
+  let _ = L.build_call glOrtho_func [| L.const_float float_t 0.0; L.const_float float_t 800.0; L.const_float float_t 0.0; L.const_float float_t 600.0;|] "" builder_display_func in
+  (* user code here -- testing *)
+  let _ = L.build_call glColor4f_func [| L.const_float float_t 0.2; L.const_float float_t 0.6; L.const_float float_t 1.0; L.const_float float_t 1.0; |] "" builder_display_func in
+  let _ = L.build_call glBegin_func [| L.const_int i32_t 0 |] "" builder_display_func in
+  let _ = L.build_call glVertex2f_func [| L.const_float float_t 0.0; L.const_float float_t 0.0 |] "" builder_display_func in
+  let _ = L.build_call glEnd_func [| L.const_int i32_t 0 |] "" builder_display_func in
+  (* end user code *)
+  let _ = L.build_call glutSwapBuffers_func [||] "" builder_display_func in
+  let _ = L.build_ret_void builder_display_func in
+
+  (* graphics init *)
+  (* spoof argc for glutinit *)
+  let graphics_init_formals = Array.of_list [] in
+  let graphics_init_sign = L.function_type void_t graphics_init_formals in
+  let graphics_init_llvalue = L.define_function "graphics_init" graphics_init_sign the_module in
+  let builder_graphics_init = L.builder_at_end the_context (L.entry_block graphics_init_llvalue) in
+  let argc_ptr = L.build_alloca i32_t "argc" builder_graphics_init in
+  let _ = L.build_store (L.const_int i32_t 0) argc_ptr builder_graphics_init in
+  let _ = L.build_call glutInitWindowSize_func [| (L.const_int i32_t 800); (L.const_int i32_t 600) |] "" builder_graphics_init in
+  let _ = L.build_call glutInit_func [| argc_ptr; (L.const_pointer_null (L.pointer_type (L.pointer_type i8_t))) |] "" builder_graphics_init in
+  let _ = L.build_call glutCreateWindow_func [| (L.const_pointer_null (L.pointer_type i8_t)) |] "dummy" builder_graphics_init in
+  let _ = L.build_ret_void builder_graphics_init in
+
+  (* graphics_loop *)
+  (* LVSTODO doesnt take parameters yet *)
+  let graphics_loop_formals = Array.of_list [] in
+  let graphics_loop_sign = L.function_type void_t graphics_loop_formals in
+  let graphics_loop_llvalue = L.define_function "graphics_loop" graphics_loop_sign the_module in
+  let builder_graphics_loop = L.builder_at_end the_context (L.entry_block graphics_loop_llvalue) in
+  let _ = L.build_call glutDisplayFunc_func [| display_func_llvalue |] "" builder_graphics_loop in
+  let _ = L.build_call glutIdleFunc_func [| idle_func_llvalue |] "" builder_graphics_loop in
+  let _ = L.build_call init_gl_func_llvalue [||] "" builder_graphics_loop in
+  let _ = L.build_call glutMainLoop_func [||] "" builder_graphics_loop in
+  let _ = L.build_ret_void builder_graphics_loop in
+
+  (* ************************************************************** *)
 
   let extract_type = function
       LLRegLabel (typ, str) -> typ
