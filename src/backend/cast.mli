@@ -79,7 +79,7 @@ type cstruct_def = Sast.sstruct_def
 type cdecl =
   | CFnDecl of cfn_decl
   | CStructDef of cstruct_def
-  | CConstDecl of cbind * cstmt
+  | CConstDecl of cbind * clit
   | CExternDecl of Sast.sextern_decl
   | CDeclDud
 
