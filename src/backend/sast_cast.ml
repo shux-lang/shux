@@ -65,6 +65,7 @@ let styp_of_sexpr = function
   | SAssign(t, _, _) -> t
   | SKnCall(t, _, _) -> t
   | SGnCall(t, _, _) -> t
+  | SExCall(t, _, _) -> t
   | SLookbackDefault(t, _, _, _) -> t
   | SUnop(t, _, _) -> t
   | SCond(t, _, _, _) -> t
@@ -629,6 +630,7 @@ let sast_to_cast (let_decls, f_decls) =
       | [] -> []
       | SGnDecl(g)::t -> let r = walk_gn g in r @ walk t
       | SKnDecl(k)::t -> let r = walk_kn k in r @ walk t
+      | SExDud(_)::t -> warn (walk t) "came across SEx booty call juicy"
     in walk f_decls
   in let walk_static let_decls =
     let interp_expr = function (* TODO: write interpretor for compile-time evaluation *)
