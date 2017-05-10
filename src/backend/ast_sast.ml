@@ -103,6 +103,7 @@ and slit_to_styp senv = function
           let sdef = VarMap.find name senv.sstruct_map
           in SStruct(name, sdef.ssfields)
 
+          
 and to_sunop iorf = function
     | LogNot -> SLogNot
     | Neg -> if iorf then SNegi else SNegf
