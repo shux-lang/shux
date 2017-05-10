@@ -24,16 +24,18 @@ let cast_to_llast cast =
   let a_decl i = "a" ^ (string_of_int i) in
   let t_decl i = "t" ^ (string_of_int i) in
 
-  let rec walk_cstmt a_stack t_stack cnt head llinsts = function
+  let rec walk_cstmt (a_stack,t_stack,cnt,head,llinsts) = function
     | CExpr(t, e) -> walk_cexpr a_stack t_stack cnt head llinsts e
     | CPushAnon(t, s) ->
        let v = a_decl cnt in
-       walk_cstmt (v::a_stack) t_stack (cnt + 1) (v::head) llinsts s
+       let vreg = LLRegLabel (ctyp_to_lltyp t, v) in
+       walk_cstmt ((v::a_stack),t_stack,(cnt + 1),(vreg::head),llinsts) s
     | CReturn opt -> (match opt with
                         Some (typ, CPushAnon(t, cstmt)) when t=typ ->
                         let v = a_decl cnt in
+                        let vreg = LLRegLabel (ctyp_to_lltyp typ, v) in
                         let (cnt, head, r1, llinsts) =
-                          walk_cstmt (v::a_stack) t_stack (cnt + 1) (v::head) llinsts cstmt
+                          walk_cstmt ((v::a_stack),t_stack,(cnt + 1),(vreg::head),llinsts) cstmt
                         in
                         let llinst = LLBuildTerm (LLBlockReturn r1) in
                         (cnt, head, r1, llinst::llinsts)
@@ -43,6 +45,11 @@ let cast_to_llast cast =
                              llreg = LLRegLit (LLInt, (LLLitInt 0)) in
                          (cnt, head, llreg, llinst::llinsts)
                      )
+    | CCond (t,sl1,sl2,sl3) -> assert false
+    | CBlock stmt_list ->
+         let fold_block (cnt, head, llreg, llinsts) stmt  =
+                walk_cstmt (a_stack, t_stack, cnt, head, llinsts) stmt in
+       List.fold_left fold_block (cnt, head, LLRegDud, llinsts) stmt_list
     | _ -> assert false
 
   and walk_cexpr a_stack t_stack cnt head llinsts= function
@@ -52,44 +59,31 @@ let cast_to_llast cast =
        let (cnt,head,e1, llinsts) = walk_cexpr a_stack t_stack cnt head llinsts expr1 in
        let (cnt,head,e2, llinsts) = walk_cexpr a_stack t_stack cnt head llinsts expr2 in
        let v = t_decl cnt in
-       let (cnt, head, t_stack) = (cnt + 1, v::head, v::t_stack) in
        let vreg = LLRegLabel (ctyp_to_lltyp typ, v) in
+       let (cnt, head, t_stack) = (cnt + 1, vreg::head, vreg::t_stack) in
        let llinst = LLBuildBinOp (LLAdd, e1, e2, vreg) in
        (cnt, head, vreg, llinst::llinsts)
-    | CAssign (typ, expr1, expr2) -> assert false
+    | CAssign (typ, expr1, expr2) ->
+       let (cnt,head,e1, llinsts) = walk_cexpr a_stack t_stack cnt head llinsts expr1 in
+       let (cnt,head,e2, llinsts) = walk_cexpr a_stack t_stack cnt head llinsts expr2 in
+       let zerolit = LLRegLit(LLInt, (LLLitInt 0)) in (* TODO need to store both int and doubles *)
+       let llinst = LLBuildBinOp (LLAdd, zerolit, e2, e1) in
+       (cnt, head, e1, llinst::llinsts)
     | CPeekAnon typ ->
        let anon = (match head with h::t -> h | [] -> assert false) in
-       let anonreg = LLRegLabel (ctyp_to_lltyp typ, anon) in
-       (cnt, head, anonreg, llinsts)
+       (cnt, head, anon, llinsts)
     | CPeek2Anon typ ->
        let anon = (List.nth head 1) in
-       let anonreg = LLRegLabel (ctyp_to_lltyp typ, anon) in
-       (cnt, head, anonreg, llinsts)
+       (cnt, head, anon, llinsts)
     | CPeek3Anon typ ->
        let anon = (List.nth head 2) in
-       let anonreg = LLRegLabel (ctyp_to_lltyp typ, anon) in
-       (cnt, head, anonreg, llinsts)
+       (cnt, head, anon, llinsts)
     | _ -> assert false
   in
 
-  let statements_list_builder stmt =
-    walk_cstmt [] [] 0 [] [] stmt in
 
-  (* quiet *)
-  let rec translate_cexpr = function
-      CLit (typ, lit) -> (ctyp_to_lltyp typ, "CLit", LLBuildNoOp)
-    | CId  (typ, str) -> (ctyp_to_lltyp typ, str, LLBuildNoOp)
-    | _ ->  (LLInt, "hel", LLBuildNoOp)
-
-  and translate_cstmt = function
-      CReturn opt -> (match opt with
-                        Some (typ, cstmt) -> LLBuildTerm (LLBlockReturn (LLRegLit (LLInt, LLLitInt 31)))
-                      | None -> LLBuildTerm LLBlockReturnVoid
-                     )
-    | CExpr (typ, expr) -> LLBuildTerm LLBlockReturnVoid
-    | CCond _ -> LLBuildTerm LLBlockReturnVoid
-    | _ -> LLBuildPrintCall (LLRegLit (LLConstString, LLLitString "statement\n"))
-  in
+  let statements_list_builder stmt = (* accumulator *)
+    walk_cstmt ([],[],0,[],[]) stmt in
 
   let pretty_print_regs l =
     let str_typ = function
@@ -102,27 +96,24 @@ let cast_to_llast cast =
     let print_reg = function
         LLRegLabel (typ,str) -> ("Label-"^(str_typ typ)^"-"^str)
       | LLRegLit (typ, lit) -> ("Lit-"^(str_typ typ))
+      | LLRegDud -> "Dud"
     in
     List.map print_reg l in
 
   let translate_cdecl list = function
     | CFnDecl cfunc ->
-       let body = List.map translate_cstmt cfunc.cbody in
-       let blocks = List.map statements_list_builder cfunc.cbody in
-       let print_list l = List.iter print_string l in
-       let extract_register = function
-           (_,sl,_,_) -> print_list sl in
-       ignore(List.iter extract_register blocks);
+       let fold_block (cnt, head, llreg, llinsts) stmt  =
+                walk_cstmt ([], [], cnt, head, llinsts) stmt in
+       let blocks = List.fold_left fold_block (0, [], LLRegDud, []) cfunc.cbody in
+       let (_,temps,_,insts) = blocks in
        let declare_fml_lcl (SBind (ctyp, cstr, _)) =
          LLRegLabel (ctyp_to_lltyp ctyp, cstr) in
        let formals = List.map declare_fml_lcl cfunc.cformals in
        let locals = List.map declare_fml_lcl cfunc.clocals in
-       {llfname=cfunc.cfname;llfformals=formals;llflocals=locals;llfbody=body;llfreturn=
+       {llfname=cfunc.cfname;llfformals=formals;llflocals=(temps@locals);llfbody=(List.rev insts);llfreturn=
         if(cfunc.cret_typ = SVoid) then (LLVoid) else (ctyp_to_lltyp cfunc.cret_typ);llfblocks=[]}::list
     | _ -> list
   in
-
-  (* quiet*)
 
   let define_structs =
     let unbind (SBind (ctyp, _, _))=

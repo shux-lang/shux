@@ -18,6 +18,7 @@ type lllit =
 type llreg =
   | LLRegLabel of lltyp * string(* register can store a name and an lltyp value *)
   | LLRegLit of lltyp * lllit
+  | LLRegDud
 
 (* might not be used
 type llacc_typ =
