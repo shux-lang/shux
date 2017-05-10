@@ -29,7 +29,6 @@ let rec _string_of_typ = function
   | Array(t, i) -> _string_of_typ t ^ "[" ^ (match i with Some(n) -> string_of_int n | None -> "") ^ "]"
   | Vector t -> "vector<" ^ string_of_int t ^ ">"
   | Void -> "__void__" (* should not be used *)
-  | Noop -> "__noop__" (* ugh *)
 
 let string_of_typ x = string_of_opt _string_of_typ x
 
@@ -134,7 +133,6 @@ and string_of_expr = function
                   string_of_list string_of_expr el "(" ", " ")" (is_some s)
  | LookbackDefault(l, e) -> string_of_lookback_default_expr string_of_expr l e
  | Cond(i, t, e) -> string_of_cond_expr string_of_expr i t e
- | Pass -> "pass"
 
 and string_of_vdecl bind expr = 
   string_of_bind bind ^ " " ^ string_of_expr expr
