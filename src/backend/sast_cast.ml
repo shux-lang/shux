@@ -5,9 +5,9 @@ module StringMap = Map.Make(String)
 
 let die = true
 let bug s = raise (Failure ("[BUG]: " ^ s))
-(* let debug s = print_string ("[DEBUG]: " ^ s ^ "\n") *)
+(* let debug s = prerr_string ("[DEBUG]: " ^ s ^ "\n") *)
 let debug s = ()
-let warn d s = print_string ("[WARN]: " ^ s ^ "\n"); if die then assert false else d
+let warn d s = prerr_string ("[WARN]: " ^ s ^ "\n"); if die then assert false else d
 
 let print_type t =
   let rec string_of_type s = function
@@ -20,7 +20,7 @@ let print_type t =
     | SArray(t, None) -> s ^ "SArray[] of " ^ string_of_type "" t
     | SPtr -> s ^ "SPtr"
     | SVoid -> s ^ "SVoid"
-  in print_string ((string_of_type "" t) ^ "\n")
+  in prerr_string ((string_of_type "" t) ^ "\n")
 
 let type_check t1 t2 s = (* default t1 *)
   if t1=t2 then t1 else (print_type t1; print_type t2; warn t1 s)
@@ -47,7 +47,7 @@ let print_binop o =
     | SBinopPtr o -> "ptr"
     | SBinopFn o -> "fn"
     | SBinopGn o -> "gn"
-  in print_string ((string_of_binop o) ^ "\n")
+  in prerr_string ((string_of_binop o) ^ "\n")
 
 let map_tuple l p =
   let build e = (e, p)
@@ -320,6 +320,7 @@ let sast_to_cast (let_decls, f_decls) =
                 let atl = styp_of_sexpr l
                 in let etl = match atl with
                   | SArray(t, Some n) -> t
+                  | SArray(t, None) -> warn t "left operand of map is None array type in walk_array"
                   | _ -> warn SVoid "left operand of map is not an array type in walk_array"
                 in let atr = t
                 in let (etr, kn_i, kn_c) = match r with
@@ -422,6 +423,7 @@ let sast_to_cast (let_decls, f_decls) =
             | SId(t, i, _) -> emit (type_check t rtyp "walk_ptr type mismatch") (CId(t, i)) :: acc
             | _ -> warn acc "encountered non SId for SPtr type"
 
+          in let _ = print_type rtyp
           in match rtyp with
             | SArray(t, n) -> debug "walk_r on array type"; walk_array t n
             | SStruct(i, b) -> debug "walk_r on struct type"; walk_struct (prefix_s i) b
@@ -475,6 +477,7 @@ let sast_to_cast (let_decls, f_decls) =
                 List.map translate for_each_field
               in CBlock translate_each_field
 
+            in let _ = print_string "assign type"; print_type typ; 
             in match typ with
               | SArray(t, Some n) -> array_assign t n
               | SArray(_, None) -> warn CStmtDud "encountered None-size array type in lvalue_tr"
@@ -650,10 +653,19 @@ let sast_to_cast (let_decls, f_decls) =
       | SKnDecl(k)::t -> let r = walk_kn k in r @ walk t
       | SExDud(_)::t -> warn (walk t) "came across SEx booty call juicy"
     in walk f_decls
+  in let let_map = Hashtbl.create 42
   in let walk_static let_decls =
     let interp_expr t e =
-      let interp_primitive xxx = match e with
-        | SLit(t, l) -> CLitDud
+      let interp_lit = function
+        | SLitInt i -> CLitInt i
+        | SLitFloat f -> CLitFloat f
+        | SLitBool b -> CLitBool b
+        | SLitStr s -> CLitStr s
+        | SLitArray l -> assert false
+        | SLitStruct(id, l) -> assert false
+        | _ -> assert false
+      in let interp_primitive xxx = match e with
+        | SLit(t, l) -> interp_lit l
         | SId(t, i, s) -> CLitDud
         | SBinop(t, l, o, r) -> assert false
         | _ -> assert false
@@ -667,6 +679,8 @@ let sast_to_cast (let_decls, f_decls) =
         | SStruct(i, b) -> interp_struct i b
         | SPtr | SVoid -> warn CLitDud "invalid type encountered in let declarations"
         | _ -> interp_primitive ()
+    in let assign_let n t e =
+      ()
     in let walk = function
       | SLetDecl(SBind(t, n, s), e) -> CConstDecl(SBind(t, n, s), interp_expr t e)
       | SStructDef s -> CStructDef {s with ssname = prefix_s s.ssname}
