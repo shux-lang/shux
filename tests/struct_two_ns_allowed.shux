@@ -13,7 +13,7 @@ ns bar = {
 }
 
 kn main() int {
-   struct foo->p foo_p = struct foo->p { .x=0, .y=0 };
-   struct bar->p bar_p = struct bar->p { .x=0, .y=0 };
+   struct foo->p foo_p = foo->p { .x=0; .y=0 };
+   struct bar->p bar_p = bar->p { .x=0; .y=0 };
    0
 }

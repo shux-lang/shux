@@ -1,9 +1,8 @@
-gn foo(int x, int y) int {
-   int a = x..1 + y..2;
-   a*y
+gn foo(int a) int {
+   int x = x..1 : -1;
+   x
 }
 
 kn main() int {
-   int result := do 100 foo(5, 7);
    0
 }
