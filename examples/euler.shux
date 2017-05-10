@@ -7,8 +7,8 @@ struct particle {
    scalar v;
 }
 
-gn euler(struct particle[] init) struct particle[] {
-      struct particle[] pbuf = (pbuf..1 : init) @ (struct particle p) -> {
+gn euler(struct particle[1000] init) struct particle[1000] {
+      struct particle[1000] pbuf = (pbuf..1 : init) @ (struct particle p) -> {
       particle {
          .v = p.v + g * dt;
 	       .x = p.x + p.v * dt

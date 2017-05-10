@@ -3,12 +3,13 @@ open Cast
 
 module StringMap = Map.Make(String)
 
-let die = true
+let die = false
+let war = false
 let bug s = raise (Failure ("[BUG]: " ^ s))
 (* let debug s = prerr_string ("[DEBUG]: " ^ s ^ "\n") *)
 let debug s = ()
 let db s = prerr_string (s ^ "\n")
-let warn d s = prerr_string ("[WARN]: " ^ s ^ "\n"); if die then assert false else d
+let warn d s = if war then prerr_string ("[WARN]: " ^ s ^ "\n"); if die then assert false else d
 
 let print_type t =
   let rec string_of_type s = function
@@ -21,10 +22,10 @@ let print_type t =
     | SArray(t, None) -> s ^ "SArray[] of " ^ string_of_type "" t
     | SPtr -> s ^ "SPtr"
     | SVoid -> s ^ "SVoid"
-  in prerr_string ((string_of_type "" t) ^ "\n")
+  in if war then prerr_string ((string_of_type "" t) ^ "\n")
 
 let type_check t1 t2 s = (* default t1 *)
-  if t1=t2 then t1 else (print_type t1; print_type t2; warn t1 s)
+  if war then if t1=t2 then t1 else (print_type t1; print_type t2; warn t1 s) else t1
 
 let string_of_binop_int = function
   | SAddi -> "SAddi"
@@ -603,9 +604,11 @@ let sast_to_cast (let_decls, f_decls) =
           | SKnCall(t, id, a) -> let it = co l_typ t in (SKnCall(it, id, a), it)
           | SGnCall(t, id, a) -> let it = co l_typ t in (SGnCall(it, id, a), it)
           | SExCall(t, id, a) -> let it = co l_typ t in (SExCall(it, id, a), it)
-          | SPeek2Anon (t) -> let it = co l_typ t in (SPeek2Anon it, it)
-          | SBinop(t, l, o, r) -> let (l, it) = walk_r l_typ l in (SBinop(it, l, o, r), it)
-          | e -> let t = styp_of_sexpr e in (e, t)
+          | SPeek2Anon t -> let it = co l_typ t in (SPeek2Anon it, it)
+(*           | SBinop(t, l, SBinopGn o, r) -> let (l, it) = walk_r l_typ l in (SBinop(it, l, SBinopGn o, r), it) *)
+          | SBinop(t, l, SBinopFn o, r) -> let (l, it) = walk_r l_typ l in (SBinop(it, l, SBinopFn o, r), it)
+(*           | SBinop(t, l, SBinopPtr o, r) -> let (l, it) = walk_r l_typ l in (SBinop(it, l, SBinopPtr o, r), it) *)
+          | e -> let t = co l_typ (styp_of_sexpr e) in (e, t)
 
         in let coerce l lr_typ =
           let ll_typ = styp_of_sexpr l
@@ -627,7 +630,7 @@ let sast_to_cast (let_decls, f_decls) =
 
       in { kn with skbody = List.map infer_array kn.skbody;
             skret_expr = map_opt infer_array kn.skret_expr }
-    in kn_to_fn kn 
+    in kn_to_fn (kn_infer ())
 
   in let walk_gn gn = 
     let prefix_gnv s = "gnv_" ^ s         (* for local vars *)
