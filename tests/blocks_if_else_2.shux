@@ -1,7 +1,7 @@
 kn main() int {
    int a = 5;
    int b = 3;
-   var int c;
+   int c;
    if(a == b) {
       c = 6;
    } else {
