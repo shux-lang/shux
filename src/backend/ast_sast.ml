@@ -98,11 +98,12 @@ and slit_to_styp senv = function
     | SLitBool(b) -> SBool
     | SLitStr(s) -> SString
     | SLitKn(l) -> l.slret_typ
-    | SLitArray(elist) -> get_styp_from_sexpr (List.hd elist)
+    | SLitArray(elist) -> SArray(get_styp_from_sexpr (List.hd elist), Some (List.length elist))
     | SLitStruct(name, slist) -> 
           let sdef = VarMap.find name senv.sstruct_map
           in SStruct(name, sdef.ssfields)
 
+          
 and to_sunop iorf = function
     | LogNot -> SLogNot
     | Neg -> if iorf then SNegi else SNegf
@@ -233,9 +234,21 @@ and get_sexpr senv = function
 					          | _ -> let _ = print_string (print_styp (get_styp_from_sexpr st1)) in raise (Failure "Not Integer/Float type on binop")) in 
 		                SBinop(get_styp_from_sexpr st1, st1, sbinop, get_sexpr senv e2)
              | LogAnd | LogOr -> SBinop(SBool, st1, to_sbin_op true bin_op, get_sexpr senv e2)
-             | Filter -> SBinop(SArray(get_styp_from_sexpr st1, None), st1, SBinopFn SFilter, get_sexpr senv e2)
-             | Map -> SBinop(SArray(get_styp_from_sexpr (get_sexpr senv e2), None),
-											        st1, SBinopFn SMap, get_sexpr senv e2)
+             | Filter -> let expr2 = (match e2 with
+                           | Id(nn) -> let n = flatten_ns_list nn 
+                                       in SId(SBool, n, SKnLambda([]))
+                           | _ -> get_sexpr senv e2)
+                   in SBinop(SArray(get_styp_from_sexpr st1, None), st1, SBinopFn SFilter, expr2)
+             | Map ->  let expr2 = (match e2 with
+                           | Id(nn) -> let n = flatten_ns_list nn
+                                        in let kn = VarMap.find n senv.sfn_decl
+                                        in let kn_typ = (match kn with 
+                                            | SGnDecl(sgn) -> assert(false)
+                                            | SKnDecl(skn) -> skn.skret_typ)
+                                        in SId(kn_typ, n, SKnLambda([]))
+                           | _ -> get_sexpr senv e2)
+                            in SBinop(SArray(get_styp_from_sexpr expr2, None),
+											        st1, SBinopFn SMap, expr2)
              | Index -> let st1type = get_styp_from_sexpr st1 in 
                   (match st1type with
                  | SArray(s, i) -> SBinop(s, st1, SBinopPtr SIndex, get_sexpr senv e2)
