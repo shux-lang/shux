@@ -82,7 +82,7 @@ and slit_to_styp = function
     | SLitBool(b) -> SBool
     | SLitStr(s) -> SString
     | SLitKn(l) -> l.slret_typ
-    | SLitArray(elist) -> get_styp_from_sexpr (List.hd elist)
+    | SLitArray(elist) -> SArray(get_styp_from_sexpr (List.hd elist), Some (List.length elist))
     | SLitStruct(name, slist) -> SStruct(name, []) (*TODO: Struct literal type translation *) 
 
 and to_sunop iorf = function
