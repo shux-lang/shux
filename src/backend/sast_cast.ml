@@ -564,14 +564,14 @@ let sast_to_cast (let_decls, f_decls) =
       in match ret with
         | Some(e, t) -> Some(assign_ret(walk_body (e, t)))
         | None -> warn None "encountered None return expr in reference-returning kn in walk_kn"
-    in let ref_kn = { kn with skbody = List.map walk_body kn.skbody;
+    in let ref_kn xxx = { kn with skbody = List.map walk_body kn.skbody;
                       skformals = ret_bind kn.skret_typ :: List.map walk_binds kn.skformals;
                       sklocals = List.map walk_binds kn.sklocals;
                       skret_expr = walk_ret kn.skret_expr }
     in let kn = match kn.skret_typ with
-      | SArray(_, Some _) -> ref_kn
+      | SArray(_, Some _) -> ref_kn ()
       | SArray(t, None) -> warn kn "encountered kn that returns None sized array type in walk_kn"
-      | SStruct(_, _) -> ref_kn
+      | SStruct(_, _) -> ref_kn ()
       | _ -> kn
 
     in kn_to_fn kn 
