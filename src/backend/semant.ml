@@ -339,6 +339,9 @@ and check_expr tr_env expr =
    | Cond(e1, e2, e3) -> if check_expr tr_env e1 = Bool then
         let t2 = check_expr tr_env e2 
         and t3 = check_expr tr_env e3
+        in let _ = print_string (_string_of_typ t2)
+        in let _ = print_string "\n"
+        in let _ = print_string (_string_of_typ t3)
         in if (t2 = t3) then t2 
         else raise (Failure "Ternary operator return type mismatch")
      else raise (Failure "Ternary operator conditional needs to be a boolean
@@ -394,7 +397,7 @@ and lambda_checker l env =
                         and t2 = get_bind_typ b
                         and var_name = get_bind_name b
                         and m = get_bind_mut b in
-            let _ = check_array_init t2 in
+            (* let _ = check_array_init t2 in *) 
             if compare_ast_typ t2 t1 then
                 let v = {id = var_name; var_type = t2; mut = m; initialized = true }
                         in push_variable_env v env
@@ -650,7 +653,7 @@ let check_body f env =
                              var_name = get_bind_name b 
                              and m = get_bind_mut b in
                (* ensure that arrays cannot be initialized without sizes *)
-               let _ = check_array_init t2 in 
+               (* let _ = check_array_init t2 in  *) 
                if compare_ast_typ t2 t1 then
                    let v = { id = var_name; var_type = t2; mut = m; initialized = true}
                    in push_variable_env v env                  
