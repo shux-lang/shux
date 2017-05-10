@@ -308,7 +308,13 @@ let sast_to_cast (let_decls, f_decls) =
                 |  _ -> warn acc "encountered non-SGnCall in right operand of SFor"
 
               in let map xxx =
-                acc
+                let (kn_t, kn_i) = match r with
+                  | SId(t, i, SKnCall) -> (t, i)
+                  | _ -> warn (SVoid, "") "right operand of map call incorrect"
+                in let et = match t with 
+                  | SArray(et, _) when et=kn_t -> et
+                  | _ -> warn kn_t "map return type mismatch"
+                in acc
 
               in let filter xxx =
                 acc
@@ -455,7 +461,8 @@ let sast_to_cast (let_decls, f_decls) =
         cbody = List.map walk_stmt kn.skbody @ [ walk_ret kn.skret_expr ] }
 
     in let rec hoist_lambdas kn =
-      let hoist n { slret_typ; slformals; sllocals; slbody; slret_expr } = hoist_lambdas
+      let hoist n { slret_typ; slformals; sllocals; slbody; slret_expr; slinherit } = 
+        hoist_lambdas
         { skname = prefix_lambda kn.skname n; skret_typ = slret_typ;
           skformals = slformals; sklocals = sllocals; skbody = slbody; 
           skret_expr = slret_expr }
@@ -601,7 +608,7 @@ let sast_to_cast (let_decls, f_decls) =
     in walk f_decls
   in let walk_static let_decls =
     let interp_expr = function (* TODO: write interpretor for compile-time evaluation *)
-      | _ -> CStmtDud
+      | _ -> CLitDud
     in let walk = function
       | SLetDecl(SBind(t, n, s), e) -> CConstDecl(SBind(t, prefix_l n, s), interp_expr e)
       | SStructDef s -> CStructDef {s with ssname = prefix_s s.ssname}
