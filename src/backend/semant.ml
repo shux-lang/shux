@@ -218,11 +218,7 @@ and check_expr tr_env expr =
                                          in let kn = VarMap.find n tr_env.fn_map
                                          in convert_ret_typ kn.ret_typ
                              | _ -> (check_expr tr_env e2)) in 
-                       if t = map_typ then Array(map_typ, i) 
-                     else let s1 = _string_of_typ t
-                          and s2 = _string_of_typ map_typ 
-                          in raise (Failure ("Map kernel return type needs to match array. " ^ 
-                                             s1 ^ " doesn't match " ^ s2))
+                      Array(map_typ, i) 
              | _ -> raise (Failure "The OCaml compiler has a strict type system."))
             else raise (Failure "Map/Filter needs kernel that takes single
             parameter matching the [] to be mapped/filtered")
