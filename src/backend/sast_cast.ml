@@ -3,27 +3,34 @@ open Cast
 
 module StringMap = Map.Make(String)
 
-let die = true
-let bug s = raise (Failure ("[BUG]: " ^ s))
-(* let debug s = prerr_string ("[DEBUG]: " ^ s ^ "\n") *)
-let debug s = ()
-let warn d s = prerr_string ("[WARN]: " ^ s ^ "\n"); if die then assert false else d
-
-let print_type t =
-  let rec string_of_type s = function
+let string_of_type t =
+  let rec str s = function
     | SInt -> s ^ "SInt"
     | SFloat -> s ^ "SFloat"
     | SString -> s ^ "SString"
     | SBool -> s ^ "SBool"
     | SStruct(i, b) -> s ^ "SStruct " ^ i
-    | SArray(t, Some n) -> s ^ "SArray[" ^ (string_of_int n )^ "] of " ^ string_of_type "" t
-    | SArray(t, None) -> s ^ "SArray[] of " ^ string_of_type "" t
+    | SArray(t, Some n) -> s ^ "SArray[" ^ (string_of_int n )^ "] of " ^ str "" t
+    | SArray(t, None) -> s ^ "SArray[] of " ^ str "" t
     | SPtr -> s ^ "SPtr"
     | SVoid -> s ^ "SVoid"
-  in prerr_string ((string_of_type "" t) ^ "\n")
+in str "" t
+
+let die = true
+let war = true
+let bug s = raise (Failure ("[BUG]: " ^ s))
+(* let debug s = prerr_string ("[DEBUG]: " ^ s ^ "\n") *)
+let debug s = ()
+let db s = prerr_string (s ^ "\n")
+let warn d s = if war then prerr_string ("[WARN]: " ^ s ^ "\n"); if die then assert false else d
+
+let warn_t d t s = if war then prerr_string ("[WARN]: " ^ s ^ " (" ^ (string_of_type t) ^ ")\n"); if die then assert false else d
+
+let print_type t =
+  if war then prerr_string ((string_of_type t) ^ "\n")
 
 let type_check t1 t2 s = (* default t1 *)
-  if t1=t2 then t1 else (print_type t1; print_type t2; warn t1 s)
+  if war then if t1=t2 then t1 else (print_type t1; print_type t2; warn t1 s) else t1
 
 let string_of_binop_int = function
   | SAddi -> "SAddi"
@@ -74,7 +81,6 @@ let styp_of_sexpr = function
   | SPeek2Anon t -> t
   | SExprDud -> bug "somebody is using Sexpr duds"
 
-
 let sast_to_cast (let_decls, f_decls) =
   let prefix_x s = "extern_" ^ s    (* extern decl *)
   in let prefix_s s = "struct_" ^ s (* struct defn *)
@@ -111,7 +117,7 @@ let sast_to_cast (let_decls, f_decls) =
                 | SLitFloat f -> CLitFloat f
                 | SLitBool b -> CLitBool b
                 | SLitStr s -> CLitStr s
-                | _ -> print_type t; warn CLitDud "encountered collection type literal in walk_primitive"
+                | _ -> warn_t CLitDud t "encountered collection type literal in walk_primitive"
               in let lit = CLit(t, tr_lit)
               in emit t lit :: acc
 
@@ -127,7 +133,7 @@ let sast_to_cast (let_decls, f_decls) =
               let map_act (e, t) =
                 push_anon_nop t e
               in let eval_call =
-                CCall(t, i, List.map map_act a)
+                CCall(t, prefix_kn i, List.map map_act a)
               in emit t eval_call :: acc
 
             in let walk_sex t i a =
@@ -318,9 +324,8 @@ let sast_to_cast (let_decls, f_decls) =
 
               in let map xxx =
                 let atl = styp_of_sexpr l
-                in let _ = print_string " fuck\n" ; print_type atl
                 in let etl = match atl with
-                  | SArray(t, Some n) -> t
+                  | SArray(t, Some _) -> t
                   | SArray(t, None) -> warn t "left operand of map is None array type in walk_array"
                   | _ -> warn SVoid "left operand of map is not an array type in walk_array"
                 in let atr = t
@@ -329,7 +334,7 @@ let sast_to_cast (let_decls, f_decls) =
                   | _ -> warn (SVoid, "", []) "right operand of map call incorrect in walk_array"
                 in let (etr, cnt) = match atr with 
                   | SArray(t, Some cnt) when etr=t -> (etr, cnt)
-                  | _ -> warn (etr, 0) "map kernel return type mismatch in walk_array"
+                  | _ -> warn_t (etr, 0) atr "map kernel return type mismatch in walk_array"
                 in let for_each = 
                   CExpr(SInt, CLit(SInt, CLitInt cnt))
                 in let curr = 
@@ -366,7 +371,7 @@ let sast_to_cast (let_decls, f_decls) =
               in let ret_ref =
                 CExpr(t, CPeekAnon t) (* just pass it in by reference *)
               in let eval_call =
-                CCall(t, i, ret_ref :: List.map map_act a)
+                CCall(t, prefix_kn i, ret_ref :: List.map map_act a)
               in CExpr(t, eval_call) :: acc (* no need for emit, use side effect *)
 
             in match rexpr with
@@ -410,7 +415,7 @@ let sast_to_cast (let_decls, f_decls) =
               in let ret_ref =
                 CExpr(t, CPeekAnon t) (* just pass it in by reference *)
               in let eval_call =
-                CCall(t, i, ret_ref :: List.map map_act a)
+                CCall(t, prefix_kn i, ret_ref :: List.map map_act a)
               in CExpr(t, eval_call) :: acc (* no need for emit, use side effect *)
 
             in match rexpr with 
@@ -424,7 +429,6 @@ let sast_to_cast (let_decls, f_decls) =
             | SId(t, i, _) -> emit (type_check t rtyp "walk_ptr type mismatch") (CId(t, i)) :: acc
             | _ -> warn acc "encountered non SId for SPtr type"
 
-          in let _ = print_type rtyp
           in match rtyp with
             | SArray(t, n) -> debug "walk_r on array type"; walk_array t n
             | SStruct(i, b) -> debug "walk_r on struct type"; walk_struct (prefix_s i) b
@@ -480,12 +484,12 @@ let sast_to_cast (let_decls, f_decls) =
 
             in match typ with
               | SArray(t, Some n) -> array_assign t n
-              | SArray(_, None) -> warn CStmtDud "encountered None-size array type in lvalue_tr"
+(*               | SArray(_, None) -> warn CStmtDud "encountered None-size array type in lvalue_tr" *)
               | SStruct(i, b) -> struct_assign (prefix_s i) b
               | SPtr -> warn CStmtDud "encountered pointer type in lvalue_tr"
               | SVoid -> if ass=[] then CBlock [] else
                 warn CStmtDud "encountered assignment to void type in lvalue_tr"
-              | _ -> primitive_assign ()
+              | _ -> if ass=[] then CBlock[] else primitive_assign ()
 
           in let rec walk ass = function
             | SAssign(t, l, r) when t=ltyp -> walk (l :: ass) r
@@ -577,7 +581,60 @@ let sast_to_cast (let_decls, f_decls) =
       | SStruct(_, _) -> ref_kn ()
       | _ -> kn
 
-    in kn_to_fn kn 
+    in let local_bindings = 
+      let fold_map acc (SBind(t, i, s)) = StringMap.add i (t, s) acc
+      in List.fold_left fold_map StringMap.empty (kn.skformals @ kn.sklocals)
+
+    in let kn_infer xxx = 
+      let infer_array (e, t) =
+        let co l r =
+          let r_none xxx = match r with
+            | SArray(t, Some n) -> r
+            | SArray(t, None) -> bug "L R array type both None"
+            | _ -> assert false
+          in let r_some ln = match r with
+            | SArray(t, Some n) when ln=n -> l
+            | SArray(t, Some n) -> bug "L R array Some size value mismatch"
+            | SArray(t, None) -> l
+            | _ -> assert false
+          in match l with 
+            | SArray(t, Some n) -> r_some n
+            | SArray(t, None) -> r_none ()
+            | _ -> assert false
+
+        in let rec walk_r l_typ = function
+          | SLit(t, l) -> let it = co l_typ t in (SLit(it, l), it)
+          | SId(t, i, s) -> let it = co l_typ t in (SId(it, i, s), it)
+          | SKnCall(t, id, a) -> let it = co l_typ t in (SKnCall(it, id, a), it)
+          | SGnCall(t, id, a) -> let it = co l_typ t in (SGnCall(it, id, a), it)
+          | SExCall(t, id, a) -> let it = co l_typ t in (SExCall(it, id, a), it)
+          | SPeek2Anon t -> let it = co l_typ t in (SPeek2Anon it, it)
+(*           | SBinop(t, l, SBinopGn o, r) -> let (l, it) = walk_r l_typ l in (SBinop(it, l, SBinopGn o, r), it) *)
+          | SBinop(t, l, SBinopFn o, r) -> let (l, it) = walk_r l_typ l in (SBinop(it, l, SBinopFn o, r), it)
+(*           | SBinop(t, l, SBinopPtr o, r) -> let (l, it) = walk_r l_typ l in (SBinop(it, l, SBinopPtr o, r), it) *)
+          | e -> let t = co l_typ (styp_of_sexpr e) in (e, t)
+
+        in let coerce l lr_typ =
+          let ll_typ = styp_of_sexpr l
+          in let (t, rn) = match lr_typ with
+            | SArray(t, Some n) -> (t, n)
+            | SArray(t, None) -> (t, 0)
+            | _ -> assert false
+          in let n = match ll_typ with 
+            | SArray(t, Some n) -> if n<rn then Some n else if rn=0 then None else Some rn
+            | SArray(t, None) -> if rn=0 then None else Some rn
+            | _ -> assert false
+          in SArray(t, n)
+        in let rec walk_l l_typ = function
+          | SAssign(t, l, r) -> SAssign(t, l, walk_l (coerce l l_typ) r)
+          | e -> let (e, it) = walk_r l_typ e in e
+        in match t with 
+          | SArray(_) -> (walk_l t e, t)
+          | _ -> (e, t)
+
+      in { kn with skbody = List.map infer_array kn.skbody;
+            skret_expr = map_opt infer_array kn.skret_expr }
+    in kn_to_fn (kn_infer ())
 
   in let walk_gn gn = 
     let prefix_gnv s = "gnv_" ^ s         (* for local vars *)
