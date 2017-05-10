@@ -63,7 +63,7 @@ let cast_to_llast cast =
                       | Some _ -> assert false
                       | None ->
                          let llinst = LLBuildTerm LLBlockReturnVoid and
-                             llreg = LLRegLit (LLInt, (LLLitInt 0)) in
+                             llreg = LLRegLit (LLInt, (LLLitInt 77711)) in
                          let llinsts = add_inst_to_branch llinst (List.hd blabels) llinsts in
                          (cnt, head, llreg, blabels, llinsts)
                      )
