@@ -419,15 +419,15 @@ let sast_to_cast (let_decls, f_decls) =
               in let get_index r = walk_r [] SInt r
 
               in let rec do_assign f = function
-                | SId(t, n, _) -> [ assign_to (f (CId(t, n))) ]
-                | SPeek2Anon t -> [ assign_to (f (CPeek3Anon t)) ]
+                | SId(t, n, _) -> [ assign_to (f(CId(t, n))) ]
+                | SPeek2Anon t -> [ assign_to (f(CPeek3Anon t)) ] (* need to look beyond the Push *)
                 | SAccess(t, e, i) -> do_assign (access t i) e
                 | SBinop(t, l, SBinopPtr SIndex, r) -> do_assign (index t) l @ get_index r
                 | _ -> warn [ CStmtDud ] "encountered non-lvalue in lvalue_tr"
               in let stmts = List.map (do_assign nop) ass
               in let stmts = List.map List.rev stmts
               in let stmts = List.flatten stmts
-              in CPushAnon(SInt, CBlock stmts)
+              in CPushAnon(SInt, CBlock stmts) (* push some space for potential index *)
 
             in let array_assign t n =
               let index t a = CBinop(t, anon, CBinopPtr SIndex, CLoopCtr)
