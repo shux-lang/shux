@@ -1,15 +1,16 @@
 let scalar dt = 0.01;
-let vector<2> g = (0.0, -9.81);
+let scalar g = -9.81;
 
+/* 1D particle data structure with pos and vel */
 struct particle {
-   float x;
-   float v;
+   scalar x;
+   scalar v;
 }
 
 kn euler_kernel(particle p) particle {
    struct particle {
       .v = p.v..1 + g * dt;
-      .x = p.x..1 + p.v..1 * dt; /* shouldn't this be p.v ? */
+      .x = p.x..1 + p.v..1 * dt;
    }
 }
 
@@ -24,8 +25,9 @@ gn euler(particle[] init) particle[] {
 }
 
 kn main() int {
-   var particle[10] particles_init = {0}; /* do we have an easy way of doing this? */
-   var particle[] p_40, p_40_select; /* do we support multiple expressions in one line right now? */
+   var particle[1] particles_init = [struct particle { .v=1; .x=0; }]; /* do we have an easy way of doing this? */
+   var particle[1] p_40
+   var particle[1] p_40_select;
 
    for 1000 euler(p_init) @ state -> {
       print("this should display"); /* we don't have opengl bindings yet */

@@ -4,5 +4,7 @@ struct particle {
 }
 
 kn main() int {
+   int x;
+   int x;
    0
 }
