@@ -71,6 +71,14 @@ let cast_to_llast cast =
   and walk_cexpr a_stack t_stack c_stack cnt head llinsts= function
       CLit (typ, lit) -> (cnt, head, LLRegLit (ctyp_to_lltyp typ,(translate_clit lit)), llinsts)
     | CId (typ, str) -> (cnt, head, LLRegLabel (ctyp_to_lltyp typ,str), llinsts)
+    | CLoopCtr ->
+       (cnt, head, LLRegLabel(ctyp_to_lltyp SInt, List.nth c_stack 0), llinsts)
+    | CPeekAnon typ ->
+       (cnt, head, LLRegLabel(ctyp_to_lltyp typ, List.nth a_stack 0), llinsts)
+    | CPeek2Anon typ ->
+       (cnt, head, LLRegLabel(ctyp_to_lltyp typ, List.nth a_stack 1), llinsts)
+    | CPeek3Anon typ ->
+       (cnt, head, LLRegLabel(ctyp_to_lltyp typ, List.nth a_stack 2), llinsts)
     | CBinop (typ, expr1, op, expr2) ->
        let (cnt,head,e1, llinsts) = walk_cexpr a_stack t_stack c_stack cnt head llinsts expr1 in
        let (cnt,head,e2, llinsts) = walk_cexpr a_stack t_stack c_stack cnt head llinsts expr2 in
@@ -79,21 +87,23 @@ let cast_to_llast cast =
        let (cnt, head, t_stack) = (cnt + 1, vreg::head, vreg::t_stack) in
        let llinst = LLBuildBinOp (LLAdd, e1, e2, vreg) in
        (cnt, head, vreg, llinst::llinsts)
+    | CUnop (typ, op, expr) ->
+        let (cnt,head,e,llinsts) = walk_cexpr a_stack t_stack c_stack cnt head llinsts expr in
+        let v = t_decl cnt in
+        let vreg = LLRegLabel (ctyp_to_lltyp typ, v) in
+        let (cnt, head, t_stack) = (cnt +1, vreg::head, vreg::t_stack) in
+        let llinst = LLBuildNoOp in (* build Unop *)
+        (cnt, head, vreg, llinst::llinsts)
     | CAssign (typ, expr1, expr2) ->
        let (cnt,head,e1, llinsts) = walk_cexpr a_stack t_stack c_stack cnt head llinsts expr1 in
        let (cnt,head,e2, llinsts) = walk_cexpr a_stack t_stack c_stack cnt head llinsts expr2 in
        let zerolit = LLRegLit(LLInt, (LLLitInt 0)) in (* TODO need to store both int and doubles *)
        let llinst = LLBuildBinOp (LLAdd, zerolit, e2, e1) in
        (cnt, head, e1, llinst::llinsts)
-    | CPeekAnon typ ->
-       (cnt, head, LLRegLabel(ctyp_to_lltyp typ, List.nth a_stack 0), llinsts)
-    | CPeek2Anon typ ->
-       (cnt, head, LLRegLabel(ctyp_to_lltyp typ, List.nth a_stack 1), llinsts)
-    | CPeek3Anon typ ->
-       (cnt, head, LLRegLabel(ctyp_to_lltyp typ, List.nth a_stack 2), llinsts)
-    | CLoopCtr ->
-       (cnt, head, LLRegLabel(ctyp_to_lltyp SInt, List.nth c_stack 0), llinsts)
-    | _ -> assert false
+    | CAccess( typ, expr1, string) -> assert false
+    | CCall(typ, id, actuals) -> assert false
+    | CExCall(typ, id, actuals) -> assert false
+    | CExprDud -> assert false
   in
 
   let translate_cdecl list = function
