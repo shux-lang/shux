@@ -174,8 +174,10 @@ and check_expr tr_env expr =
               then found_var.var_type
           else 
               raise (Failure ("Variable " ^ var ^ " has not been initialized"))
-			else 
-          raise (Failure ("Variable " ^ var ^ " has not been declared"))
+			else if VarMap.mem var tr_env.fn_map then
+              let _ = print_string ("Function pointer to " ^ var ^ "detected. Be careful out there yo.")
+              in Ptr
+      else raise (Failure ("Variable " ^ var ^ " has not been declared"))
    | Binop(e1, op, e2) -> 
       let t1 = check_expr tr_env e1 in
       (match op with
