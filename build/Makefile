@@ -104,3 +104,5 @@ hello: $(COMPILER) $(EXAMPLES)/hello_world.shux
 tests: cleantests
 	@cd $(TEST_DIR) && $(SYMLINK) ../build/shuxc shuxc && ./$(TEST)
 
+testsfront: cleantests
+	@cd $(TEST_DIR) && $(SYMLINK) ../build/shuxc shuxc && ./$(TEST) COMPILE

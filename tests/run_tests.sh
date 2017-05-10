@@ -12,11 +12,11 @@ skip_pass=0
 
 if [ $# -eq 1 ]; then
     if [ "$1" = "COMPILE" ]; then
-        echo "running only COMPILE/FAIL tests"
+        echo "running only COMPILE/FAIL tests\n"
         skip_pass=1
         test_names=`ls *.shux`
     else
-        echo "running single test"
+        echo "running single test\n"
         test_names=$1
         # this should be extended to just run the below with test_names=our one file
     fi 
