@@ -39,14 +39,20 @@ let cast_to_llast cast =
   in
 
   let rec walk_cstmt (a_stack,t_stack,cnt,head,blabels,llinsts) = function
-    | CExpr(t, e) -> (assert (StringMap.mem "entry" llinsts)); walk_cexpr a_stack t_stack cnt head blabels llinsts e
-    | CPushAnon(t, s) ->
+    | CExpr(t, e) -> prerr_string "CExpr->"; (assert (StringMap.mem "entry" llinsts)); walk_cexpr a_stack t_stack cnt head blabels llinsts e
+    | CPushAnon(t, s) -> 
        let v = a_decl cnt in
+       prerr_string ("CPushAnon"^v^"->");
+      
        let vreg = LLRegLabel (ctyp_to_lltyp t, v) in
-       walk_cstmt ((v::a_stack),t_stack,(cnt + 1),(vreg::head), blabels, llinsts) s
-    | CReturn opt -> (match opt with
+       assert false
+                  
+    | CReturn opt -> prerr_string "CReturn->";(match opt with
                         Some (typ, CPushAnon(t, cstmt)) when t=typ ->
                         let v = a_decl cnt in
+                        let cstmt =
+                          match cstmt with CPushAnon(_) ->
+                            (cstmt) | _ ->  (assert false) in
                         let vreg = LLRegLabel (ctyp_to_lltyp typ, v) in
                         let (cnt, head, r1, blabels, llinsts) =
                           walk_cstmt (
@@ -100,14 +106,15 @@ let cast_to_llast cast =
          | _ -> assert false
        )
     | CBlock stmt_list ->
-         let fold_block (cnt, head, llreg, blabels, llinsts) stmt  =
-                walk_cstmt (a_stack, t_stack, cnt, head, blabels, llinsts) stmt in
-         List.fold_left fold_block (cnt, head, dud, blabels, llinsts) stmt_list
+       prerr_string "CBlock->";
+       let fold_block (cnt, head, llreg, blabels, llinsts) stmt  =
+         walk_cstmt (a_stack, t_stack, cnt, head, blabels, llinsts) stmt in
+       List.fold_left fold_block (cnt, head, dud, blabels, llinsts) stmt_list
     | _ -> assert false
 
   and walk_cexpr a_stack t_stack cnt head blabels llinsts= function
-      CLit (typ, lit) -> (cnt, head, LLRegLit (ctyp_to_lltyp typ,(translate_clit lit)), blabels,llinsts)
-    | CId (typ, str) -> (cnt, head, LLRegLabel (ctyp_to_lltyp typ,str), blabels, llinsts)
+      CLit (typ, lit) -> prerr_string "CLit->"; (cnt, head, LLRegLit (ctyp_to_lltyp typ,(translate_clit lit)), blabels,llinsts)
+    | CId (typ, str) -> prerr_string ("CId"^str^"->"); (cnt, head, LLRegLabel (ctyp_to_lltyp typ,str), blabels, llinsts)
     | CBinop (typx, expr1, op, expr2) ->
        let (cnt,head,e1, blabels,llinsts) = walk_cexpr a_stack t_stack cnt head blabels llinsts expr1 in
        let (cnt,head,e2, blabels,llinsts) = walk_cexpr a_stack t_stack cnt head blabels llinsts expr2 in
@@ -146,7 +153,6 @@ let cast_to_llast cast =
                               | SLogOr -> LLBuildBinOp (LLIop LLOr, e1, e2, vreg)
                              )
           | CBinopPtr ptr -> assert false
-                             
           | CBinopDud -> assert false
          ) in
        let llinsts = add_inst_to_branch llinst (List.hd blabels) llinsts in
@@ -177,12 +183,15 @@ let cast_to_llast cast =
        let llinsts = add_inst_to_branch llinst (List.hd blabels) llinsts in
        (cnt, head, e1, blabels, llinsts) 
     | CPeekAnon typ ->
+       prerr_string "PeekAnon->";
        let anon = (match head with h::t -> h | [] -> assert false) in
        (cnt, head, anon, blabels, llinsts)
     | CPeek2Anon typ ->
+       prerr_string "PeekAnon2->";
        let anon = (List.nth head 1) in
        (cnt, head, anon, blabels, llinsts)
     | CPeek3Anon typ ->
+       prerr_string "PeekAnon3->";
        let anon = (List.nth head 2) in
        (cnt, head, anon, blabels, llinsts)
     | CCall (frettyp, fname, fstmts) ->
