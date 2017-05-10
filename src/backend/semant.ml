@@ -332,7 +332,12 @@ and check_expr tr_env expr =
           else raise (Failure ("Lookback variable has type " ^ _string_of_typ t1 ^
                                " but lookback default returns " ^ _string_of_typ t2)) 
    | Cond(e1, e2, e3) -> if check_expr tr_env e1 = Bool then
-        let t2 = check_expr tr_env e2 in if t2 = check_expr tr_env e3 then t2
+        let t2 = check_expr tr_env e2 
+        and t3 = check_expr tr_env e3
+        in if (t2 = t3) then t2 else if (t2 = Noop) 
+                                     then t3 
+                                     else if (t3 = Noop) 
+                                     then t2
         else raise (Failure "Ternary operator return type mismatch")
      else raise (Failure "Ternary operator conditional needs to be a boolean
      expr")
@@ -367,6 +372,7 @@ and check_expr tr_env expr =
                          raise (Failure err_msg)
              | _ -> raise (Failure "Can't access field of a type that's not a
                            struct"))
+    | Pass -> Noop
 
 (* function checker for lambdas *)
 (* returns the type of lambda *) 
