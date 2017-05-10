@@ -286,6 +286,7 @@ and check_expr tr_env expr =
         let get_mutability l =
                 let v = List.hd (VarMap.find l tr_env.scope) in
                 if v.mut = Mutable then v.var_type 
+                else if v.initialized = false then v.var_type
                 else raise (Failure "Cannot assign to immutable type")
         in
    (match e1 with 
@@ -403,7 +404,7 @@ and lambda_checker l env =
                     in push_variable_env v env)
         | Expr(e) -> let _ = check_expr env e in
             (match e with
-            | Assign(e1,e2) -> (match e2 with 
+            | Assign(e1,e2) -> (match e1 with 
                 | Id(l) -> initialize_var (flatten_ns_list l) env
                 | _ -> env)
             | _ -> env)
@@ -554,7 +555,7 @@ let check_body f env =
         ret = f.ret_expr 
     in
     let check_stmt env = function
-        | VDecl(b,e) -> (match e with (*TODO: ensure uniqueness of bind name *) 
+        | VDecl(b,e) -> (match e with 
            | Some exp -> let t1 = check_expr env exp and
                              t2 = get_bind_typ b and
                              var_name = get_bind_name b 
@@ -567,16 +568,17 @@ let check_body f env =
                else let err_msg = "Type " ^ _string_of_typ t1 ^ " cannot be assigned" 
                                   ^ " to type " ^ _string_of_typ t2
                    in raise(Failure err_msg)
-           | None -> let t = get_bind_typ b and (*TODO: ensure uniqueness.. *)
+           | None -> let t = get_bind_typ b and
                          (* ensure that arrays cannot be initialized without sizes *) 
                          var_name = get_bind_name b and
                          m = get_bind_mut b 
            in let _ = check_array_init t
+           in let _ = print_string var_name
            in let v = { id = var_name; var_type = t; mut = m; initialized = false}
            in push_variable_env v env ) 
         | Expr(e) -> let _ = check_expr env e in
             (match e with
-            | Assign(e1, e2) -> (match e2 with
+            | Assign(e1, e2) -> (match e1 with
                 | Id(l) -> initialize_var (flatten_ns_list l) env
                 | _ -> env)
             | _ -> env)
