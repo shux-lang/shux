@@ -309,7 +309,7 @@ let sast_to_cast (let_decls, f_decls) =
 
               in let map xxx =
                 let (kn_t, kn_i) = match r with
-                  | SId(t, i, SKnCall) -> (t, i)
+                  | SId(t, i, SKnLambda []) -> (t, i)
                   | _ -> warn (SVoid, "") "right operand of map call incorrect"
                 in let et = match t with 
                   | SArray(et, _) when et=kn_t -> et
@@ -464,7 +464,7 @@ let sast_to_cast (let_decls, f_decls) =
       let hoist n { slret_typ; slformals; sllocals; slbody; slret_expr; slinherit } = 
         hoist_lambdas
         { skname = prefix_lambda kn.skname n; skret_typ = slret_typ;
-          skformals = slformals; sklocals = sllocals; skbody = slbody; 
+          skformals = slformals @ slinherit; sklocals = sllocals; skbody = slbody; 
           skret_expr = slret_expr }
 
       in let rec fish acc p = function
@@ -478,7 +478,7 @@ let sast_to_cast (let_decls, f_decls) =
         | SAccess(_, e, _) -> fish acc (p ^ "a") e
         | _ -> acc
       in let rec bait p = function
-        | SLit(t, SLitKn(l)) -> SId(t, prefix_lambda kn.skname p, SKnCall) (* should this be a global here? *)
+        | SLit(t, SLitKn(l)) -> SId(t, prefix_lambda kn.skname p, SKnLambda l.slinherit)
         | SBinop(t, l, o, r) -> SBinop(t, bait (p ^ "l") l, o, bait (p ^ "r") r)
         | SAssign(t, l, r) -> SAssign(t, bait (p ^ "l") l, bait (p ^ "r") r)
         | SCond(ty, i, t, e) -> SCond(ty, bait (p ^ "i") i, bait (p ^ "t") t, bait (p ^ "e") e)
@@ -574,7 +574,7 @@ let sast_to_cast (let_decls, f_decls) =
       in let rec lookback (e, t) =
         let sid t id = function
           | SGlobal as s -> SId(t, id, s) (* global prefixing will happen in walk_kn *)
-          | SKnCall as s -> SId(t, id, s)
+          | SKnLambda _ as s -> SId(t, id, s)
           | SLocalVar as s -> SId(t, prefix_gnv id, s)
           | SLocalVal -> lb_st t id 0
           | SStructField as s -> warn (SId(t, id, s)) "encountered SStructField binding scope in walk_gn"

@@ -1,7 +1,11 @@
 type sscope = (* replacing Mutable vs Immutable *)
-  | SLocalVal | SLocalVar | SGlobal | SStructField | SKnCall
+  | SLocalVal
+  | SLocalVar
+  | SGlobal
+  | SStructField
+  | SKnLambda of sbind list
 
-type styp =
+and styp =
   | SInt
   | SFloat
   | SString
