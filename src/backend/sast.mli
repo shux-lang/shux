@@ -66,14 +66,16 @@ and sexpr =
   | SUnop of styp * sun_op * sexpr
   | SCond of styp * sexpr * sexpr * sexpr
   | SLoopCtr (* CLoopCtr, useful for recursion *)
+  | SPeek2Anon of styp
   | SExprDud
 
 and slambda = {
   slret_typ   : styp;
   slformals   : sbind list;
+  slinherit   : sbind list;
   sllocals    : sbind list;         (* no lookback, const-ness not enforced *)
   slbody      : (sexpr * styp) list;
-  slret_expr  : (sexpr * styp);
+  slret_expr  : (sexpr * styp) option;
 }
 
 type skn_decl = {

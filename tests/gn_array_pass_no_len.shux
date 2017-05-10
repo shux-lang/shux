@@ -1,7 +1,0 @@
-gn foo(int[] a, int[] b) int {
-   a[0] + b[0]
-}
-
-kn main() int {
-   0
-}

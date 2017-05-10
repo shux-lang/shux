@@ -1,9 +1,9 @@
 ns foo = {
-   var int[] a = [2,4];
+   var int[2] a = [2,4];
 }
 
 kn main() int {
-   int b = a[0];
-   a[1] = 5;
+   int b = foo->a[0];
+   foo->a[1] = 5;
    0
 }
