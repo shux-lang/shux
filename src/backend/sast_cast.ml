@@ -21,6 +21,9 @@ let print_type t =
     | SVoid -> s ^ "SVoid"
   in print_string ((string_of_type "" t) ^ "\n")
 
+let type_check t1 t2 s = (* default t1 *)
+  if t1=t2 then t1 else (print_type t1; print_type t2; warn t1 s)
+
 let string_of_binop_int = function
   | SAddi -> "SAddi"
   | SSubi -> "SSubi"
@@ -150,9 +153,8 @@ let sast_to_cast (let_decls, f_decls) =
               in let dereference xxx = (* operators whose operands are of Array t and int *)
                 let eval =  (* TODO: make sure I understand what the fuck is going on here *)
                   let arr_t = styp_of_sexpr l
-                  in let ind_t = styp_of_sexpr r
-                  in let ind_t = if ind_t=SInt then ind_t else 
-                    warn SInt "encountered type mismatch in dereference in walk_primitive"
+                  in let ind_t = type_check (styp_of_sexpr r) SInt 
+                    "encountered type mismatch in dereference in walk_primitive"
                   in let eval_deref = CBinop(t, CPeek2Anon arr_t, tr_binop, CPeekAnon ind_t)
                   in let emit_deref = CExpr(t, CAssign(t, CPeek3Anon t, eval_deref))
                   in let eval_r = push_anon ind_t r emit_deref
@@ -173,9 +175,8 @@ let sast_to_cast (let_decls, f_decls) =
               in eval_struct :: acc
 
             in let walk_cond t iff the els =
-              let cond_t = styp_of_sexpr iff
-              in let cond_t = if cond_t=SBool then cond_t else
-                warn SBool "non-boolean conditional expression in walk_primitive"
+              let cond_t = type_check (styp_of_sexpr iff) SBool
+                "non-boolean conditional expression in walk_primitive"
               in let eval_merge = CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t))
               in let eval_iff = push_anon_nop cond_t iff
               in let eval_the = push_anon t the eval_merge
@@ -206,10 +207,10 @@ let sast_to_cast (let_decls, f_decls) =
               let l = match l with (* unwrap to list of expressions, emit by value *)
                 | SLitArray l -> l
                 | _ -> warn [] "encountered non-array type literal in walk_array"
-              in let et = element_t
-              in let at = rtyp
-(*               in let at = if t=rtyp then t else (print_type t; print_type rtyp; *)
-(*                 warn rtyp "literal type mismatch in walk_array") *)
+              in let at = type_check rtyp t "literal type mismatch in walk_array"
+              in let et = match at with
+                | SArray(t, _) -> type_check element_t t "literal element type mismatch in walk_array"
+                | _ -> warn element_t "non_array type for array type in walk_array"
               in let assign e i =
                 let i = CLit(SInt, CLitInt i)
                 in let access =
@@ -232,8 +233,8 @@ let sast_to_cast (let_decls, f_decls) =
               in push_anon t r emit_r :: acc
 
             in let walk_cond t iff the els = (* reference *)
-              let cond_t = if styp_of_sexpr iff=SBool then SBool else
-                warn SBool "non-boolean conditional expression in walk_array"
+              let cond_t = type_check (styp_of_sexpr iff) SBool
+                "non-boolean conditional expression in walk_array"
               in let eval_merge = CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t))
               in let eval_iff = push_anon_nop cond_t iff
               in let eval_the = push_anon t the eval_merge
@@ -252,8 +253,8 @@ let sast_to_cast (let_decls, f_decls) =
               let dereference xxx = (* operators whose operands are of Array t and int *)
                 let eval =  (* TODO: make sure I understand what the fuck is going on here *)
                   let arr_t = styp_of_sexpr l
-                  in let ind_t = if styp_of_sexpr r=SInt then SInt else 
-                    warn SInt "encountered non-SInt r-operand in walk_array"
+                  in let ind_t = type_check (styp_of_sexpr r) SInt 
+                    "encountered non-SInt r-operand in walk_array"
                   in let eval_deref = CBinop(t, CPeek2Anon arr_t, deref, CPeekAnon ind_t)
                   in let emit_deref = CExpr(t, CAssign(t, CPeek3Anon t, eval_deref))
                   in let eval_r = push_anon ind_t r emit_deref
@@ -269,8 +270,8 @@ let sast_to_cast (let_decls, f_decls) =
 
                   in let init_gns =
                     let set_field (a, at) (SBind(st, id, _)) =
-                      let t = if at=st then st else
-                        warn st "encountered generator struct type mismatch in walk_array"
+                      let t = type_check at st
+                        "encountered generator struct type mismatch in walk_array"
                       in let get_field =
                         CAccess(t, CPeek2Anon gns_typ, id)
                       in let emit_field =
@@ -286,8 +287,8 @@ let sast_to_cast (let_decls, f_decls) =
 
                     in init_fields [] gns_fields actuals
                   in let eval_cnt = (* TODO: check what t is equal to here *)
-                    let cnt_t = if styp_of_sexpr r=SInt then SInt else
-                      warn SInt "encountered non-SInt in gnc evaluation in walk_array"
+                    let cnt_t = type_check (styp_of_sexpr r) SInt
+                      "encountered non-SInt in gnc evaluation in walk_array"
                     in push_anon_nop cnt_t l 
                   in let call_loop =
                     let curr = CBinop(t, CPeek3Anon rtyp, deref, CLoopCtr)
