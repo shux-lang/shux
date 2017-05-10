@@ -33,6 +33,7 @@ type cexpr =
   | CAccess of ctyp * cexpr * string
   | CAssign of ctyp * cexpr * cexpr
   | CCall of ctyp * string * cstmt list
+  | CExCall of ctyp * string * cstmt list
   | CUnop of ctyp * cun_op * cexpr
   | CExprDud
 

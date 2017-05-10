@@ -87,7 +87,6 @@ let sast_to_cast (let_decls, f_decls) =
   in let prefix_ref s = "ref_" ^ s  (* for arrays that return by reference *)
   in let ret_ref = "ret_ref"
   in let gns_hash = Hashtbl.create 42
-(*   in let lmb_hash = Hashtbl.create 42 *)
 
   in let kn_to_fn kn =
     let walk_stmt (e, t) = 
@@ -128,6 +127,13 @@ let sast_to_cast (let_decls, f_decls) =
                 push_anon_nop t e
               in let eval_call =
                 CCall(t, i, List.map map_act a)
+              in emit t eval_call :: acc
+
+            in let walk_sex t i a =
+              let map_act (e, t) =
+                push_anon_nop t e
+              in let eval_call =
+                CExCall(t, i, List.map map_act a)
               in emit t eval_call :: acc
 
             in let walk_unop t o e =
@@ -196,6 +202,7 @@ let sast_to_cast (let_decls, f_decls) =
               | SAssign(t, l, r) -> walk_assign t l r (* requires new nested walk *)
               | SLoopCtr -> emit SInt CLoopCtr :: acc
               | SPeek2Anon t -> emit t (CPeek2Anon t) :: acc
+              | SExCall(t, i, a) -> walk_sex t i a
 
               (* should never be called like this *)
               | SGnCall(_, _, _) -> warn acc "encountered naked generator call in walk_primitive"
@@ -304,7 +311,8 @@ let sast_to_cast (let_decls, f_decls) =
                   in CPushAnon(gns_typ, CBlock(List.rev(call_loop :: init_gns)))
                 in match r with
                 | SGnCall(gn_t, id, actuals) when gn_t=element_t -> gn_call id actuals :: acc
-                | SGnCall(gn_t, id, actuals) -> warn (gn_call id actuals :: acc) "gn call type mismatch in walk_array"
+                | SGnCall(gn_t, id, actuals) -> warn (gn_call id actuals :: acc)
+                    "gn call type mismatch in walk_array"
                 |  _ -> warn acc "encountered non-SGnCall in right operand of SFor"
 
               in let map xxx =
@@ -335,8 +343,12 @@ let sast_to_cast (let_decls, f_decls) =
                 in push_anon atl l map_loop :: acc
 
               in let filter xxx =
-                let at = type_check (styp_of_sexpr l) t "type mismatch of filtered lhs in walk_array"
-                in acc
+                (*
+                let at = type_check (styp_of_sexpr l) t 
+                  "type mismatch of filtered lhs in walk_array"
+                in
+                *)
+                acc
 
               in match o with
                 | SBinopPtr SIndex -> dereference ()
@@ -405,9 +417,14 @@ let sast_to_cast (let_decls, f_decls) =
               | SPeek2Anon t -> emit t (CPeek2Anon t) :: acc
               | _ -> warn acc "encountered unexpected catch-all expression in walk_struct"
 
+          in let walk_ptr xxx = match rexpr with
+            | SId(t, i, _) -> emit (type_check t rtyp "walk_ptr type mismatch") (CId(t, i)) :: acc
+            | _ -> warn acc "encountered non SId for SPtr type"
+
           in match rtyp with
             | SArray(t, n) -> debug "walk_r on array type"; walk_array t n
             | SStruct(i, b) -> debug "walk_r on struct type"; walk_struct (prefix_s i) b
+            | SPtr ->  walk_ptr ()
             | _ -> debug "walk_r on primitive type"; walk_primitive ()
 
         in let walk_l ltyp lexpr =
