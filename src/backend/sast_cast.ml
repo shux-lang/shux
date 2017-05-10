@@ -307,36 +307,35 @@ let sast_to_cast (let_decls, f_decls) =
                 |  _ -> warn acc "encountered non-SGnCall in right operand of SFor"
 
               in let map xxx =
-                let eval =
-                  let atl = styp_of_sexpr l
-                  in let etl = match atl with
-                    | SArray(t, Some n) -> t
-                    | _ -> warn SVoid "left operand of map is not an array type in walk_array"
-                  in let atr = t
-                  in let (etr, kn_i, kn_c) = match r with
-                    | SId(t, i, SKnLambda c) -> (t, i, c)
-                    | _ -> warn (SVoid, "", []) "right operand of map call incorrect in walk_array"
-                  in let (etr, cnt) = match atr with 
-                    | SArray(t, Some cnt) when etr=t -> (etr, cnt)
-                    | _ -> warn (etr, 0) "map kernel return type mismatch in walk_array"
-                  in let for_each = 
-                    CExpr(SInt, CLit(SInt, CLitInt cnt))
-                  in let curr = 
-                    CBinop(etr, CPeek3Anon atr, deref, CLoopCtr)
-                  in let emit =
-                    CExpr(etr, CAssign(etr, curr, CPeekAnon etr))
-                  in let closure =
-                    List.map (fun (SBind(t, i, s)) -> (SId(t, i, s), t)) kn_c
-                  in let make_call =
-                    SKnCall(etr, kn_i, (SPeek2Anon etl, etl) :: closure)
-                  in let do_map =
-                    push_anon etr make_call emit
-                  in let map_loop = CLoop(for_each, do_map)
-                  in push_anon atl l map_loop
-                in eval :: acc
+                let atl = styp_of_sexpr l
+                in let etl = match atl with
+                  | SArray(t, Some n) -> t
+                  | _ -> warn SVoid "left operand of map is not an array type in walk_array"
+                in let atr = t
+                in let (etr, kn_i, kn_c) = match r with
+                  | SId(t, i, SKnLambda c) -> (t, i, c)
+                  | _ -> warn (SVoid, "", []) "right operand of map call incorrect in walk_array"
+                in let (etr, cnt) = match atr with 
+                  | SArray(t, Some cnt) when etr=t -> (etr, cnt)
+                  | _ -> warn (etr, 0) "map kernel return type mismatch in walk_array"
+                in let for_each = 
+                  CExpr(SInt, CLit(SInt, CLitInt cnt))
+                in let curr = 
+                  CBinop(etr, CPeek3Anon atr, deref, CLoopCtr)
+                in let emit =
+                  CExpr(etr, CAssign(etr, curr, CPeekAnon etr))
+                in let closure =
+                  List.map (fun (SBind(t, i, s)) -> (SId(t, i, s), t)) kn_c
+                in let make_call =
+                  SKnCall(etr, kn_i, (SPeek2Anon etl, etl) :: closure)
+                in let do_map =
+                  push_anon etr make_call emit
+                in let map_loop = CLoop(for_each, do_map)
+                in push_anon atl l map_loop :: acc
 
               in let filter xxx =
-                acc
+                let at = type_check (styp_of_sexpr l) t "type mismatch of filtered lhs in walk_array"
+                in acc
 
               in match o with
                 | SBinopPtr SIndex -> dereference ()
@@ -407,7 +406,7 @@ let sast_to_cast (let_decls, f_decls) =
 
           in match rtyp with
             | SArray(t, n) -> debug "walk_r on array type"; walk_array t n
-            | SStruct(i, b) -> debug "walk_r on struct type"; walk_struct i b
+            | SStruct(i, b) -> debug "walk_r on struct type"; walk_struct (prefix_s i) b
             | _ -> debug "walk_r on primitive type"; walk_primitive ()
 
         in let walk_l ltyp lexpr =
@@ -455,7 +454,7 @@ let sast_to_cast (let_decls, f_decls) =
             in match typ with
               | SArray(t, Some n) -> array_assign t n
               | SArray(_, None) -> warn CStmtDud "encountered None-size array type in lvalue_tr"
-              | SStruct(i, b) -> struct_assign i b
+              | SStruct(i, b) -> struct_assign (prefix_s i) b
               | SPtr -> warn CStmtDud "encountered pointer type in lvalue_tr"
               | SVoid -> if ass=[] then CBlock [] else
                 warn CStmtDud "encountered assignment to void type in lvalue_tr"
