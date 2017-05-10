@@ -1,0 +1,6 @@
+gn test(int x) {
+}
+
+kn main() int {
+   0
+}
