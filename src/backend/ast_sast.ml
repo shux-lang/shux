@@ -52,7 +52,7 @@ and to_sbin_op iorf = function
     | Exp -> if iorf then SBinopInt SExpi else SBinopFloat SExpf
     | Eq  -> if iorf then SBinopInt SEqi else SBinopFloat SEqf
     | Lt  -> if iorf then SBinopInt SLti else SBinopFloat SLtf
-    | Gt  -> if iorf then SBinopInt SGeqi else SBinopFloat SGeqf
+    | Gt  -> if iorf then SBinopInt SGti else SBinopFloat SGtf
     | Neq -> if iorf then SBinopInt SNeqi else SBinopFloat SNeqf
     | Leq -> if iorf then SBinopInt SLeqi else SBinopFloat SLeqf
     | Geq -> if iorf then SBinopInt SGeqi else SBinopFloat SGeqf
