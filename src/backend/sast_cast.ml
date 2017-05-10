@@ -520,7 +520,7 @@ let sast_to_cast (let_decls, f_decls) =
     in hoist_lambdas kn
 
   in let walk_kn kn =
-    let kn = { kn with skname = prefix_kn kn.skname }
+    let kn = { kn with skname = kn.skname }
 
     in let ret_id t = SId(t, ret_ref, SLocalVar)
     in let ret_bind t = SBind(t, ret_ref, SLocalVar)
