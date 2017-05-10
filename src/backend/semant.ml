@@ -71,11 +71,7 @@ let get_bind_mut = function
    | Bind(m,_,_) -> m
 
 let convert_ret_typ = function
-   | Some x -> (match x with
-       | Array(t, i) -> (match i with
-           | Some i -> x
-           | None -> raise (Failure "A return type for an array needs to have a fixed size"))
-       | _ -> x)
+   | Some x -> x
    | None -> Void
 
 let compare_ast_typ l r = match(l,r) with
@@ -243,7 +239,7 @@ and check_expr tr_env expr =
                            in if (gn.fn_typ = Kn) then raise (Failure ("Cannot call " ^ 
                                                    "kernel with a for expression"))
                            else let match_formal b fform cform = 
-                               if b then get_bind_typ fform = cform else b
+                              if b then (compare_ast_typ (get_bind_typ fform) cform) else b
                            in
                            if (List.fold_left2 match_formal true gn.formals tlist)
                            then match gn.ret_typ with 
@@ -262,7 +258,7 @@ and check_expr tr_env expr =
                            in if (gn.fn_typ = Kn) then raise (Failure ("Cannot call " ^ 
                                                    "kernel with a do expression"))
                            else let match_formal b fform cform = 
-                               if b then get_bind_typ fform = cform else b
+                               if b then (compare_ast_typ (get_bind_typ fform) cform) else b
                            in
                            if (List.fold_left2 match_formal true gn.formals tlist)
                            then match gn.ret_typ with 
@@ -341,9 +337,6 @@ and check_expr tr_env expr =
    | Cond(e1, e2, e3) -> if check_expr tr_env e1 = Bool then
         let t2 = check_expr tr_env e2 
         and t3 = check_expr tr_env e3
-        in let _ = print_string (_string_of_typ t2)
-        in let _ = print_string "\n"
-        in let _ = print_string (_string_of_typ t3)
         in if (t2 = t3) then t2 
         else raise (Failure "Ternary operator return type mismatch")
      else raise (Failure "Ternary operator conditional needs to be a boolean
@@ -575,6 +568,9 @@ let get_lookback_env fn_typ formals body env =
            | Lookback(slist, i) -> 
                [flatten_ns_list slist]
            | Assign(e1,e2) -> 
+               let lb1 = gn_rec_lookback e1
+               and lb2 = gn_rec_lookback e2 in lb1@lb2
+           | Binop(e1,_,e2) -> 
                let lb1 = gn_rec_lookback e1
                and lb2 = gn_rec_lookback e2 in lb1@lb2
            | Call(_, elist) -> 
