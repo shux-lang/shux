@@ -233,7 +233,10 @@ and get_sexpr senv = function
                 else if VarMap.mem s senv.sfn_decl
                  then SId(SPtr, s, SLocalVal)
                 else assert(false)
-    | Lookback(str, i) -> SLookback(SInt, flatten_ns_list str, i)
+    | Lookback(nstr, i) -> let str = flatten_ns_list nstr
+                           in let var = List.hd (VarMap.find str senv.variables)
+                           in let typ = var.svar_type
+          in SLookback(typ, str, i)
     | Binop(e1, bin_op, e2) -> 
         let st1 = get_sexpr senv e1 in (match bin_op with
             | Add | Sub | Mul | Div | Mod | Exp -> 
@@ -300,7 +303,7 @@ and get_sexpr senv = function
                  | Pos -> get_sexpr senv e)
             | LookbackDefault(e1, e2) -> 
 						    let se1 = get_sexpr senv e1
-						    and se2 = get_sexpr senv e2
+						    in let se2 = get_sexpr senv e2
 						    and i = (match e1 with
                    | Lookback(str, i) -> i
                    | _ -> raise (Failure "LookbackDefault not preceded by Lookback expression"))

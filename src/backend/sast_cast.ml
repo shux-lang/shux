@@ -318,6 +318,7 @@ let sast_to_cast (let_decls, f_decls) =
 
               in let map xxx =
                 let atl = styp_of_sexpr l
+                in let _ = print_string " fuck\n" ; print_type atl
                 in let etl = match atl with
                   | SArray(t, Some n) -> t
                   | SArray(t, None) -> warn t "left operand of map is None array type in walk_array"
@@ -477,7 +478,6 @@ let sast_to_cast (let_decls, f_decls) =
                 List.map translate for_each_field
               in CBlock translate_each_field
 
-            in let _ = print_string "assign type"; print_type typ; 
             in match typ with
               | SArray(t, Some n) -> array_assign t n
               | SArray(_, None) -> warn CStmtDud "encountered None-size array type in lvalue_tr"
@@ -655,6 +655,7 @@ let sast_to_cast (let_decls, f_decls) =
     in walk f_decls
   in let let_map = Hashtbl.create 42
   in let walk_static let_decls =
+    (*
     let interp_expr t e =
       let interp_lit = function
         | SLitInt i -> CLitInt i
@@ -680,9 +681,13 @@ let sast_to_cast (let_decls, f_decls) =
         | SPtr | SVoid -> warn CLitDud "invalid type encountered in let declarations"
         | _ -> interp_primitive ()
     in let assign_let n t e =
-      ()
-    in let walk = function
-      | SLetDecl(SBind(t, n, s), e) -> CConstDecl(SBind(t, n, s), interp_expr t e)
+      let let_val = interp_expr t e
+      in let _ = Hashtbl.add let_map n let_val
+      in CLitDud
+      *)
+    let walk = function
+(*       | SLetDecl(SBind(t, n, s), e) -> CConstDecl(SBind(t, n, s), interp_expr t e) *)
+      | SLetDecl(SBind(t, n, s), e) -> CConstDecl(SBind(t, n, s), CLitDud)
       | SStructDef s -> CStructDef {s with ssname = prefix_s s.ssname}
       | SExternDecl x -> CExternDecl {x with sxalias = prefix_x x.sxalias}
     in walk let_decls
