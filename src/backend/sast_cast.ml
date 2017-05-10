@@ -87,7 +87,6 @@ let sast_to_cast (let_decls, f_decls) =
   in let prefix_ref s = "ref_" ^ s  (* for arrays that return by reference *)
   in let ret_ref = "ret_ref"
   in let gns_hash = Hashtbl.create 42
-(*   in let lmb_hash = Hashtbl.create 42 *)
 
   in let kn_to_fn kn =
     let walk_stmt (e, t) = 
@@ -128,6 +127,13 @@ let sast_to_cast (let_decls, f_decls) =
                 push_anon_nop t e
               in let eval_call =
                 CCall(t, i, List.map map_act a)
+              in emit t eval_call :: acc
+
+            in let walk_sex t i a =
+              let map_act (e, t) =
+                push_anon_nop t e
+              in let eval_call =
+                CExCall(t, i, List.map map_act a)
               in emit t eval_call :: acc
 
             in let walk_unop t o e =
@@ -196,6 +202,7 @@ let sast_to_cast (let_decls, f_decls) =
               | SAssign(t, l, r) -> walk_assign t l r (* requires new nested walk *)
               | SLoopCtr -> emit SInt CLoopCtr :: acc
               | SPeek2Anon t -> emit t (CPeek2Anon t) :: acc
+              | SExCall(t, i, a) -> walk_sex t i a
 
               (* should never be called like this *)
               | SGnCall(_, _, _) -> warn acc "encountered naked generator call in walk_primitive"
@@ -304,7 +311,8 @@ let sast_to_cast (let_decls, f_decls) =
                   in CPushAnon(gns_typ, CBlock(List.rev(call_loop :: init_gns)))
                 in match r with
                 | SGnCall(gn_t, id, actuals) when gn_t=element_t -> gn_call id actuals :: acc
-                | SGnCall(gn_t, id, actuals) -> warn (gn_call id actuals :: acc) "gn call type mismatch in walk_array"
+                | SGnCall(gn_t, id, actuals) -> warn (gn_call id actuals :: acc)
+                    "gn call type mismatch in walk_array"
                 |  _ -> warn acc "encountered non-SGnCall in right operand of SFor"
 
               in let map xxx =
@@ -335,8 +343,12 @@ let sast_to_cast (let_decls, f_decls) =
                 in push_anon atl l map_loop :: acc
 
               in let filter xxx =
-                let at = type_check (styp_of_sexpr l) t "type mismatch of filtered lhs in walk_array"
-                in acc
+                (*
+                let at = type_check (styp_of_sexpr l) t 
+                  "type mismatch of filtered lhs in walk_array"
+                in
+                *)
+                acc
 
               in match o with
                 | SBinopPtr SIndex -> dereference ()
@@ -405,9 +417,14 @@ let sast_to_cast (let_decls, f_decls) =
               | SPeek2Anon t -> emit t (CPeek2Anon t) :: acc
               | _ -> warn acc "encountered unexpected catch-all expression in walk_struct"
 
+          in let walk_ptr xxx = match rexpr with
+            | SId(t, i, _) -> emit (type_check t rtyp "walk_ptr type mismatch") (CId(t, i)) :: acc
+            | _ -> warn acc "encountered non SId for SPtr type"
+
           in match rtyp with
             | SArray(t, n) -> debug "walk_r on array type"; walk_array t n
             | SStruct(i, b) -> debug "walk_r on struct type"; walk_struct (prefix_s i) b
+            | SPtr ->  walk_ptr ()
             | _ -> debug "walk_r on primitive type"; walk_primitive ()
 
         in let walk_l ltyp lexpr =
@@ -482,7 +499,7 @@ let sast_to_cast (let_decls, f_decls) =
     in let fn_decl kn = CFnDecl 
       { cfname = kn.skname; cret_typ = kn.skret_typ;
         cformals = kn.skformals; clocals = kn.sklocals;
-        cbody = List.map walk_stmt kn.skbody @ [ walk_ret kn.skret_expr ] }
+        cbody = List.rev (walk_ret kn.skret_expr :: List.rev_map walk_stmt kn.skbody) }
 
     in let rec hoist_lambdas kn =
       let hoist n { slret_typ; slformals; sllocals; slbody; slret_expr; slinherit } = 
@@ -633,10 +650,24 @@ let sast_to_cast (let_decls, f_decls) =
       | SExDud(_)::t -> warn (walk t) "came across SEx booty call juicy"
     in walk f_decls
   in let walk_static let_decls =
-    let interp_expr = function (* TODO: write interpretor for compile-time evaluation *)
-      | _ -> CLitDud
+    let interp_expr t e =
+      let interp_primitive xxx = match e with
+        | SLit(t, l) -> CLitDud
+        | SId(t, i, s) -> CLitDud
+        | SBinop(t, l, o, r) -> assert false
+        | _ -> assert false
+      in let interp_array at n =
+        CLitDud
+      in let interp_struct id binds =
+        CLitDud
+      in match t with
+        | SArray(t, Some n) -> interp_array t n
+        | SArray(t, None) -> warn CLitDud "None size array encountered in let decls"
+        | SStruct(i, b) -> interp_struct i b
+        | SPtr | SVoid -> warn CLitDud "invalid type encountered in let declarations"
+        | _ -> interp_primitive ()
     in let walk = function
-      | SLetDecl(SBind(t, n, s), e) -> CConstDecl(SBind(t, n, s), interp_expr e)
+      | SLetDecl(SBind(t, n, s), e) -> CConstDecl(SBind(t, n, s), interp_expr t e)
       | SStructDef s -> CStructDef {s with ssname = prefix_s s.ssname}
       | SExternDecl x -> CExternDecl {x with sxalias = prefix_x x.sxalias}
     in walk let_decls
