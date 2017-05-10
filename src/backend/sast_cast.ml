@@ -650,10 +650,24 @@ let sast_to_cast (let_decls, f_decls) =
       | SExDud(_)::t -> warn (walk t) "came across SEx booty call juicy"
     in walk f_decls
   in let walk_static let_decls =
-    let interp_expr = function (* TODO: write interpretor for compile-time evaluation *)
-      | _ -> CLitDud
+    let interp_expr t e =
+      let interp_primitive xxx = match e with
+        | SLit(t, l) -> CLitDud
+        | SId(t, i, s) -> CLitDud
+        | SBinop(t, l, o, r) -> assert false
+        | _ -> assert false
+      in let interp_array at n =
+        CLitDud
+      in let interp_struct id binds =
+        CLitDud
+      in match t with
+        | SArray(t, Some n) -> interp_array t n
+        | SArray(t, None) -> warn CLitDud "None size array encountered in let decls"
+        | SStruct(i, b) -> interp_struct i b
+        | SPtr | SVoid -> warn CLitDud "invalid type encountered in let declarations"
+        | _ -> interp_primitive ()
     in let walk = function
-      | SLetDecl(SBind(t, n, s), e) -> CConstDecl(SBind(t, n, s), interp_expr e)
+      | SLetDecl(SBind(t, n, s), e) -> CConstDecl(SBind(t, n, s), interp_expr t e)
       | SStructDef s -> CStructDef {s with ssname = prefix_s s.ssname}
       | SExternDecl x -> CExternDecl {x with sxalias = prefix_x x.sxalias}
     in walk let_decls
