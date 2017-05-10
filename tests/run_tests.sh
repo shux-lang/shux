@@ -87,7 +87,7 @@ do
         if grep -q "$exp_holder" $test_out > /dev/null 2>&1; then
             echo "passed! ✅"
             passes=$((passes+1))
-        elif grep -q "Warning" $test_out > /dev/null 2>&1; then
+        elif grep -q "WARN" $test_out > /dev/null 2>&1; then
             echo "compilation threw warning 🔶"
             warnings=$((warnings+1))
         else
@@ -99,7 +99,7 @@ do
             if grep -q "Uncaught exception" $test_out > /dev/null; then
                 echo "compilation failed ❌"
                 fails=$((fails+1))
-            elif grep -q "Warning" $test_out > /dev/null 2>&1; then
+            elif grep -q "WARN" $test_out > /dev/null 2>&1; then
                 echo "compilation threw warning 🔶"
                 warnings=$((warnings+1))
             else
