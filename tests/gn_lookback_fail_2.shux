@@ -2,8 +2,8 @@ let int a = 1;
 
 gn foo(int x, int y) int {
    int b = 2;
-   x = x..a + y..b;
-   x*y
+   int z = x..a + y..b;
+   z*y
 }
 
 kn main() int {

@@ -1,4 +1,5 @@
 gn test(int x) {
+   0
 }
 
 kn main() int {

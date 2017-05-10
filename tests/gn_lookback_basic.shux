@@ -1,6 +1,6 @@
 gn foo(int x, int y) int {
-   x = x..1 + y..2;
-   x*y
+   int a = x..1 + y..2;
+   a*y
 }
 
 kn main() int {
