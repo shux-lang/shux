@@ -482,7 +482,7 @@ let sast_to_cast (let_decls, f_decls) =
     in let fn_decl kn = CFnDecl 
       { cfname = kn.skname; cret_typ = kn.skret_typ;
         cformals = kn.skformals; clocals = kn.sklocals;
-        cbody = List.map walk_stmt kn.skbody @ [ walk_ret kn.skret_expr ] }
+        cbody = List.rev (walk_ret kn.skret_expr :: List.rev_map walk_stmt kn.skbody) }
 
     in let rec hoist_lambdas kn =
       let hoist n { slret_typ; slformals; sllocals; slbody; slret_expr; slinherit } = 
