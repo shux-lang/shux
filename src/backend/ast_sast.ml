@@ -236,12 +236,18 @@ and get_sexpr senv = function
     | Lookback(str, i) -> SLookback(SInt, flatten_ns_list str, i)
     | Binop(e1, bin_op, e2) -> 
         let st1 = get_sexpr senv e1 in (match bin_op with
-            | Add | Sub | Mul | Div | Mod | Exp | Eq | Lt | Gt | Neq | Leq | Geq -> 
+            | Add | Sub | Mul | Div | Mod | Exp -> 
 		            let sbinop = (match get_styp_from_sexpr st1 with
 					          | SInt -> to_sbin_op true bin_op
 					          | SFloat -> to_sbin_op false bin_op
 					          | _ -> raise (Failure "Not Integer/Float type on binop")) in 
 		                SBinop(get_styp_from_sexpr st1, st1, sbinop, get_sexpr senv e2)
+             | Eq | Lt | Gt | Neq | Leq | Geq ->
+                let sbinop = (match get_styp_from_sexpr st1 with
+					          | SInt -> to_sbin_op true bin_op
+					          | SFloat -> to_sbin_op false bin_op
+					          | _ -> raise (Failure "Not Integer/Float type on binop")) in
+                   SBinop(SBool, st1, sbinop, get_sexpr senv e2)
              | LogAnd | LogOr -> SBinop(SBool, st1, to_sbin_op true bin_op, get_sexpr senv e2)
              | Filter -> let expr2 = (match e2 with
                            | Id(nn) -> let n = flatten_ns_list nn 
