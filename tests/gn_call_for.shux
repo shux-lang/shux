@@ -1,5 +1,6 @@
 gn foo() int {
-   int x = x..1 + 1 : 0;
+   int x;
+   x = x..1 : -1; 
    x
 }
 

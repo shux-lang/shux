@@ -7,37 +7,24 @@ struct particle {
    scalar v;
 }
 
-kn euler_kernel(particle p) particle {
-   struct particle {
-      .v = p.v..1 + g * dt;
-      .x = p.x..1 + p.v..1 * dt;
-   }
-}
-
-gn euler(particle[] init) particle[] {
-   var particle[] particles_buffer = particles_buffer @ p -> {
+gn euler(struct particle[] init) struct particle[] {
+   struct particle[] pbuf = pbuf..1 : init @ p -> {
       /* couldn't we use the kernel here? */
       struct particle {
-         .v = p.v..1 + g * dt;
-	 .x = p.x..1 + p.v..1 * dt;
+         .v = p.v + g * dt;
+	 .x = p.x + p.v * dt;
       }
-   } init
+   }
 }
 
 kn main() int {
-   var particle[1] particles_init = [struct particle { .v=1; .x=0; }]; /* do we have an easy way of doing this? */
-   var particle[1] p_40
-   var particle[1] p_40_select;
-
+   var particle[1] p_init = [struct particle { .v=1; .x=0; }];
+   
    for 1000 euler(p_init) @ state -> {
-      print("this should display"); /* we don't have opengl bindings yet */
+      print("step"); /* we don't have opengl bindings yet */
+      print_scalar(state[0].x);
    }
 
-   p_40 = do 40 euler(p_init); /* copies array */
-   p_40_select = p_40 :: p -> {
-      p.x[0] < 4 && p.x[1] < 4
-   };
-
-   print("this should display"); /* again, graphics */
+   0
 }
    
