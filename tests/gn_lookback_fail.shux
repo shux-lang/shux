@@ -1,0 +1,9 @@
+gn foo(int x, int y) int {
+   x = x..1.0 + y..2.0;
+   x*y
+}
+
+kn main() int {
+   int result = do 100 foo(5, 7);
+   0
+}

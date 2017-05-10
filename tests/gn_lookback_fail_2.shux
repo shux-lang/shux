@@ -1,0 +1,12 @@
+let int a = 1;
+
+gn foo(int x, int y) int {
+   int b = 2;
+   x = x..a + y..b;
+   x*y
+}
+
+kn main() int {
+   int result = do 100 foo(5, 7);
+   0
+}
