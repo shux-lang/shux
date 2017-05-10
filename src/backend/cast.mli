@@ -22,7 +22,7 @@ type clit =
   | CLitStruct of (string * clit) list
   | CLitDud
 
-and cexpr =
+type cexpr =
   | CLit of ctyp * clit
   | CId of ctyp * string
   | CLoopCtr                    (* access the counter inside a CLoop *)
