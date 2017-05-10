@@ -52,7 +52,7 @@ and to_sbin_op iorf = function
     | Exp -> if iorf then SBinopInt SExpi else SBinopFloat SExpf
     | Eq  -> if iorf then SBinopInt SEqi else SBinopFloat SEqf
     | Lt  -> if iorf then SBinopInt SLti else SBinopFloat SLtf
-    | Gt  -> if iorf then SBinopInt SGeqi else SBinopFloat SGeqf
+    | Gt  -> if iorf then SBinopInt SGti else SBinopFloat SGtf
     | Neq -> if iorf then SBinopInt SNeqi else SBinopFloat SNeqf
     | Leq -> if iorf then SBinopInt SLeqi else SBinopFloat SLeqf
     | Geq -> if iorf then SBinopInt SGeqi else SBinopFloat SGeqf
@@ -213,6 +213,7 @@ and mut_to_scope = function
 and get_sfn_name = function
     | SGnDecl(g) -> g.sgname
     | SKnDecl(k) -> k.skname
+    | SExternFunc(e) -> e.skname
 
 and translate_struct_defs env struct_def = 
     {ssname  = struct_def.sname; ssfields = List.map (to_sbind env) struct_def.fields }
@@ -222,8 +223,12 @@ and get_sexpr senv = function
     | Lit(a) -> let sliteral = to_slit senv a 
                 in SLit(slit_to_styp senv sliteral, sliteral)
     | Id(ns) -> let s = flatten_ns_list ns
-                in let v = List.hd (VarMap.find s senv.variables)
-			          in SId(v.svar_type, s, v.scope)
+                in if VarMap.mem s senv.variables then
+                let v = List.hd (VarMap.find s senv.variables)
+			            in SId(v.svar_type, s, v.scope)
+                else if VarMap.mem s senv.sfn_decl
+                 then SId(SPtr, s, SLocalVal)
+                else assert(false)
     | Lookback(str, i) -> SLookback(SInt, flatten_ns_list str, i)
     | Binop(e1, bin_op, e2) -> 
         let st1 = get_sexpr senv e1 in (match bin_op with
@@ -244,6 +249,7 @@ and get_sexpr senv = function
                                         in let kn = VarMap.find n senv.sfn_decl
                                         in let kn_typ = (match kn with 
                                             | SGnDecl(sgn) -> assert(false)
+                                            | SExternFunc(s) -> assert(false)
                                             | SKnDecl(skn) -> skn.skret_typ)
                                         in SId(kn_typ, n, SKnLambda([]))
                            | _ -> get_sexpr senv e2)
@@ -269,7 +275,8 @@ and get_sexpr senv = function
 					 	                  in let call_formals = List.map (fun x -> (x, get_styp_from_sexpr x)) sexpr_list
 		                          in let f = VarMap.find s senv.sfn_decl in (match f with 
 		                 | SGnDecl(gn) -> SGnCall(gn.sgret_typ, s, call_formals)
-		                 | SKnDecl(kn) -> SKnCall(kn.skret_typ, s, call_formals))
+		                 | SKnDecl(kn) -> SKnCall(kn.skret_typ, s, call_formals)
+                     | SExternFunc(en) -> SExternCall(en.skret_typ, s, call_formals))
                  | None -> SGnCall(SInt, "_", []))
              | Uniop(u, e) -> (match u with
                  | LogNot -> let st1 = get_sexpr senv e in 
@@ -336,7 +343,7 @@ and translate_letdecl senv globals =
 						in let new_func = { skname = e.xalias; skret_typ = sret_type;
 																skformals = new_formals; sklocals = [];
 																skbody = []; skret_expr = None } 
-						in let new_fnmap = VarMap.add new_func.skname (SKnDecl new_func) senv.sfn_decl
+						in let new_fnmap = VarMap.add new_func.skname (SExternFunc new_func) senv.sfn_decl
 						in let new_env = { variables = senv.variables; sfn_decl = new_fnmap; 
 															 sstruct_map = senv.sstruct_map }
 						in ((SExternDecl new_extern)::sglobals, new_env)

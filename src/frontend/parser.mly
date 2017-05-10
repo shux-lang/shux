@@ -118,7 +118,7 @@ if_expr:
 fn_expr:
   | iter_expr fn_op kns                     { Binop($1, $2, $3) } 
   | iter_expr                               { $1 } 
-  | PASS                                    { Pass } 
+  | PASS                                    { Call(Some ["nop"],[])  } 
 
 kns:
   | kn fn_op kns                            { Binop($1, $2, $3) }
