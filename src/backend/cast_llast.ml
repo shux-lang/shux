@@ -101,8 +101,33 @@ let cast_to_llast cast =
        let llinst = LLBuildBinOp (LLAdd, zerolit, e2, e1) in
        (cnt, head, e1, llinst::llinsts)
     | CAccess( typ, expr1, string) -> assert false
-    | CCall(typ, id, actuals) -> assert false
-    | CExCall(typ, id, actuals) -> assert false
+    | CCall(typ, id, actuals) -> 
+        let folder ((cnt,head,_,llinsts), llregs) stmt =
+          let (cnt,head,llreg,llinsts) = 
+            walk_cstmt (a_stack, t_stack, c_stack, cnt, head, llinsts) stmt in
+          ((cnt, head, LLRegDud, llinsts), llreg::llregs )
+        in let ((cnt,head,_,llinsts), llregs) =
+          List.fold_left folder ((cnt, head, LLRegDud, llinsts), []) actuals in
+      let (call_dest, vreg, cnt, head, t_stack) = match typ with
+        | SVoid -> (None, LLRegDud, cnt, head, t_stack)
+        | _ -> let v = t_decl cnt in
+               let vreg = LLRegLabel (ctyp_to_lltyp typ, v) in
+               (Some vreg, vreg, cnt + 1, vreg::head, vreg::t_stack) in
+       let llinst = LLBuildCall(id, llregs, call_dest) in
+          (cnt, head, vreg, llinst::llinsts)
+    | CExCall(typ, id, actuals) -> 
+        let folder ((cnt,head,_,llinsts), llregs) stmt =
+          let (cnt,head,llreg,llinsts) = 
+            walk_cstmt (a_stack, t_stack, c_stack, cnt, head, llinsts) stmt in
+          ((cnt, head, LLRegDud, llinsts), llreg::llregs )
+        in let ((cnt,head,_,llinsts), llregs) =
+          List.fold_left folder ((cnt, head, LLRegDud, llinsts), []) actuals in
+      let (call_dest, vreg) = match typ with
+        | SVoid -> (None, LLRegDud)
+        | _ -> assert false
+      in
+       let llinst = LLBuildCall(id, llregs, call_dest) in
+          (cnt, head, vreg, llinst::llinsts)
     | CExprDud -> assert false
   in
 
