@@ -520,7 +520,7 @@ let sast_to_cast (let_decls, f_decls) =
     in hoist_lambdas kn
 
   in let walk_kn kn =
-    let kn = { kn with skname = prefix_kn kn.skname }
+    let kn = { kn with skname = kn.skname }
 
     in let ret_id t = SId(t, ret_ref, SLocalVar)
     in let ret_bind t = SBind(t, ret_ref, SLocalVar)
@@ -636,7 +636,7 @@ let sast_to_cast (let_decls, f_decls) =
     let interp_expr = function (* TODO: write interpretor for compile-time evaluation *)
       | _ -> CLitDud
     in let walk = function
-      | SLetDecl(SBind(t, n, s), e) -> CConstDecl(SBind(t, prefix_l n, s), interp_expr e)
+      | SLetDecl(SBind(t, n, s), e) -> CConstDecl(SBind(t, n, s), interp_expr e)
       | SStructDef s -> CStructDef {s with ssname = prefix_s s.ssname}
       | SExternDecl x -> CExternDecl {x with sxalias = prefix_x x.sxalias}
     in walk let_decls
