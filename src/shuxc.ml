@@ -26,7 +26,8 @@ let _ =
 		else (open_in Sys.argv.(1), LLVM) in
 	let lexbuf = Lexing.from_channel cin in
 	let ast = Parser.program Scanner.token lexbuf in
-  let sast = Ast_sast.translate_to_sast ast in
+	let check_ast = Semant.check ast in
+  let sast = Ast_sast.translate_to_sast check_ast in
   let cast = Sast_cast.sast_to_cast sast in
   let llast = Cast_llast.cast_to_llast cast in
   let llvm = Lltranslate.translate llast in
