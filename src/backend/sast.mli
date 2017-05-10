@@ -19,11 +19,11 @@ and sbind = SBind of styp * string * sscope
 
 type sbin_op_i =
   | SAddi | SSubi | SMuli | SDivi | SMod | SExpi
-  | SEqi | SLti | SNeqi | SLeqi | SGeqi
+  | SEqi | SLti | SGti | SNeqi | SLeqi | SGeqi
 
 type sbin_op_f =
   | SAddf | SSubf | SMulf | SDivf | SExpf
-  | SEqf | SLtf | SNeqf | SLeqf | SGeqf
+  | SEqf | SLtf | SGtf | SNeqf | SLeqf | SGeqf
 
 type sbin_op_b =
   | SLogAnd | SLogOr
