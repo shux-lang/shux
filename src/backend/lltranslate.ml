@@ -388,7 +388,8 @@ let translate (structs,globals,funcs) =
       in
 
       let load_reg ptrreglabel block_builder =
-        L.build_load (get_reg block_builder ptrreglabel) "loadinst" block_builder
+        let reg = (get_reg block_builder ptrreglabel) in
+        L.build_load  reg "loadinst" block_builder
       in
 
       let store_reg ptrreglabel val_to_store block_builder=
