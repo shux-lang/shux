@@ -7,7 +7,7 @@
 %token ASSIGN ADD_ASN SUB_ASN MUL_ASN DIV_ASN MOD_ASN EXP_ASN
 %token LOG_AND LOG_OR LOG_NOT LT GT EQ NEQ LEQ GEQ
 %token QUES COLON FILTER MAP ARROW IF THEN ELIF ELSE FOR WHILE DO UNDERSCORE
-%token NS GN KN STRUCT LET EXTERN VAR INT_T FLOAT_T STRING_T BOOL_T VECTOR_T PTR_T
+%token NS GN KN STRUCT LET EXTERN VAR INT_T FLOAT_T STRING_T BOOL_T VECTOR_T PTR_T PASS
 
 %token <bool> BOOL_LIT
 %token <int> INT_LIT
@@ -118,6 +118,7 @@ if_expr:
 fn_expr:
   | iter_expr fn_op kns                     { Binop($1, $2, $3) } 
   | iter_expr                               { $1 } 
+  | PASS                                    { Pass } 
 
 kns:
   | kn fn_op kns                            { Binop($1, $2, $3) }

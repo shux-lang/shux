@@ -10,6 +10,7 @@ type typ =
   | Vector of int (* number of elements in vector *)
   | Ptr
   | Void
+  | Noop
 
 type mut =
   | Mutable
@@ -61,6 +62,7 @@ and expr =
   | LookbackDefault of expr * expr
   | Cond of expr * expr * expr (* technically Ternop *)
   | Access of expr * string
+  | Pass
 
 and stmt =
   | VDecl of bind * expr option

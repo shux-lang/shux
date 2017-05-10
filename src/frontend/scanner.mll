@@ -97,7 +97,7 @@ rule token = parse
   | "for"     { FOR }
   | "while"   { WHILE }
   | "do"      { DO }
-
+  | "noop"    { PASS } 
 (* declarations *)
   | "ns"      { NS }
   | "gn"      { GN }
