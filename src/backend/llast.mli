@@ -70,6 +70,7 @@ type llstmt =
   | LLBuildStructLoad of llreg * int * llreg (* 1 has the struct label, 2 has the index, 3 has dest label *)
   | LLBuildStructStore of llreg * int * llreg (* 1 has the struct label, 2 has the index, 3 has source label *)
   | LLBuildTerm of llblock_term
+  | LLBuildAssign of llreg * llreg (* assign from the right to the left*)
   | LLBuildNoOp
 
 

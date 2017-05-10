@@ -348,6 +348,9 @@ let translate (structs,globals,funcs) =
               let val_to_store = load_reg fromlabel block_builder in
               L.build_store val_to_store elementptr block_builder
            | LLBuildTerm terminator -> build_terminator block_builder terminator
+           | LLBuildAssign (tolabel, fromlabel) ->
+              let val_to_assign = load_reg fromlabel block_builder in
+              store_reg tolabel val_to_assign block_builder
            | LLBuildNoOp -> L.const_int i32_t 0
           )
            in

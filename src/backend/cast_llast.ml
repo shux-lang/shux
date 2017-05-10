@@ -108,11 +108,11 @@ let cast_to_llast cast =
   and walk_cexpr a_stack t_stack cnt head blabels llinsts= function
       CLit (typ, lit) -> (cnt, head, LLRegLit (ctyp_to_lltyp typ,(translate_clit lit)), blabels,llinsts)
     | CId (typ, str) -> (cnt, head, LLRegLabel (ctyp_to_lltyp typ,str), blabels, llinsts)
-    | CBinop (typ, expr1, op, expr2) ->
+    | CBinop (typx, expr1, op, expr2) ->
        let (cnt,head,e1, blabels,llinsts) = walk_cexpr a_stack t_stack cnt head blabels llinsts expr1 in
        let (cnt,head,e2, blabels,llinsts) = walk_cexpr a_stack t_stack cnt head blabels llinsts expr2 in
        let v = t_decl cnt in
-       let vreg = LLRegLabel (ctyp_to_lltyp typ, v) in
+       let vreg = LLRegLabel (ctyp_to_lltyp typx, v) in
        let (cnt, head, t_stack) = (cnt + 1, vreg::head, vreg::t_stack) in
        let llinst =
          (match op with
@@ -146,6 +146,7 @@ let cast_to_llast cast =
                               | SLogOr -> LLBuildBinOp (LLIop LLOr, e1, e2, vreg)
                              )
           | CBinopPtr ptr -> assert false
+                             
           | CBinopDud -> assert false
          ) in
        let llinsts = add_inst_to_branch llinst (List.hd blabels) llinsts in
@@ -153,15 +154,26 @@ let cast_to_llast cast =
     | CAssign (typ, expr1, expr2) ->
        let (cnt,head,e1, blabels, llinsts) = walk_cexpr a_stack t_stack cnt head blabels llinsts expr1 in
        let (cnt,head,e2, blabels,llinsts) = walk_cexpr a_stack t_stack cnt head blabels llinsts expr2 in
+       (*
        let zeroint = LLRegLit(LLInt, (LLLitInt 0))  (* TODO need to store both int and doubles *)
        and zerofloat = LLRegLit(LLDouble, (LLLitDouble 0.))
        and zerobool = LLRegLit(LLBool, (LLLitBool false)) in
        let llinst = (match typ with
                        SInt -> LLBuildBinOp (LLIop LLAdd, zeroint, e2, e1)
                      | SFloat -> LLBuildBinOp (LLFop LLFAdd, zerofloat, e2, e1)
-                     | SBool -> LLBuildBinOp (LLIop LLAdd, zerobool, e2, e1)
+                     | SBool ->
+                        let assert_bool = function
+                            LLRegLabel (typ,str) -> if(typ=LLBool) then(true) else(false)
+                          | LLRegLit (typ, lit) -> if(typ=LLBool) then(true) else(false)
+                          | _ -> assert false
+                        in
+                        assert ((assert_bool e2)=true);
+                        assert ((assert_bool e1)=true);
+                        LLBuildBinOp (LLIop LLAdd, zerobool, e2, e1)
                      | _ -> assert false
                     ) in
+        *)
+       let llinst = LLBuildAssign (e1, e2) in
        let llinsts = add_inst_to_branch llinst (List.hd blabels) llinsts in
        (cnt, head, e1, blabels, llinsts) 
     | CPeekAnon typ ->
