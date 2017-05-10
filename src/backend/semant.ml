@@ -47,6 +47,9 @@ type trans_env = {
     lookbacks : var VarMap.t;
 }
 
+let noop_func = { fname = "nop"; fn_typ = Kn; ret_typ = None;
+                  formals = []; body = []; ret_expr = None; } 
+
 let flatten_ns_list ns_list = 
     let rec flatten_ns_rec flat = function
         | [] -> flat
@@ -336,10 +339,7 @@ and check_expr tr_env expr =
    | Cond(e1, e2, e3) -> if check_expr tr_env e1 = Bool then
         let t2 = check_expr tr_env e2 
         and t3 = check_expr tr_env e3
-        in if (t2 = t3) then t2 else if (t2 = Noop) 
-                                     then t3 
-                                     else if (t3 = Noop) 
-                                     then t2
+        in if (t2 = t3) then t2 
         else raise (Failure "Ternary operator return type mismatch")
      else raise (Failure "Ternary operator conditional needs to be a boolean
      expr")
@@ -374,7 +374,6 @@ and check_expr tr_env expr =
                          raise (Failure err_msg)
              | _ -> raise (Failure "Can't access field of a type that's not a
                            struct"))
-    | Pass -> Noop
 
 (* function checker for lambdas *)
 (* returns the type of lambda *) 
@@ -712,5 +711,6 @@ let check (ns, globals, functions) =
 	let flat_ns = flatten_ns ns in
   let globs_with_ns = (fst flat_ns) @ globals in 
 	let global_env = check_globals globs_with_ns in
-  ignore (check_functions ((snd flat_ns) @ functions) global_env);
-	([], fst flat_ns @ globals, snd flat_ns @ functions)
+	let nfunctions = noop_func::functions
+  in ignore (check_functions ((snd flat_ns) @ nfunctions) global_env);
+	([], fst flat_ns @ globals, snd flat_ns @ nfunctions)
