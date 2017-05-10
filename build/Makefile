@@ -84,13 +84,14 @@ parser.cmi : ast.cmo
 
 all: cleanall symlink $(OBJS) $(TARGETS)
 
-cleanall:
+cleanall: cleantests
 	rm -rf *.* shuxc
-	cd $(TEST_DIR) && rm -rf *.ll && rm -rf *.out
 
-clean:
+clean: cleantests
 	rm -rf *.cmx *.cmi *.cmo *.cmx *.o parser.ml parser.mli scanner.ml shuxc
-	cd $(TEST_DIR) && rm -rf *.ll && rm -rf *out
+
+cleantests:
+	cd $(TEST_DIR) && rm -rf *.ll && rm -rf *.out
 
 autoclean:
 	ocamlbuild -clean
@@ -100,6 +101,8 @@ hello: $(COMPILER) $(EXAMPLES)/hello_world.shux
 	cat nstest.ll
 	lli nstest.ll
 
-tests:
+tests: cleantests
 	@cd $(TEST_DIR) && $(SYMLINK) ../build/shuxc shuxc && ./$(TEST)
 
+tests_front: cleantests
+	@cd $(TEST_DIR) && $(SYMLINK) ../build/shuxc shuxc && ./$(TEST) COMPILE

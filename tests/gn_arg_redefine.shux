@@ -1,6 +1,6 @@
 gn foo(int a) int {
-   int x = x..1 : -1;
-   x
+   int a = 5;
+   0
 }
 
 kn main() int {

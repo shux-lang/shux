@@ -43,7 +43,12 @@ type trans_env = {
        to ensure that name conflicts dont happen
        within a scope  *) 
 		new_variables : var list;
+
+    lookbacks : var VarMap.t;
 }
+
+let noop_func = { fname = "nop"; fn_typ = Kn; ret_typ = None;
+                  formals = []; body = []; ret_expr = None; } 
 
 let flatten_ns_list ns_list = 
     let rec flatten_ns_rec flat = function
@@ -100,7 +105,7 @@ let initialize_var name env =
                    initialized = true; }
     in let new_scope = VarMap.add name (new_var :: List.tl var_list) env.scope
     in { scope = new_scope; structs = env.structs; fn_map = env.fn_map;
-         new_variables = env.new_variables }
+         new_variables = env.new_variables; lookbacks = env.lookbacks; }
 
 (* return new trans env with var v added *) 
 let push_variable_env v env = 
@@ -114,7 +119,7 @@ let push_variable_env v env =
         else 
             VarMap.add v.id [v] env.scope
     in { scope = new_scope; structs = env.structs; fn_map = env.fn_map;
-         new_variables = v::env.new_variables } 
+         new_variables = v::env.new_variables; lookbacks = env.lookbacks; } 
  
 (* check expression 
 tr_env: current translation environment
@@ -169,8 +174,10 @@ and check_expr tr_env expr =
               then found_var.var_type
           else 
               raise (Failure ("Variable " ^ var ^ " has not been initialized"))
-			else 
-          raise (Failure ("Variable " ^ var ^ " has not been declared"))
+			else if VarMap.mem var tr_env.fn_map then
+              let _ = print_string ("Function pointer to " ^ var ^ "detected. Be careful out there yo.")
+              in Ptr
+      else raise (Failure ("Variable " ^ var ^ " has not been declared"))
    | Binop(e1, op, e2) -> 
       let t1 = check_expr tr_env e1 in
       (match op with
@@ -193,32 +200,32 @@ and check_expr tr_env expr =
             | _ -> raise (Failure "Left hand needs to be [] for map/filter"))
        in
             if (match e2 with
-            | Binop(kn, _, _) -> (match kn with
-              | Id(nn) -> let n = flatten_ns_list nn in
-                  if VarMap.mem n tr_env.fn_map then
-                      let k = VarMap.find n tr_env.fn_map in
-                      if k.fn_typ = Kn 
-                      then List.length k.formals = 1
-                      else let err_msg = "Map/Filter function" ^ n
-                       ^ " needs to be a kernel" in raise(Failure err_msg)
-                  else let err_msg = "Kernel call in filter/map " ^ n ^ "doesnt
-                  exist" in raise(Failure err_msg)
-              | Lit(n) -> (match n with
-                          | LitKn(l) ->(List.length l.lformals) = 1 && 
-                                    (get_bind_typ (List.hd l.lformals)) = t
-                          | _ -> raise (Failure "Filter not given a lambda"))
-              | _ -> raise (Failure "Filter not given a lambda :((("))
-            | Lit(n) -> (match n with
+                | Lit(n) -> (match n with
                          | LitKn(l) ->(List.length l.lformals) = 1 &&
                                    (get_bind_typ (List.hd l.lformals)) = t
-                         | _ -> raise (Failure "Filter not given a lambda :("))
-            | _ -> raise (Failure "Filter not given a lambda :((("))
+                         | _ -> raise (Failure "Filter/Map right hand literals needs to be a lambda :("))
+                | Id(nn) -> let n =  flatten_ns_list nn in 
+                         if VarMap.mem n tr_env.fn_map then
+                            let k = VarMap.find n tr_env.fn_map in
+                            if k.fn_typ = Kn
+                                then List.length k.formals = 1
+                                else raise (Failure "Map/Filter function needs to be a kernel")
+                        else raise (Failure ("Kernel call in filter/map " ^ n ^ "doesnt" ^ " exist"))
+                | _ -> raise (Failure "Filter not given a lambda."))
             then (match fm with
-             | Filter -> if (check_expr tr_env e2) = Bool then Array(t, i) else
+             | Filter -> let filt_typ = (match e2 with
+                             | Id(nn) -> let n = flatten_ns_list nn in
+                                         let kn = VarMap.find n tr_env.fn_map
+                                         in convert_ret_typ kn.ret_typ
+                             | _ -> (check_expr tr_env e2))
+                     in if filt_typ = Bool then Array(t, i) else
                      raise (Failure "Filter kernel needs to return Bool")
-             | Map -> if t = (check_expr tr_env e2) then Array(t, i) else 
-                     raise (Failure "Map kernel return type needs to match
-                                   array")
+             | Map -> let map_typ = (match e2 with
+                             | Id(nn) -> let n = flatten_ns_list nn 
+                                         in let kn = VarMap.find n tr_env.fn_map
+                                         in convert_ret_typ kn.ret_typ
+                             | _ -> (check_expr tr_env e2)) in 
+                      Array(map_typ, i) 
              | _ -> raise (Failure "The OCaml compiler has a strict type system."))
             else raise (Failure "Map/Filter needs kernel that takes single
             parameter matching the [] to be mapped/filtered")
@@ -282,6 +289,7 @@ and check_expr tr_env expr =
         let get_mutability l =
                 let v = List.hd (VarMap.find l tr_env.scope) in
                 if v.mut = Mutable then v.var_type 
+                else if v.initialized = false then v.var_type
                 else raise (Failure "Cannot assign to immutable type")
         in
    (match e1 with 
@@ -331,13 +339,18 @@ and check_expr tr_env expr =
           else raise (Failure ("Lookback variable has type " ^ _string_of_typ t1 ^
                                " but lookback default returns " ^ _string_of_typ t2)) 
    | Cond(e1, e2, e3) -> if check_expr tr_env e1 = Bool then
-        let t2 = check_expr tr_env e2 in if t2 = check_expr tr_env e3 then t2
+        let t2 = check_expr tr_env e2 
+        and t3 = check_expr tr_env e3
+        in let _ = print_string (_string_of_typ t2)
+        in let _ = print_string "\n"
+        in let _ = print_string (_string_of_typ t3)
+        in if (t2 = t3) then t2 
         else raise (Failure "Ternary operator return type mismatch")
      else raise (Failure "Ternary operator conditional needs to be a boolean
      expr")
    | Lookback(nstr, i) -> let str = flatten_ns_list nstr in
-          if VarMap.mem str tr_env.scope then
-              let found_var = List.hd (VarMap.find str tr_env.scope)
+          if VarMap.mem str tr_env.lookbacks then
+              let found_var = (VarMap.find str tr_env.lookbacks)
               in if found_var.mut = Immutable then found_var.var_type
                  else raise (Failure "Lookback not allowed for mutable types")
           else raise (Failure ("Name " ^ str ^ " is not defined in lookback expression."))
@@ -386,7 +399,7 @@ and lambda_checker l env =
                         and t2 = get_bind_typ b
                         and var_name = get_bind_name b
                         and m = get_bind_mut b in
-            let _ = check_array_init t2 in
+            (* let _ = check_array_init t2 in *) 
             if compare_ast_typ t2 t1 then
                 let v = {id = var_name; var_type = t2; mut = m; initialized = true }
                         in push_variable_env v env
@@ -399,7 +412,7 @@ and lambda_checker l env =
                     in push_variable_env v env)
         | Expr(e) -> let _ = check_expr env e in
             (match e with
-            | Assign(e1,e2) -> (match e2 with 
+            | Assign(e1,e2) -> (match e1 with 
                 | Id(l) -> initialize_var (flatten_ns_list l) env
                 | _ -> env)
             | _ -> env)
@@ -481,7 +494,8 @@ let check_globals g =
                       check_global_inner { scope = VarMap.add s vlist tr_env.scope; 
                         structs = tr_env.structs;
                         fn_map = tr_env.fn_map; 
-                        new_variables = [] } tl
+                        new_variables = [];
+                        lookbacks = tr_env.lookbacks; } tl
               else let err_msg = "Type mismatch in let decl: " ^ _string_of_typ typ ^ 
                                  " " ^ s ^ " is assigned to " ^ _string_of_typ t2 
                                  in raise(Failure  err_msg))
@@ -513,7 +527,8 @@ let check_globals g =
                  check_global_inner { scope = tr_env.scope; 
                                       structs = VarMap.add s.sname st tr_env.structs;
                                       fn_map = tr_env.fn_map; 
-                                      new_variables = [] } tl
+                                      new_variables = [];
+                                      lookbacks = tr_env.lookbacks; } tl
            | ExternDecl(e) -> 
                  let f = { fname = e.xalias; fn_typ = Kn;
                            ret_typ = e.xret_typ; formals=e.xformals;      
@@ -521,15 +536,98 @@ let check_globals g =
                  let ntr_env = 
                        { scope = tr_env.scope; structs = tr_env.structs;
                          fn_map = VarMap.add f.fname f tr_env.fn_map;
-                         new_variables = []} in 
+                         new_variables = [];
+                         lookbacks = tr_env.lookbacks;} in 
                  check_global_inner ntr_env tl)
                                                     
    in 
    let env_default = { scope = VarMap.empty; structs = VarMap.empty; 
-                       fn_map = VarMap.empty; new_variables = []} in
+                       fn_map = VarMap.empty; new_variables = [];
+                       lookbacks = VarMap.empty;  } in
    check_global_inner env_default g
 
-      
+let get_lookback_env fn_typ formals body env = 
+    let rec grab_exprs decls exprs = function
+        | [] ->  (decls, exprs)
+        | hd::tl -> (match hd with
+            | VDecl(b,e) -> (match e with
+                | Some e -> grab_exprs (b::decls) (e::exprs) tl
+                | None -> grab_exprs (b::decls) exprs tl)
+            | Expr(e) -> grab_exprs decls (e::exprs) tl)
+
+    in let rec kn_lookback = function
+        | [] ->  true
+        | hd::tl -> (match hd with
+            | Binop(e1,binop,e2) -> if kn_lookback [e1;e2] then kn_lookback tl
+                                    else false
+            | Assign(e1,e2) -> if (kn_lookback [e1;e2])
+                                   then kn_lookback tl else false
+            | Call(s, elist) -> if kn_lookback elist then kn_lookback tl else false
+            | Uniop(_,e) -> if kn_lookback [e] then kn_lookback tl else false
+            | Cond(e1,e2,e3) -> if kn_lookback[e1;e2;e3] then kn_lookback tl 
+                                                         else false
+            | Access(e,_) -> if kn_lookback[e] then kn_lookback tl else false
+            | Lookback(s,i) -> false
+            | LookbackDefault(e1,e2) -> false
+            | _ -> kn_lookback tl)
+
+   in let rec gn_rec_lookback = function
+           | Lookback(slist, i) -> 
+               [flatten_ns_list slist]
+           | Assign(e1,e2) -> 
+               let lb1 = gn_rec_lookback e1
+               and lb2 = gn_rec_lookback e2 in lb1@lb2
+           | Call(_, elist) -> 
+               let lb_list = List.map gn_rec_lookback elist
+               in List.flatten lb_list
+           | Uniop(_,e) -> gn_rec_lookback e
+           | LookbackDefault(e1,e2) -> 
+               let lb1 = gn_rec_lookback e1
+               and lb2 = gn_rec_lookback e2 in lb1@lb2
+           | Cond(e1,e2,e3) -> 
+               let lb1 = gn_rec_lookback e1
+               and lb2 = gn_rec_lookback e2
+               and lb3 = gn_rec_lookback e3 in lb1@lb2@lb3
+           | Access(e, _) -> gn_rec_lookback e
+           | _ -> []
+   
+   in let rec get_lookback_bindings map bindings = function
+       | [] -> bindings
+       | Bind(m,t,name)::tl -> if StringMap.mem name map
+           then let var = { id = name;  mut = m; var_type = t;
+                        initialized = false; } 
+           in get_lookback_bindings map (var::bindings) tl
+           else get_lookback_bindings map bindings tl
+
+   in let rec add_lookbacks senv = function
+       | [] -> senv
+       | hd::tl -> 
+         let new_lbs = VarMap.add hd.id hd senv.lookbacks
+         in let new_env = { scope = senv.scope; structs = senv.structs; 
+                            fn_map = senv.fn_map; new_variables = senv.new_variables;
+                             lookbacks = new_lbs; } 
+         in add_lookbacks new_env tl
+
+   in let rec get_lb_names lbexprs = function
+       | [] -> lbexprs
+       | hd::tl -> get_lb_names ((gn_rec_lookback hd)@lbexprs) tl
+
+   in let (decls, exprs) = grab_exprs [] [] body
+   in let lb_names = (get_lb_names [] exprs)
+   in let rec mapify map = function
+       | [] -> map
+       | hd::tl -> if StringMap.mem hd map
+                       then mapify map tl
+                       else mapify (StringMap.add hd hd map) tl
+   in (match fn_typ with
+     | Kn -> if kn_lookback exprs then env
+                                  else raise (Failure "Kn can't have lookbacks")
+     | Gn -> let (decls, exprs) = grab_exprs [] [] body 
+             in let lb_names = get_lb_names [] exprs
+             in let smap = mapify StringMap.empty lb_names
+             in let bindings = get_lookback_bindings smap [] decls
+             in add_lookbacks env bindings)
+
 let check_body f env = 
     let check_formals formals env = 
         let check_formal env old_formals formal = 
@@ -545,25 +643,26 @@ let check_body f env =
            in let v = { id = formal_name; var_type = formal_type; mut = m; initialized=true }
            in push_variable_env v env
     in let formal_env = 
-       List.fold_left place_formal env (check_formals f.formals env) in
-    let body = f.body and
+       List.fold_left place_formal env (check_formals f.formals env)
+    in let lookback_env = get_lookback_env f.fn_typ f.formals f.body formal_env
+    in let body = f.body and
         ret = f.ret_expr 
     in
     let check_stmt env = function
-        | VDecl(b,e) -> (match e with (*TODO: ensure uniqueness of bind name *) 
+        | VDecl(b,e) -> (match e with 
            | Some exp -> let t1 = check_expr env exp and
                              t2 = get_bind_typ b and
                              var_name = get_bind_name b 
                              and m = get_bind_mut b in
                (* ensure that arrays cannot be initialized without sizes *)
-               let _ = check_array_init t2 in 
+               (* let _ = check_array_init t2 in  *) 
                if compare_ast_typ t2 t1 then
                    let v = { id = var_name; var_type = t2; mut = m; initialized = true}
                    in push_variable_env v env                  
                else let err_msg = "Type " ^ _string_of_typ t1 ^ " cannot be assigned" 
                                   ^ " to type " ^ _string_of_typ t2
                    in raise(Failure err_msg)
-           | None -> let t = get_bind_typ b and (*TODO: ensure uniqueness.. *)
+           | None -> let t = get_bind_typ b and
                          (* ensure that arrays cannot be initialized without sizes *) 
                          var_name = get_bind_name b and
                          m = get_bind_mut b 
@@ -572,18 +671,19 @@ let check_body f env =
            in push_variable_env v env ) 
         | Expr(e) -> let _ = check_expr env e in
             (match e with
-            | Assign(e1, e2) -> (match e2 with
+            | Assign(e1, e2) -> (match e1 with
                 | Id(l) -> initialize_var (flatten_ns_list l) env
                 | _ -> env)
             | _ -> env)
        in let ret_typ = convert_ret_typ f.ret_typ
        and tr = (match ret with
-          | Some r -> check_expr (List.fold_left check_stmt formal_env body) r
+          | Some r -> check_expr (List.fold_left check_stmt lookback_env body) r
           | None -> Void)
        in if (tr = ret_typ) then
                    { scope = env.scope; structs = env.structs;
                      fn_map = VarMap.add f.fname f env.fn_map;
-                     new_variables = env.new_variables}
+                     new_variables = env.new_variables;
+                     lookbacks = env.lookbacks; }
           else 
                    let err_msg  = "Function " ^ f.fname ^ " has type "
                    ^ _string_of_typ ret_typ ^ 
@@ -616,5 +716,6 @@ let check (ns, globals, functions) =
 	let flat_ns = flatten_ns ns in
   let globs_with_ns = (fst flat_ns) @ globals in 
 	let global_env = check_globals globs_with_ns in
-  ignore (check_functions ((snd flat_ns) @ functions) global_env);
-	([], fst flat_ns @ globals, snd flat_ns @ functions)
+	let nfunctions = noop_func::functions
+  in ignore (check_functions ((snd flat_ns) @ nfunctions) global_env);
+	([], fst flat_ns @ globals, snd flat_ns @ nfunctions)

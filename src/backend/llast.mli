@@ -20,31 +20,38 @@ type llreg =
   | LLRegLit of lltyp * lllit
   | LLRegDud
 
-(* might not be used
-type llacc_typ =
-  | LLBuildLoad
-  | LLBuildStore
-  | LLBuildAlloc
- *)
+type llops_iop =
+  | LLAdd
+  | LLSub
+  | LLMul
+  | LLDiv
+  | LLMod
+
+type llops_fop =
+  | LLFAdd
+  | LLFSub
+  | LLFMul
+  | LLFDiv
+
+type llops_ibop =
+  | LLLT
+  | LLEQ
+  | LLGT
+  | LLLE
+  | LLGE
+
+type llops_fbop =
+  | LLFLT
+  | LLFEQ
+  | LLFGT
+  | LLFGE
+  | LLFLE
 
 type llops_typ =
-  | LLAdd
-(*
-  | LLFAdd
-  | LLSub
-  | LLFSub
-  | LLMul
-  | LLFMul
-  | LLDiv (* signed *)
-  | LLFDiv
- *)
-  | LLLT (* integer less than *)
-(*
-  | LLFLT
-  | LLEQ
-  | LLFEQ
- *)
-(* many left*)
+  | LLIop of llops_iop
+  | LLFop of llops_fop
+  | LLIBop of llops_ibop
+  | LLFBop of llops_fbop
 
 type llblock_term = (* a block must be terminated by either a jump or a return *)
   | LLBlockReturn of llreg

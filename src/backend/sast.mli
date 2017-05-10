@@ -1,7 +1,11 @@
 type sscope = (* replacing Mutable vs Immutable *)
-  | SLocalVal | SLocalVar | SGlobal | SStructField | SKnCall
+  | SLocalVal
+  | SLocalVar
+  | SGlobal
+  | SStructField
+  | SKnLambda of sbind list
 
-type styp =
+and styp =
   | SInt
   | SFloat
   | SString
@@ -15,11 +19,11 @@ and sbind = SBind of styp * string * sscope
 
 type sbin_op_i =
   | SAddi | SSubi | SMuli | SDivi | SMod | SExpi
-  | SEqi | SLti | SNeqi | SLeqi | SGeqi
+  | SEqi | SLti | SGti | SNeqi | SLeqi | SGeqi
 
 type sbin_op_f =
   | SAddf | SSubf | SMulf | SDivf | SExpf
-  | SEqf | SLtf | SNeqf | SLeqf | SGeqf
+  | SEqf | SLtf | SGtf | SNeqf | SLeqf | SGeqf
 
 type sbin_op_b =
   | SLogAnd | SLogOr
@@ -62,6 +66,7 @@ and sexpr =
   | SAssign of styp * sexpr * sexpr
   | SKnCall of styp * string * (sexpr * styp) list
   | SGnCall of styp * string * (sexpr * styp) list
+	| SExternCall of styp * string * (sexpr * styp) list
   | SLookbackDefault of styp * int * sexpr * sexpr
   | SUnop of styp * sun_op * sexpr
   | SCond of styp * sexpr * sexpr * sexpr
@@ -101,6 +106,7 @@ type sgn_decl = {
 type sfn_decl =
   | SGnDecl of sgn_decl
   | SKnDecl of skn_decl
+  | SExternFunc of skn_decl
 
 type sstruct_def = {
   ssname      : string;
