@@ -171,8 +171,7 @@ and get_inherited body decls retexpr =
     in let flat_names = List.flatten full_body
     in let uniq_names = uniq flat_names
     in let inherits = add_inherit decls [] uniq_names
-    in let _ = List.iter print_bind_name inherits
-    in []
+		in inherits
 
 and to_slambda senv l = 
     let lformals = translate_fn_formals l.lformals senv
@@ -470,11 +469,12 @@ and translate_gn_decl senv gn =
     in let body_intermediate = List.map (get_sexpr gn_env) expr
     in let gbody = List.map (fun x -> (x, get_styp_from_sexpr x)) body_intermediate
     in (match gn.ret_expr with
-       | Some x -> let gret_expr = (get_sexpr gn_env x, ret_typ)
+       | Some x -> let _ = print_string "HAHA" in let gret_expr = (get_sexpr gn_env x, ret_typ)
           in { sgname = name; sgret_typ = ret_typ; sgmax_iter = gmax_iter; sgformals = gnformals;
                sglocalvals = gvals; sglocalvars = gvars; sgbody = gbody; 
                sgret_expr = Some gret_expr } 
-       | None -> { sgname = name; sgret_typ = ret_typ; sgmax_iter = gmax_iter; sgformals = gnformals;
+       | None -> 
+           let _ = print_string "BLA " in { sgname = name; sgret_typ = ret_typ; sgmax_iter = gmax_iter; sgformals = gnformals;
                sglocalvals = gvals; sglocalvars = gvars; sgbody = gbody; 
                sgret_expr = None })
            
