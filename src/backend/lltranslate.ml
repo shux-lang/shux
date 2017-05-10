@@ -119,8 +119,12 @@ let translate (structs,globals,funcs) =
     List.fold_left translate_func StringMap.empty funcs in
 
   let get_func_by_name fname =
+    if(StringMap.mem fname define_funcs= false)
+    then (print_string (fname^" not found\n"); assert false;)
+    else(
     let func_llvalue, _ = StringMap.find fname define_funcs in
     func_llvalue
+    )
   in
 
   let build_funcs=
@@ -202,13 +206,18 @@ let translate (structs,globals,funcs) =
 
       let get_reg block_builder = function
           LLRegLabel (typ, regname) ->
+          let ret =
           if (StringMap.mem regname build_formals)
           then (StringMap.find regname build_formals)
           else (
             if (StringMap.mem regname build_locals)
             then (StringMap.find regname build_locals)
-            else (StringMap.find regname define_globals)
-          )
+            else ( if(StringMap.mem regname define_globals)
+                   then (StringMap.find regname define_globals)
+                   else (print_string (regname^" not found\n"); assert false)
+                 )
+          ) in
+          ret
         | LLRegLit (typ, literal) ->
            let literal_ptr = L.build_alloca (lltyp_of typ) "lit_alloc_inst" block_builder in
            ignore(L.build_store (llvalue_of_lit typ block_builder literal) literal_ptr block_builder);
@@ -285,9 +294,38 @@ let translate (structs,globals,funcs) =
               )
            | LLBuildBinOp (optyp,label1,label2,labelresult) ->
               let reg1 = load_reg label1 block_builder and reg2 = load_reg label2 block_builder in
+              let icmpfinder = function
+                  LLLT -> L.Icmp.Slt
+                | LLEQ -> L.Icmp.Eq
+                | LLGT -> L.Icmp.Sgt
+                | LLLE -> L.Icmp.Sle
+                | LLGE -> L.Icmp.Sge
+                and
+                  fcmpfinder = function
+                  | LLFLT -> L.Fcmp.Olt
+                  | LLFEQ -> L.Fcmp.Oeq
+                  | LLFGT -> L.Fcmp.Ogt
+                  | LLFLE -> L.Fcmp.Ole
+                  | LLFGE-> L.Fcmp.Oge
+                and
+                  iopfinder = function
+                  | LLAdd -> L.build_add
+                  | LLSub -> L.build_sub
+                  | LLMul -> L.build_mul
+                  | LLDiv -> L.build_sdiv
+                  | LLMod -> L.build_srem
+                and
+                  fopfinder = function
+                  | LLFAdd -> L.build_fadd
+                  | LLFSub -> L.build_fsub
+                  | LLFMul -> L.build_fmul
+                  | LLFDiv -> L.build_fdiv
+              in
               let regbinop = (match optyp with
-                                LLAdd -> L.build_add reg1 reg2 "addinst" block_builder
-                              | LLLT -> L.build_icmp L.Icmp.Slt reg1 reg2 "ltinst" block_builder
+                                LLIop iop -> (iopfinder iop) reg1 reg2 "iopinst" block_builder
+                              | LLFop fop -> (fopfinder fop) reg1 reg2 "fopinst" block_builder
+                              | LLIBop ibop -> L.build_icmp (icmpfinder ibop) reg1 reg2 "ibopinst" block_builder
+                              | LLFBop fbop -> L.build_fcmp (fcmpfinder fbop) reg1 reg2 "icmpinst" block_builder
                              ) in
               store_reg labelresult regbinop block_builder
            | LLBuildArrayLoad (agglabel,indexlabel,destlabel) ->
