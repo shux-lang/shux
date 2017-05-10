@@ -7,6 +7,7 @@ obj_ext=".ll"
 out_ext=".out"
 expected_ext=".test"
 passes=0
+warnings=0
 fails=0
 skip_pass=0
 
@@ -86,6 +87,9 @@ do
         if grep -q "$exp_holder" $test_out > /dev/null 2>&1; then
             echo "passed! ✅"
             passes=$((passes+1))
+        elif grep -q "Warning" $test_out > /dev/null 2>&1; then
+            echo "compilation threw warning 🔶"
+            warnings=$((warnings+1))
         else
             echo "failed! expected error keyword(s) not found. please see $test$out_ext ❌"
             fails=$((fails+1))
@@ -95,6 +99,9 @@ do
             if grep -q "Uncaught exception" $test_out > /dev/null; then
                 echo "compilation failed ❌"
                 fails=$((fails+1))
+            elif grep -q "Warning" $test_out > /dev/null 2>&1; then
+                echo "compilation threw warning 🔶"
+                warnings=$((warnings+1))
             else
                 echo "passed! ✅"
                 passes=$((passes+1))
@@ -110,7 +117,7 @@ do
     fi
 done
 
-echo "\n$((fails+passes)) tests run", "$fails fail(s)", "$passes passes"
-if [ $fails -eq 0 ]; then
+echo "\n$((fails+passes+warnings)) tests run", "$fails fail(s)", "$warnings warning(s)", "$passes passes"
+if [ $((fails+warnings)) -eq 0 ]; then
     echo "all tests passed. you done it 💯"
 fi

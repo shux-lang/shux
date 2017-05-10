@@ -1,10 +1,12 @@
 kn main() int {
    int a = 5;
    if (a > 3) then
-      [a] @ (int a) -> {
+      [a] @ (int b) -> {
          print("hi there");
        }
    else
-      NOOP;
+      noop;
+
+   0
 }
        
