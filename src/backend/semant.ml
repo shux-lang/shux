@@ -197,8 +197,9 @@ and check_expr tr_env expr =
        in
             if (match e2 with
                 | Lit(n) -> (match n with
-                         | LitKn(l) ->(List.length l.lformals) = 1 &&
-                                   (get_bind_typ (List.hd l.lformals)) = t
+                         | LitKn(l) -> 
+                                   (List.length l.lformals) = 1 &&
+                                   ((get_bind_typ (List.hd l.lformals)) = t)
                          | _ -> raise (Failure "Filter/Map right hand literals needs to be a lambda :("))
                 | Id(nn) -> let n =  flatten_ns_list nn in 
                          if VarMap.mem n tr_env.fn_map then
@@ -223,8 +224,8 @@ and check_expr tr_env expr =
                              | _ -> (check_expr tr_env e2)) in 
                       Array(map_typ, i) 
              | _ -> raise (Failure "The OCaml compiler has a strict type system."))
-            else raise (Failure "Map/Filter needs kernel that takes single
-            parameter matching the [] to be mapped/filtered")
+            else raise (Failure ("Map/Filter needs kernel that takes single"
+            ^"parameter matching the [] to be mapped/filtered"))
        | Index -> if (check_expr tr_env e2) = Int then match t1 with
           | Array(v, i) -> v
           | Vector(l) -> Float
