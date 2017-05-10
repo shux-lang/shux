@@ -82,7 +82,7 @@ let sast_to_cast (let_decls, f_decls) =
   in let prefix_ref s = "ref_" ^ s  (* for arrays that return by reference *)
   in let ret_ref = "ret_ref"
   in let gns_hash = Hashtbl.create 42
-  in let lmb_hash = Hashtbl.create 42
+(*   in let lmb_hash = Hashtbl.create 42 *)
 
   in let kn_to_fn kn =
     let walk_stmt (e, t) = 
@@ -94,12 +94,10 @@ let sast_to_cast (let_decls, f_decls) =
 
           in let push_anon t e last =  
             (* push new sanon of type t onto stack, walk e, then do last *)
-            (* TODO: check order *)
             CPushAnon(t, CBlock(List.rev (last :: walk_anon e t (CPeekAnon t))))
 
           in let push_anon_nop t e =
             (* push new sanon of type t onto stack, walk e *)
-            (* TODO: check order *)
             CPushAnon(t, CBlock(List.rev (walk_anon e t (CPeekAnon t))))
 
           in let walk_primitive xxx =
@@ -308,13 +306,17 @@ let sast_to_cast (let_decls, f_decls) =
                 |  _ -> warn acc "encountered non-SGnCall in right operand of SFor"
 
               in let map xxx =
-                let (kn_t, kn_i) = match r with
-                  | SId(t, i, SKnLambda []) -> (t, i)
-                  | _ -> warn (SVoid, "") "right operand of map call incorrect"
+                let (kn_t, kn_i, kn_c) = match r with
+                  | SId(t, i, SKnLambda c) -> (t, i, c)
+                  | _ -> warn (SVoid, "", []) "right operand of map call incorrect"
                 in let et = match t with 
                   | SArray(et, _) when et=kn_t -> et
                   | _ -> warn kn_t "map return type mismatch"
-                in acc
+                in let emit =
+                  CExprDud
+                in let map_loop =
+                  CStmtDud
+                in map_loop :: acc
 
               in let filter xxx =
                 acc
