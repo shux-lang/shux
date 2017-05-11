@@ -141,7 +141,7 @@ let sast_to_cast (let_decls, f_decls) =
 
             in let walk_sex t i a =
               let map_act (e, t) =
-                push_anon_nop t e
+                push_anon t e (CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t)))
               in let eval_call =
                 CExCall(t, i, List.map map_act a)
               in emit t eval_call :: acc
