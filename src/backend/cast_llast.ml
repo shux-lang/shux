@@ -75,7 +75,6 @@ let cast_to_llast cast =
        match (sif, sthen, selse) with
          | (CPushAnon(ti, ifstmt), CPushAnon(tt, thenstmt), CPushAnon(te, elsestmt)) ->
             let v = a_decl cnt in
-            let v = "spooky" in
             let vreg = LLRegLabel (ctyp_to_lltyp ti, v) in
             let (cnt, head, rif, blabels,llinsts) =
               walk_cstmt ((v::a_stack), t_stack, (cnt + 1), vreg::head, blabels,llinsts) ifstmt in
