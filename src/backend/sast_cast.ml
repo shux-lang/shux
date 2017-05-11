@@ -18,8 +18,8 @@ let string_of_type t =
 
 in str "" t
 
-let die = true
-let war = true
+let die = false
+let war = false
 let bug s = raise (Failure ("[BUG]: " ^ s))
 (* let debug s = prerr_string ("[DEBUG]: " ^ s ^ "\n") *)
 let debug s = ()
@@ -87,7 +87,7 @@ let styp_of_sexpr = function
 let sast_to_cast (let_decls, f_decls) =
   let prefix_x s = "extern_" ^ s    (* extern decl *)
   in let prefix_s s = "struct_" ^ s (* struct defn *)
-  in let prefix_l s = "let_" ^ s    (* let decl *)
+(*   in let prefix_l s = "let_" ^ s    (* let decl *) *)
   in let prefix_kn s = if s="main" then s else "kn_" ^ s    (* kn function *)
   in let prefix_lambda s i = "lambda_" ^ i ^ "_" ^ s
   in let prefix_gn s = "gn_" ^ s    (* gn function *)
@@ -340,7 +340,6 @@ let sast_to_cast (let_decls, f_decls) =
                 in let (etr, cnt) = match atr with 
                   | SArray(t, Some cnt) when etr=t -> (etr, cnt)
                   | _ -> warn_t (etr, 0) atr "map kernel return type mismatch in walk_array"
-                  | _ -> print_type etr; warn (etr, 0) "map kernel return type mismatch in walk_array"
                 in let for_each = 
                   CExpr(SInt, CLit(SInt, CLitInt cnt))
                 in let curr = 
@@ -588,10 +587,11 @@ let sast_to_cast (let_decls, f_decls) =
       | SStruct(_, _) -> ref_kn ()
       | _ -> kn
 
+      (*
     in let local_bindings = 
       let fold_map acc (SBind(t, i, s)) = StringMap.add i (t, s) acc
       in List.fold_left fold_map StringMap.empty (kn.skformals @ kn.sklocals)
-
+*)
     in let kn_infer xxx = 
       let infer_array (e, t) =
         let co l r =
@@ -717,7 +717,7 @@ let sast_to_cast (let_decls, f_decls) =
       | SKnDecl(k)::t -> let r = walk_kn k in r @ walk t
       | SExDud(_)::t -> warn (walk t) "came across SEx booty call juicy"
     in walk f_decls
-  in let let_map = Hashtbl.create 42
+(*   in let let_map = Hashtbl.create 42 *)
   in let walk_static let_decls =
     (*
     let interp_expr t e =
