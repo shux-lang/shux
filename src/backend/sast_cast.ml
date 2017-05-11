@@ -15,7 +15,6 @@ let string_of_type t =
     | SArray(t, None) -> s ^ "SArray[] of " ^ str "" t
     | SPtr -> s ^ "SPtr"
     | SVoid -> s ^ "SVoid"
-
 in str "" t
 
 let die = true
@@ -30,7 +29,6 @@ let warn_t d t s = if war then prerr_string ("[WARN]: " ^ s ^ " (" ^ (string_of_
 
 let print_type t =
   if war then prerr_string ((string_of_type t) ^ "\n")
-
 
 let type_check t1 t2 s = (* default t1 *)
   if war then if t1=t2 then t1 else (print_type t1; print_type t2; warn t1 s) else t1
@@ -162,10 +160,10 @@ let sast_to_cast (let_decls, f_decls) =
                 | _ -> warn CBinopDud "encountered invalid binary operator in walk_primitive"
 
               in let primitive xxx = (* operators whose temp value don't change type *)
-                let acc = walk_r acc t l (* leaves sanon register coontaining result of l *)
-                in let eval_binop = CBinop(t, CPeek2Anon t, tr_binop, CPeekAnon t)
-                in let emit_r = CExpr(t, CAssign(t, CPeek2Anon t, eval_binop))
-                in push_anon t r emit_r :: acc
+                let eval_binop = CBinop(t, CPeek2Anon t, tr_binop, CPeekAnon t)
+                in let emit_res = CExpr(t, CAssign(t, CPeek3Anon t, eval_binop))
+                in let eval_r = push_anon (styp_of_sexpr r) r emit_res
+                in push_anon (styp_of_sexpr l) l eval_r :: acc
 
               in let dereference xxx = (* operators whose operands are of Array t and int *)
                 let eval =  (* TODO: make sure I understand what the fuck is going on here *)
@@ -509,7 +507,7 @@ let sast_to_cast (let_decls, f_decls) =
       | None -> CReturn None
 
     in let fn_decl kn = CFnDecl 
-      { cfname = kn.skname; cret_typ = kn.skret_typ;
+      { cfname = prefix_kn kn.skname; cret_typ = kn.skret_typ;
         cformals = kn.skformals; clocals = kn.sklocals;
         cbody = List.rev (walk_ret kn.skret_expr :: List.rev_map walk_stmt kn.skbody) }
 
