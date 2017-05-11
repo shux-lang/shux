@@ -5,10 +5,12 @@ module StringMap = Map.Make(String)
 
 let translate (structs,globals,funcs) =
   (* debug use *)
+  (*
   let print_llvalue llvalue msg=
     let lltype = L.type_of llvalue in
     prerr_string ("["^msg^"]"^" lltype:"^(L.string_of_lltype lltype)^";\n")
   in
+   *)
 
   let the_context = L.global_context () in
   let the_module = L.create_module the_context "shux" and
@@ -20,8 +22,6 @@ let translate (structs,globals,funcs) =
       void_t = L.void_type the_context
   in
   let str_t = L.pointer_type i8_t in
-  let f_void_t = L.function_type void_t [||] in
-  let fptr_void_t = L.pointer_type f_void_t in
 
   (* BEGIN EXTERNAL CALLS DEFINITIONS 
    *
@@ -302,7 +302,7 @@ let translate (structs,globals,funcs) =
     )
   in
 
-  let build_funcs=
+  let _ =
     let build_func func =
       let (the_function, _) = StringMap.find func.llfname define_funcs in
       let builder = L.builder_at_end the_context (L.entry_block the_function) in
