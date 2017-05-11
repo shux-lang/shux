@@ -133,15 +133,16 @@ let sast_to_cast (let_decls, f_decls) =
               in push_anon t r emit_r :: acc
 
             in let walk_call t i a =
-              let map_act (e, t) =
-                push_anon_nop t e
+              let emit_arg = CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t))
+              in let map_act (e, t) =
+                push_anon t e emit_arg
               in let eval_call =
-                CCall(t, prefix_kn i, List.map map_act a)
+                CCall(t, i, List.map map_act a)
               in emit t eval_call :: acc
 
             in let walk_sex t i a =
               let map_act (e, t) =
-                push_anon_nop t e
+                push_anon t e (CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t)))
               in let eval_call =
                 CExCall(t, i, List.map map_act a)
               in emit t eval_call :: acc
@@ -375,7 +376,7 @@ let sast_to_cast (let_decls, f_decls) =
               in let ret_ref =
                 CExpr(t, CPeekAnon t) (* just pass it in by reference *)
               in let eval_call =
-                CCall(t, prefix_kn i, ret_ref :: List.map map_act a)
+                CCall(t, i, ret_ref :: List.map map_act a)
               in CExpr(t, eval_call) :: acc (* no need for emit, use side effect *)
 
             in match rexpr with
@@ -419,7 +420,7 @@ let sast_to_cast (let_decls, f_decls) =
               in let ret_ref =
                 CExpr(t, CPeekAnon t) (* just pass it in by reference *)
               in let eval_call =
-                CCall(t, prefix_kn i, ret_ref :: List.map map_act a)
+                CCall(t, i, ret_ref :: List.map map_act a)
               in CExpr(t, eval_call) :: acc (* no need for emit, use side effect *)
 
             in match rexpr with 
