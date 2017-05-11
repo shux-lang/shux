@@ -133,8 +133,9 @@ let sast_to_cast (let_decls, f_decls) =
               in push_anon t r emit_r :: acc
 
             in let walk_call t i a =
-              let map_act (e, t) =
-                push_anon_nop t e
+              let emit_arg = CExpr(t, CAssign(t, CPeek2Anon t, CPeekAnon t))
+              in let map_act (e, t) =
+                push_anon t e emit_arg
               in let eval_call =
                 CCall(t, i, List.map map_act a)
               in emit t eval_call :: acc
