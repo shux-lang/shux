@@ -159,10 +159,10 @@ let sast_to_cast (let_decls, f_decls) =
                 | _ -> warn CBinopDud "encountered invalid binary operator in walk_primitive"
 
               in let primitive xxx = (* operators whose temp value don't change type *)
-                let acc = walk_r acc t l (* leaves sanon register coontaining result of l *)
-                in let eval_binop = CBinop(t, CPeek2Anon t, tr_binop, CPeekAnon t)
-                in let emit_r = CExpr(t, CAssign(t, CPeek2Anon t, eval_binop))
-                in push_anon t r emit_r :: acc
+                let eval_binop = CBinop(t, CPeek2Anon t, tr_binop, CPeekAnon t)
+                in let emit_res = CExpr(t, CAssign(t, CPeek3Anon t, eval_binop))
+                in let eval_r = push_anon (styp_of_sexpr r) r emit_res
+                in push_anon (styp_of_sexpr l) l eval_r :: acc
 
               in let dereference xxx = (* operators whose operands are of Array t and int *)
                 let eval =  (* TODO: make sure I understand what the fuck is going on here *)
