@@ -102,6 +102,7 @@ let sast_to_cast (let_decls, f_decls) =
     let walk_stmt (e, t) = 
       let rec walk_anon sexpr styp sanon = (* this will yield a reversed list *)
         let emit t v = (* set sanon register to the value of v *)
+          if t=SVoid then CBlock [] else
           CExpr(t, CAssign(t, sanon, v))
 
         in let push_anon t e last =  
@@ -503,7 +504,8 @@ let sast_to_cast (let_decls, f_decls) =
           in walk [] lexpr
 
         in walk_l styp sexpr
-      in CPushAnon(t, CBlock(List.rev (walk_anon e t (CPeekAnon t)))) (* in order *)
+      in if t=SVoid then CBlock(List.rev (walk_anon e t (CPeekAnon t)))
+          else CPushAnon(t, CBlock(List.rev (walk_anon e t (CPeekAnon t)))) (* in order *)
 
     in let walk_ret = function
       | Some (e, t) -> CReturn (Some (t, (walk_stmt (e, t)))) 
