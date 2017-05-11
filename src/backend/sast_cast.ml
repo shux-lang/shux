@@ -15,6 +15,7 @@ let string_of_type t =
     | SArray(t, None) -> s ^ "SArray[] of " ^ str "" t
     | SPtr -> s ^ "SPtr"
     | SVoid -> s ^ "SVoid"
+
 in str "" t
 
 let die = true
@@ -29,6 +30,7 @@ let warn_t d t s = if war then prerr_string ("[WARN]: " ^ s ^ " (" ^ (string_of_
 
 let print_type t =
   if war then prerr_string ((string_of_type t) ^ "\n")
+
 
 let type_check t1 t2 s = (* default t1 *)
   if war then if t1=t2 then t1 else (print_type t1; print_type t2; warn t1 s) else t1
