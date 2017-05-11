@@ -186,8 +186,11 @@ ret
        (cnt, head, vreg, blabels, llinsts)
     | CAssign (typ, expr1, expr2) ->
        prerr_string "CAssign->";
+       
        let (cnt,head,e1, blabels, llinsts) = walk_cexpr a_stack c_stack t_stack cnt head blabels llinsts expr1 in
+       
        let (cnt,head,e2, blabels,llinsts) = walk_cexpr a_stack c_stack t_stack cnt head blabels llinsts expr2 in
+       (*       ignore(List.iter prerr_string (pretty_print_regs [e1;e2])); *)
        (*
        let zeroint = LLRegLit(LLInt, (LLLitInt 0))  (* TODO need to store both int and doubles *)
        and zerofloat = LLRegLit(LLDouble, (LLLitDouble 0.))
@@ -211,17 +214,26 @@ ret
        let llinsts = add_inst_to_branch llinst (List.hd blabels) llinsts in
        (cnt, head, e1, blabels, llinsts) 
     | CPeekAnon typ ->
-       prerr_string "PeekAnon->";
+       (match typ with
+          SVoid -> (cnt, head, dud, blabels, llinsts)
+        | _-> prerr_string "PeekAnon->";
        let anon = (match a_stack  with h::t -> h | [] -> assert false) in
        (cnt, head, LLRegLabel (ctyp_to_lltyp typ, anon), blabels, llinsts)
+       )
     | CPeek2Anon typ ->
-       prerr_string "PeekAnon2->";
-       let anon = (List.nth a_stack 1) in
-       (cnt, head, LLRegLabel (ctyp_to_lltyp typ, anon), blabels, llinsts)
+       (match typ with
+          SVoid -> (cnt, head, dud, blabels, llinsts)
+        | _-> prerr_string "PeekAnon2->";
+              let anon = (List.nth a_stack 1) in
+              (cnt, head, LLRegLabel (ctyp_to_lltyp typ, anon), blabels, llinsts)
+       )
     | CPeek3Anon typ ->
-       prerr_string "PeekAnon3->";
-       let anon = (List.nth a_stack 2) in
-       (cnt, head, LLRegLabel (ctyp_to_lltyp typ, anon), blabels, llinsts)
+       (match typ with
+          SVoid -> (cnt, head, dud, blabels, llinsts)
+        | _-> prerr_string "PeekAnon3->";
+              let anon = (List.nth a_stack 2) in
+              (cnt, head, LLRegLabel (ctyp_to_lltyp typ, anon), blabels, llinsts)
+       )
     | CCall (frettyp, fname, fstmts) ->
        let fold_block (cnt, head, llreg, blabels, llinsts, reglist) stmt  =
          let (cnt, head, llreg, blabels, llinsts) = walk_cstmt (a_stack, c_stack, t_stack, cnt, head, blabels, llinsts) stmt
@@ -252,10 +264,11 @@ ret
           (cnt, head, vreg, blabels, llinsts)
        )
     | CLoopCtr ->
-       prerr_string "CLoopCtr";
+       prerr_string "CLoopCtr->";
        let ctr = (match c_stack  with h::t -> h | [] -> assert false) in
        (cnt,head,LLRegLabel (LLInt,ctr), blabels, llinsts)
     | CExCall (frettyp, fname, fstmts) ->
+       prerr_string "CExCall->";
        let fold_block (cnt, head, llreg, blabels, llinsts, reglist) stmt  =
          let (cnt, head, llreg, blabels, llinsts) = walk_cstmt (a_stack, c_stack, t_stack, cnt, head, blabels, llinsts) stmt
          in
@@ -274,21 +287,6 @@ ret
        )
     | _ -> assert false
   in
-
-  let pretty_print_regs l =
-    let str_typ = function
-      | LLBool -> "bool"
-      | LLInt -> "int"
-      | LLConstString -> "string"
-      | LLDouble -> "double"
-      | _ -> "other"
-    in
-    let print_reg = function
-        LLRegLabel (typ,str) -> ("Label-"^(str_typ typ)^"-"^str)
-      | LLRegLit (typ, lit) -> ("Lit-"^(str_typ typ))
-      | LLRegDud -> "Dud"
-    in
-    List.map print_reg l in
 
   let translate_cdecl list = function
     | CFnDecl cfunc ->
