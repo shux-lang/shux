@@ -20,10 +20,186 @@ let translate (structs,globals,funcs) =
       void_t = L.void_type the_context
   in
   let str_t = L.pointer_type i8_t in
+  let f_void_t = L.function_type void_t [||] in
+  let fptr_void_t = L.pointer_type f_void_t in
+
+  (* BEGIN EXTERNAL CALLS DEFINITIONS 
+   *
+   *)
+
+  (* LVS *)
+  (* gl init call set *)
+  (*
+  let glClearColor_formals = Array.of_list [float_t; float_t; float_t; float_t] in
+  let glClearColor_sign = L.function_type void_t glClearColor_formals in
+  let glClearColor_func = L.declare_function "glClearColor" glClearColor_sign the_module in
+
+  let glEnable_formals = Array.of_list [i32_t] in
+  let glEnable_sign = L.function_type void_t glEnable_formals in
+  let glEnable_func = L.declare_function "glEnable" glEnable_sign the_module in
+
+  let glPointSize_formals = Array.of_list [float_t] in
+  let glPointSize_sign = L.function_type void_t glPointSize_formals in
+  let glPointSize_func = L.declare_function "glPointSize" glPointSize_sign the_module in
+
+  let glMatrixMode_formals = Array.of_list [i32_t] in
+  let glMatrixMode_sign = L.function_type void_t glMatrixMode_formals in
+  let glMatrixMode_func = L.declare_function "glMatrixMode" glMatrixMode_sign the_module in
+
+  
+  (* gl render call set *)
+  let glClear_formals = Array.of_list [i32_t] in
+  let glClear_sign = L.function_type void_t glClear_formals in
+  let glClear_func = L.declare_function "glClear" glClear_sign the_module in
+
+  let glLoadIdentity_formals = Array.of_list [] in
+  let glLoadIdentity_sign = L.function_type void_t glLoadIdentity_formals in
+  let glLoadIdentity_func = L.declare_function "glLoadIdentity" glLoadIdentity_sign  the_module in
+
+  let glOrtho_formals = Array.of_list [float_t; float_t; float_t; float_t] in
+  let glOrtho_sign = L.function_type void_t glOrtho_formals in
+  let glOrtho_func = L.declare_function "glOrtho" glOrtho_sign the_module in
+
+  let glColor4f_formals = Array.of_list [float_t; float_t; float_t; float_t] in
+  let glColor4f_sign = L.function_type void_t glColor4f_formals in
+  let glColor4f_func = L.declare_function "glColor4f" glColor4f_sign the_module in
+
+  (* for the render loop *)
+  let glBegin_formals = Array.of_list [i32_t] in
+  let glBegin_sign = L.function_type void_t glBegin_formals in
+  let glBegin_func = L.declare_function "glBegin" glBegin_sign the_module in
+
+  let glVertex2f_formals = Array.of_list [float_t; float_t] in
+  let glVertex2f_sign = L.function_type void_t glVertex2f_formals in
+  let glVertex2f_func = L.declare_function "glVertex2f" glVertex2f_sign the_module in
+
+  let glVertexArray_formals = Array.of_list [i32_t; i32_t; i32_t; L.pointer_type float_t ] in
+  let glVertexArray_sign = L.function_type void_t glVertexArray_formals in
+  let glVertexArray_func = L.declare_function "glVertexArray" glVertexArray_sign the_module in
+
+  let glEnd_formals = Array.of_list [i32_t] in
+  let glEnd_sign = L.function_type void_t glEnd_formals in
+  let glEnd_func = L.declare_function "glEnd" glEnd_sign the_module in 
+
+  let glutSwapBuffers_formals = Array.of_list [] in
+  let glutSwapBuffers_sign = L.function_type void_t glutSwapBuffers_formals in
+  let glutSwapBuffers_func = L.declare_function "glutSwapBuffers" glutSwapBuffers_sign the_module in
+
+
+  (* gl update/idle call set *)
+  let glutPostRedisplay_formals = Array.of_list [] in
+  let glutPostRedisplay_sign = L.function_type void_t glutPostRedisplay_formals in
+  let glutPostRedisplay_func = L.declare_function "glutPostRedisplay" glutPostRedisplay_sign the_module in
+
+
+  (* glut main call set *)
+  let glutInitWindowSize_formals = Array.of_list [i32_t; i32_t] in
+  let glutInitWindowSize_sign = L.function_type void_t glutInitWindowSize_formals in
+  let glutInitWindowSize_func = L.declare_function "glutInitWindowSize" glutInitWindowSize_sign the_module in
+
+  let glutInit_formals = Array.of_list [L.pointer_type i32_t; L.pointer_type (L.pointer_type i8_t)] in
+  let glutInit_sign = L.function_type void_t glutInit_formals in
+  let glutInit_func = L.declare_function "glutInit" glutInit_sign the_module in 
+
+  let glutCreateWindow_formals = Array.of_list [L.pointer_type i8_t] in
+  let glutCreateWindow_sign = L.function_type i32_t glutCreateWindow_formals in
+  let glutCreateWindow_func = L.declare_function "glutCreateWindow" glutCreateWindow_sign the_module in
+ 
+  let glutDisplayFunc_formals = Array.of_list [fptr_void_t] in
+  let glutDisplayFunc_sign = L.function_type void_t glutDisplayFunc_formals in
+  let glutDisplayFunc_func = L.declare_function "glutDisplayFunc" glutDisplayFunc_sign the_module in
+
+  let glutIdleFunc_formals = Array.of_list [fptr_void_t] in
+  let glutIdleFunc_sign = L.function_type void_t glutIdleFunc_formals in
+  let glutIdleFunc_func = L.declare_function "glutIdleFunc" glutIdleFunc_sign the_module in
+
+  let glutMainLoop_formals = Array.of_list [] in
+  let glutMainLoop_sign = L.function_type void_t glutMainLoop_formals in
+  let glutMainLoop_func = L.declare_function "glutMainLoop" glutMainLoop_sign the_module in
+
+  (* END LVS *)
+  (* END EXTERNAL CALLS DEFINITIONS 
+   *
+   *)
+
+  (* ************************************************************* *)
+
+  (* LVS START initgl modifications *)
+  let init_gl_func_formals = Array.of_list [] in
+  let init_gl_func_sign = L.function_type void_t init_gl_func_formals in
+  let init_gl_func_llvalue = L.define_function "__init_gl" init_gl_func_sign the_module in
+  let builder_init_gl_func = L.builder_at_end the_context (L.entry_block init_gl_func_llvalue) in
+  let _ = L.build_call glClearColor_func [| L.const_float float_t 0.9; L.const_float float_t 0.9; L.const_float float_t 0.9; L.const_float float_t 1.0 |] "" builder_init_gl_func in
+  let _ = L.build_call glEnable_func [| L.const_int i32_t 2832 |] "" builder_init_gl_func in
+  let _ = L.build_call glPointSize_func [| L.const_float float_t 10.0 |] "" builder_init_gl_func in
+  let _ = L.build_call glMatrixMode_func [| L.const_int i32_t 5889 |] "" builder_init_gl_func in
+  let _ = L.build_ret_void builder_init_gl_func in
+  (* LVS END initgl modifications *)
+  
+
+  (* &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& *)
+  (* begin work on actual bindings *)
+
+  (* graphics_do_update *)
+  (* user-callable update function *)
+  let idle_func_formals = Array.of_list [] in
+  let idle_func_sign = L.function_type void_t idle_func_formals in
+  let idle_func_llvalue = L.define_function "graphics_do_update" idle_func_sign the_module in
+  let builder_idle_func = L.builder_at_end the_context (L.entry_block idle_func_llvalue) in
+  let _ = L.build_call glutPostRedisplay_func [||] "" builder_idle_func in
+  let _ = L.build_ret_void builder_idle_func in
+
+  (* graphics_do_render *)
+  (* a display function rendering a list of 2d scalars *)
+  (* LVSTOOD doesn't take parameters yet *)
+  let display_func_formals = Array.of_list [] in
+  let display_func_sign = L.function_type void_t display_func_formals in
+  let display_func_llvalue = L.define_function "graphics_do_render" display_func_sign the_module in
+  let builder_display_func = L.builder_at_end the_context (L.entry_block display_func_llvalue) in
+  let _ = L.build_call glClear_func [|L.const_int i32_t 16640|] "" builder_display_func in
+  let _ = L.build_call glLoadIdentity_func [||] "" builder_display_func in
+  let _ = L.build_call glOrtho_func [| L.const_float float_t 0.0; L.const_float float_t 800.0; L.const_float float_t 0.0; L.const_float float_t 600.0;|] "" builder_display_func in
+  (* user code here -- testing *)
+  let _ = L.build_call glColor4f_func [| L.const_float float_t 0.2; L.const_float float_t 0.6; L.const_float float_t 1.0; L.const_float float_t 1.0; |] "" builder_display_func in
+  let _ = L.build_call glBegin_func [| L.const_int i32_t 0 |] "" builder_display_func in
+  let _ = L.build_call glVertex2f_func [| L.const_float float_t 0.0; L.const_float float_t 0.0 |] "" builder_display_func in
+  let _ = L.build_call glEnd_func [| L.const_int i32_t 0 |] "" builder_display_func in
+  (* end user code *)
+  let _ = L.build_call glutSwapBuffers_func [||] "" builder_display_func in
+  let _ = L.build_ret_void builder_display_func in
+
+  (* graphics init *)
+  (* spoof argc for glutinit *)
+  let graphics_init_formals = Array.of_list [] in
+  let graphics_init_sign = L.function_type void_t graphics_init_formals in
+  let graphics_init_llvalue = L.define_function "graphics_init" graphics_init_sign the_module in
+  let builder_graphics_init = L.builder_at_end the_context (L.entry_block graphics_init_llvalue) in
+  let argc_ptr = L.build_alloca i32_t "argc" builder_graphics_init in
+  let _ = L.build_store (L.const_int i32_t 0) argc_ptr builder_graphics_init in
+  let _ = L.build_call glutInitWindowSize_func [| (L.const_int i32_t 800); (L.const_int i32_t 600) |] "" builder_graphics_init in
+  let _ = L.build_call glutInit_func [| argc_ptr; (L.const_pointer_null (L.pointer_type (L.pointer_type i8_t))) |] "" builder_graphics_init in
+  let _ = L.build_call glutCreateWindow_func [| (L.const_pointer_null (L.pointer_type i8_t)) |] "dummy" builder_graphics_init in
+  let _ = L.build_ret_void builder_graphics_init in
+
+  (* graphics_loop *)
+  (* LVSTODO doesnt take parameters yet *)
+  let graphics_loop_formals = Array.of_list [] in
+  let graphics_loop_sign = L.function_type void_t graphics_loop_formals in
+  let graphics_loop_llvalue = L.define_function "graphics_loop" graphics_loop_sign the_module in
+  let builder_graphics_loop = L.builder_at_end the_context (L.entry_block graphics_loop_llvalue) in
+  let _ = L.build_call glutDisplayFunc_func [| display_func_llvalue |] "" builder_graphics_loop in
+  let _ = L.build_call glutIdleFunc_func [| idle_func_llvalue |] "" builder_graphics_loop in
+  let _ = L.build_call init_gl_func_llvalue [||] "" builder_graphics_loop in
+  let _ = L.build_call glutMainLoop_func [||] "" builder_graphics_loop in
+  let _ = L.build_ret_void builder_graphics_loop in
+
+  (* ************************************************************** *)
+   *)
 
   let extract_type = function
       LLRegLabel (typ, str) -> typ
-    | LLRegLit (typ, lit) -> typ in
+    | LLRegLit (typ, lit) -> typ
+    | LLRegDud -> assert false in
 
   (* Define all the structs *)
 
@@ -118,8 +294,12 @@ let translate (structs,globals,funcs) =
     List.fold_left translate_func StringMap.empty funcs in
 
   let get_func_by_name fname =
+    if(StringMap.mem fname define_funcs= false)
+    then (print_string (fname^" not found\n"); assert false;)
+    else(
     let func_llvalue, _ = StringMap.find fname define_funcs in
     func_llvalue
+    )
   in
 
   let build_funcs=
@@ -131,7 +311,8 @@ let translate (structs,globals,funcs) =
 
       let get_reg_typ_name = function
           LLRegLabel (typ, str) -> (typ, str)
-        | LLRegLit (typ,lit) -> (typ,"nonameliteral") in
+        | LLRegLit (typ,lit) -> (typ,"nonameliteral")
+        | LLRegDud -> assert false in
 
       let build_formals = (* this is a map from formal name to its stack ptr *)
         let build_formal map formal_def formal_param =
@@ -200,21 +381,28 @@ let translate (structs,globals,funcs) =
 
       let get_reg block_builder = function
           LLRegLabel (typ, regname) ->
+          let ret =
           if (StringMap.mem regname build_formals)
           then (StringMap.find regname build_formals)
           else (
             if (StringMap.mem regname build_locals)
             then (StringMap.find regname build_locals)
-            else (StringMap.find regname define_globals)
-          )
+            else ( if(StringMap.mem regname define_globals)
+                   then (StringMap.find regname define_globals)
+                   else (print_string (regname^" not found\n"); assert false)
+                 )
+          ) in
+          ret
         | LLRegLit (typ, literal) ->
            let literal_ptr = L.build_alloca (lltyp_of typ) "lit_alloc_inst" block_builder in
            ignore(L.build_store (llvalue_of_lit typ block_builder literal) literal_ptr block_builder);
            literal_ptr
+        | LLRegDud -> assert false
       in
 
       let load_reg ptrreglabel block_builder =
-        L.build_load (get_reg block_builder ptrreglabel) "loadinst" block_builder
+        let reg = (get_reg block_builder ptrreglabel) in
+        L.build_load  reg "loadinst" block_builder
       in
 
       let store_reg ptrreglabel val_to_store block_builder=
@@ -282,9 +470,40 @@ let translate (structs,globals,funcs) =
               )
            | LLBuildBinOp (optyp,label1,label2,labelresult) ->
               let reg1 = load_reg label1 block_builder and reg2 = load_reg label2 block_builder in
+              let icmpfinder = function
+                  LLLT -> L.Icmp.Slt
+                | LLEQ -> L.Icmp.Eq
+                | LLGT -> L.Icmp.Sgt
+                | LLLE -> L.Icmp.Sle
+                | LLGE -> L.Icmp.Sge
+                and
+                  fcmpfinder = function
+                  | LLFLT -> L.Fcmp.Olt
+                  | LLFEQ -> L.Fcmp.Oeq
+                  | LLFGT -> L.Fcmp.Ogt
+                  | LLFLE -> L.Fcmp.Ole
+                  | LLFGE-> L.Fcmp.Oge
+                and
+                  iopfinder = function
+                  | LLAdd -> L.build_add
+                  | LLSub -> L.build_sub
+                  | LLMul -> L.build_mul
+                  | LLDiv -> L.build_sdiv
+                  | LLMod -> L.build_srem
+                  | LLAnd -> L.build_and
+                  | LLOr -> L.build_or
+                and
+                  fopfinder = function
+                  | LLFAdd -> L.build_fadd
+                  | LLFSub -> L.build_fsub
+                  | LLFMul -> L.build_fmul
+                  | LLFDiv -> L.build_fdiv
+              in
               let regbinop = (match optyp with
-                                LLAdd -> L.build_add reg1 reg2 "addinst" block_builder
-                              | LLLT -> L.build_icmp L.Icmp.Slt reg1 reg2 "ltinst" block_builder
+                                LLIop iop -> (iopfinder iop) reg1 reg2 "iopinst" block_builder
+                              | LLFop fop -> (fopfinder fop) reg1 reg2 "fopinst" block_builder
+                              | LLIBop ibop -> L.build_icmp (icmpfinder ibop) reg1 reg2 "ibopinst" block_builder
+                              | LLFBop fbop -> L.build_fcmp (fcmpfinder fbop) reg1 reg2 "icmpinst" block_builder
                              ) in
               store_reg labelresult regbinop block_builder
            | LLBuildArrayLoad (agglabel,indexlabel,destlabel) ->
@@ -304,6 +523,10 @@ let translate (structs,globals,funcs) =
               let val_to_store = load_reg fromlabel block_builder in
               L.build_store val_to_store elementptr block_builder
            | LLBuildTerm terminator -> build_terminator block_builder terminator
+           | LLBuildAssign (tolabel, fromlabel) ->
+              let val_to_assign = load_reg fromlabel block_builder in
+              store_reg tolabel val_to_assign block_builder
+           | LLBuildNoOp -> L.const_int i32_t 0
           )
            in
         StringMap.add ("stmt"^func.llfname) stmt_llvalue map
