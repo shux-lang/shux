@@ -11,8 +11,9 @@ let cast_to_llast cast =
     | SBool -> LLBool
     | SArray (styp, int) -> LLArray (ctyp_to_lltyp styp, int)
     | SStruct (name, _) -> LLStruct name
-    | SVoid -> LLVoid
-    | _ -> assert false
+    | SVoid -> LLInt
+    | SString -> LLConstString
+    | SPtr -> assert false;
   in
 
   let rec translate_clit = function
@@ -232,9 +233,16 @@ ret
        in
        (match frettyp with
         | SVoid ->
-           let llcallinst = LLBuildCall (fname, List.rev reglist, None) in
-           let llinsts = add_inst_to_branch llcallinst (List.hd blabels) llinsts in
-          (cnt, head, dud, blabels, llinsts)
+           (match fname with
+              "print" ->
+              let llcallinst = LLBuildPrintCall (List.nth reglist 0) in
+              let llinsts = add_inst_to_branch llcallinst (List.hd blabels) llinsts in
+              (cnt, head, dud, blabels, llinsts)
+            | _ ->
+               let llcallinst = LLBuildCall (fname, List.rev reglist, None) in
+               let llinsts = add_inst_to_branch llcallinst (List.hd blabels) llinsts in
+               (cnt, head, dud, blabels, llinsts)
+           )
         | _ ->
           let v = t_decl cnt in
           let vreg = LLRegLabel ((ctyp_to_lltyp frettyp), v) in
@@ -247,6 +255,23 @@ ret
        prerr_string "CLoopCtr";
        let ctr = (match c_stack  with h::t -> h | [] -> assert false) in
        (cnt,head,LLRegLabel (LLInt,ctr), blabels, llinsts)
+    | CExCall (frettyp, fname, fstmts) ->
+       let fold_block (cnt, head, llreg, blabels, llinsts, reglist) stmt  =
+         let (cnt, head, llreg, blabels, llinsts) = walk_cstmt (a_stack, c_stack, t_stack, cnt, head, blabels, llinsts) stmt
+         in
+         (cnt, head, llreg, blabels,llinsts, llreg::reglist)
+       in
+       let (cnt, head, _, blabels, llinsts, reglist) =
+         List.fold_left fold_block (cnt, head, dud, blabels, llinsts,[]) fstmts
+       in
+       (match fname with
+              "print" ->
+              let llcallinst = LLBuildPrintCall (List.nth reglist 0) in
+              let llinsts = add_inst_to_branch llcallinst (List.hd blabels) llinsts in
+              (cnt, head, dud, blabels, llinsts)
+            | _ ->
+               assert false
+       )
     | _ -> assert false
   in
 
