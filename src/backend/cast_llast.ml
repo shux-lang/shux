@@ -46,14 +46,13 @@ let cast_to_llast cast =
   in
 
   let rec walk_cstmt (a_stack,c_stack,t_stack,cnt,head,blabels,llinsts) = function
-    | CExpr(t, e) -> prerr_string "CExpr->("; (assert (StringMap.mem "entry" llinsts)); let ret = walk_cexpr a_stack c_stack t_stack cnt head blabels llinsts e in prerr_string ")"; ret
+    | CExpr(t, e) -> (assert (StringMap.mem "entry" llinsts)); let ret = walk_cexpr a_stack c_stack t_stack cnt head blabels llinsts e in ret
     | CPushAnon(t, s) -> 
        let v = a_decl cnt in
-       prerr_string ("CPushAnon "^v^"->");
        let vreg = LLRegLabel (ctyp_to_lltyp t, v) in
        walk_cstmt ((v::a_stack),c_stack,t_stack,(cnt + 1),(vreg::head),blabels,llinsts) s
 
-    | CReturn opt -> prerr_string "CReturn->";(match opt with
+    | CReturn opt -> (match opt with
                         Some (typ, CPushAnon(t, cstmt)) when t=typ ->
                         let v = a_decl cnt in
                         let vreg = LLRegLabel (ctyp_to_lltyp typ, v) in
@@ -131,17 +130,15 @@ let cast_to_llast cast =
        let llinsts = add_inst_to_branch jmp_forbody (List.hd blabels) llinsts in
        (cnt, head, dud, mergename::blabels, llinsts)
     | CBlock stmt_list ->
-       prerr_string "CBlock->[";
        let fold_block (cnt, head, llreg, blabels, llinsts) stmt  =
          walk_cstmt (a_stack, c_stack, t_stack, cnt, head, blabels, llinsts) stmt in
        let ret = List.fold_left fold_block (cnt, head, dud, blabels, llinsts) stmt_list
-        in prerr_string "]";
-ret
+       in ret
     | _ -> assert false
 
   and walk_cexpr a_stack c_stack t_stack cnt head blabels llinsts= function
-      CLit (typ, lit) -> prerr_string "CLit->"; (cnt, head, LLRegLit (ctyp_to_lltyp typ,(translate_clit lit)), blabels,llinsts)
-    | CId (typ, str) -> prerr_string ("CId"^str^"->"); (cnt, head, LLRegLabel (ctyp_to_lltyp typ,str), blabels, llinsts)
+      CLit (typ, lit) -> (cnt, head, LLRegLit (ctyp_to_lltyp typ,(translate_clit lit)), blabels,llinsts)
+    | CId (typ, str) -> (cnt, head, LLRegLabel (ctyp_to_lltyp typ,str), blabels, llinsts)
     | CBinop (typx, expr1, op, expr2) ->
        let (cnt,head,e1, blabels,llinsts) = walk_cexpr a_stack c_stack t_stack cnt head blabels llinsts expr1 in
        let (cnt,head,e2, blabels,llinsts) = walk_cexpr a_stack c_stack t_stack cnt head blabels llinsts expr2 in
@@ -185,8 +182,6 @@ ret
        let llinsts = add_inst_to_branch llinst (List.hd blabels) llinsts in
        (cnt, head, vreg, blabels, llinsts)
     | CAssign (typ, expr1, expr2) ->
-       prerr_string "CAssign->";
-       
        let (cnt,head,e1, blabels, llinsts) = walk_cexpr a_stack c_stack t_stack cnt head blabels llinsts expr1 in
        
        let (cnt,head,e2, blabels,llinsts) = walk_cexpr a_stack c_stack t_stack cnt head blabels llinsts expr2 in
@@ -216,21 +211,21 @@ ret
     | CPeekAnon typ ->
        (match typ with
           SVoid -> (cnt, head, dud, blabels, llinsts)
-        | _-> prerr_string "PeekAnon->";
+        | _->
        let anon = (match a_stack  with h::t -> h | [] -> assert false) in
        (cnt, head, LLRegLabel (ctyp_to_lltyp typ, anon), blabels, llinsts)
        )
     | CPeek2Anon typ ->
        (match typ with
           SVoid -> (cnt, head, dud, blabels, llinsts)
-        | _-> prerr_string "PeekAnon2->";
+        | _->
               let anon = (List.nth a_stack 1) in
               (cnt, head, LLRegLabel (ctyp_to_lltyp typ, anon), blabels, llinsts)
        )
     | CPeek3Anon typ ->
        (match typ with
           SVoid -> (cnt, head, dud, blabels, llinsts)
-        | _-> prerr_string "PeekAnon3->";
+        | _->
               let anon = (List.nth a_stack 2) in
               (cnt, head, LLRegLabel (ctyp_to_lltyp typ, anon), blabels, llinsts)
        )
@@ -264,11 +259,9 @@ ret
           (cnt, head, vreg, blabels, llinsts)
        )
     | CLoopCtr ->
-       prerr_string "CLoopCtr->";
        let ctr = (match c_stack  with h::t -> h | [] -> assert false) in
        (cnt,head,LLRegLabel (LLInt,ctr), blabels, llinsts)
     | CExCall (frettyp, fname, fstmts) ->
-       prerr_string "CExCall->";
        let fold_block (cnt, head, llreg, blabels, llinsts, reglist) stmt  =
          let (cnt, head, llreg, blabels, llinsts) = walk_cstmt (a_stack, c_stack, t_stack, cnt, head, blabels, llinsts) stmt
          in
@@ -290,7 +283,6 @@ ret
 
   let translate_cdecl list = function
     | CFnDecl cfunc ->
-       ignore(prerr_string (cfunc.cfname^"defined\n"));
        let fold_block (cnt, head, llreg, blabel, llinsts) stmt  =
          walk_cstmt ([],[] ,[], cnt, head, blabel,llinsts) stmt in
        let initmap = StringMap.add "entry" [] StringMap.empty in
